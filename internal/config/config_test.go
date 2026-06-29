@@ -34,31 +34,31 @@ no-httpd = 1
 		t.Errorf("Server = %q", cfg.Server)
 	}
 	if cfg.DelayTime != 7200 {
-		t.Errorf("DelayTime = %d, esperado 7200", cfg.DelayTime)
+		t.Errorf("DelayTime = %d, expected 7200", cfg.DelayTime)
 	}
 	if cfg.BackendCollectTimeout != 60 {
-		t.Errorf("BackendCollectTimeout = %d, esperado 60", cfg.BackendCollectTimeout)
+		t.Errorf("BackendCollectTimeout = %d, expected 60", cfg.BackendCollectTimeout)
 	}
 	if !cfg.ScanProcesses {
 		t.Error("ScanProcesses deveria ser true")
 	}
 	if cfg.Tag != "minha-entidade" {
-		t.Errorf("Tag = %q (aspas não removidas?)", cfg.Tag)
+		t.Errorf("Tag = %q (quotes not stripped?)", cfg.Tag)
 	}
 	if !cfg.NoSSLCheck {
 		t.Error("NoSSLCheck deveria ser true")
 	}
 	if !cfg.CategoryDisabled("printer") || !cfg.CategoryDisabled("VIDEO") {
-		t.Error("no-category não aplicado (deve ser case-insensitive)")
+		t.Error("no-category not applied (should be case-insensitive)")
 	}
-	// unknown-key deve ser registrada; no-httpd deve ser ignorada silenciosamente
+	// unknown-key should be recorded; no-httpd should be silently ignored
 	foundUnknown := false
 	for _, k := range cfg.UnknownKeys {
 		if k == "unknown-key" {
 			foundUnknown = true
 		}
 		if k == "no-httpd" {
-			t.Error("no-httpd não deveria estar em UnknownKeys")
+			t.Error("no-httpd should not be in UnknownKeys")
 		}
 	}
 	if !foundUnknown {
@@ -80,16 +80,16 @@ func TestLoadInclude(t *testing.T) {
 		t.Fatalf("Load: %v", err)
 	}
 	if cfg.Local != "/tmp/inv" {
-		t.Errorf("Local = %q, esperado /tmp/inv (include não funcionou)", cfg.Local)
+		t.Errorf("Local = %q, expected /tmp/inv (include did not work)", cfg.Local)
 	}
 }
 
 func TestDefaults(t *testing.T) {
 	cfg := Default()
 	if cfg.BackendCollectTimeout != 180 {
-		t.Errorf("timeout padrão = %d, esperado 180", cfg.BackendCollectTimeout)
+		t.Errorf("default timeout = %d, expected 180", cfg.BackendCollectTimeout)
 	}
 	if cfg.VarDir != "/var/lib/fusioninventory/agent" {
-		t.Errorf("VarDir padrão = %q", cfg.VarDir)
+		t.Errorf("default VarDir = %q", cfg.VarDir)
 	}
 }

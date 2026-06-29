@@ -7,6 +7,18 @@ coverage.txt
 *.swo
 *~
 
+# --- Testes: VMs Vagrant e configs locais (não versionar) ---
+.vagrant/
+*.box
+*.vdi
+*.vmdk
+test/glpi/.env
+.env
+
+# --- Configs locais de agentes/ferramentas ---
+.agents/settings.local.json
+.claude/settings.local.json
+
 # --- Perl (projetos de referência em base/) ---
 base/**/inc/
 base/**/MANIFEST

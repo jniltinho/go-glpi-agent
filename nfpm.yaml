@@ -1,0 +1,31 @@
+# nfpm configuration for building .deb/.rpm packages.
+# https://nfpm.goreleaser.com
+# Build the binary first (make build-all), then: make package-deb / package-rpm.
+name: fusioninventory-agent
+arch: amd64
+platform: linux
+version: ${VERSION}
+maintainer: Nilton Oliveira <jniltinho@gmail.com>
+description: |
+  Go inventory agent for GLPI (native JSON) and legacy OCS/FusionInventory (XML).
+  Collects local Linux hardware and software inventory and sends it to a GLPI
+  10+ server or writes it to a local XML file.
+vendor: jniltinho
+homepage: https://github.com/jniltinho/go-fusioninventory-agent
+license: GPL-2.0-or-later
+
+contents:
+  - src: ./dist/fusioninventory-agent
+    dst: /usr/bin/fusioninventory-agent
+  - src: ./contrib/fusioninventory-agent.service
+    dst: /lib/systemd/system/fusioninventory-agent.service
+  - src: ./contrib/fusioninventory-agent.timer
+    dst: /lib/systemd/system/fusioninventory-agent.timer
+
+overrides:
+  deb:
+    depends:
+      - dmidecode
+  rpm:
+    depends:
+      - dmidecode

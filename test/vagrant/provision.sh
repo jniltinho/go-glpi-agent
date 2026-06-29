@@ -41,10 +41,10 @@ if [[ ! -x "$BIN" ]]; then
 fi
 
 echo "==> Versão do binário Go:"
-"$BIN" --version
+"$BIN" version
 
-echo "==> Rodando agente Go (--local) como root..."
-"$BIN" --local "$OUTDIR/go" --conf-file /nonexistent --debug 2>&1 | tail -20 || true
+echo "==> Rodando agente Go (run --local) como root..."
+"$BIN" run --local "$OUTDIR/go" --debug 2>&1 | tail -20 || true
 GO_XML=$(ls "$OUTDIR"/go/*.xml 2>/dev/null | head -1 || true)
 
 echo "==> Rodando agente Perl (referência), se disponível..."
@@ -68,4 +68,4 @@ echo "XML do Go gravado em (dentro da VM): $GO_XML"
 [[ -n "$PERL_XML" ]] && echo "XML do Perl em: $PERL_XML" || echo "(sem agente Perl para comparar nesta distro)"
 echo
 echo "Para enviar ao GLPI a partir desta VM:"
-echo "  $BIN --server http://IP_DO_HOST:8080/front/inventory.php --debug"
+echo "  $BIN run --server http://IP_DO_HOST:8080/front/inventory.php --debug"

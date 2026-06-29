@@ -29,14 +29,14 @@ func (usbCollector) Collect(ctx context.Context, inv *inventory.Inventory) error
 	}
 	for _, e := range entries {
 		base := filepath.Join(usbDevPath, e.Name())
-		// idVendor existe apenas em devices (não em interfaces nem barramentos).
+		// idVendor exists only on devices (not on interfaces or buses).
 		vendor := sysutil.ReadFileTrim(filepath.Join(base, "idVendor"))
 		product := sysutil.ReadFileTrim(filepath.Join(base, "idProduct"))
 		if vendor == "" || product == "" {
 			continue
 		}
 		class := sysutil.ReadFileTrim(filepath.Join(base, "bDeviceClass"))
-		// pula hubs (classe 09)
+		// skip hubs (class 09)
 		if class == "09" {
 			continue
 		}

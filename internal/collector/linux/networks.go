@@ -31,7 +31,7 @@ func (networkCollector) Collect(ctx context.Context, inv *inventory.Inventory) e
 	gateway := defaultGateway()
 
 	for _, ifc := range ifaces {
-		// metadados comuns a todas as entradas desta interface
+		// metadata common to all entries of this interface
 		base := inventory.Network{
 			Description: ifc.Name,
 			MACAddr:     ifc.HardwareAddr,
@@ -50,7 +50,7 @@ func (networkCollector) Collect(ctx context.Context, inv *inventory.Inventory) e
 			base.MTU = mtu
 		}
 
-		// o agente Perl emite uma entrada NETWORKS por endereço IP.
+		// the Perl agent emits one NETWORKS entry per IP address.
 		if len(ifc.Addrs) == 0 {
 			inv.AddNetwork(base)
 			continue
@@ -96,9 +96,9 @@ func ifaceType(name string, flags []string) string {
 	return "ethernet"
 }
 
-// virtualFlag retorna "1" se a interface não tem um device físico associado.
+// virtualFlag returns "1" if the interface has no associated physical device.
 func virtualFlag(name string) string {
-	// /sys/class/net/<name>/device existe apenas para devices físicos.
+	// /sys/class/net/<name>/device exists only for physical devices.
 	if sysutil.FileExists("/sys/class/net/" + name + "/device") {
 		return "0"
 	}
@@ -108,7 +108,7 @@ func virtualFlag(name string) string {
 	return "1"
 }
 
-// defaultGateway lê o gateway padrão de /proc/net/route.
+// defaultGateway reads the default gateway from /proc/net/route.
 func defaultGateway() string {
 	lines := sysutil.SplitLines(sysutil.ReadFileTrim("/proc/net/route"))
 	for i, line := range lines {
@@ -119,7 +119,7 @@ func defaultGateway() string {
 		if len(fields) < 3 {
 			continue
 		}
-		// Destination == 00000000 indica rota default; Gateway no campo 3 (hex LE)
+		// Destination == 00000000 indicates the default route; Gateway in field 3 (hex LE)
 		if fields[1] == "00000000" {
 			if gw := hexLEToIP(fields[2]); gw != "" {
 				return gw
@@ -129,8 +129,8 @@ func defaultGateway() string {
 	return ""
 }
 
-// hexLEToIP converte um endereço IPv4 em hex little-endian (como em
-// /proc/net/route) para notação decimal pontilhada.
+// hexLEToIP converts a little-endian hex IPv4 address (as in
+// /proc/net/route) to dotted-decimal notation.
 func hexLEToIP(hex string) string {
 	if len(hex) != 8 {
 		return ""

@@ -1,6 +1,6 @@
-// Package config carrega a configuração do agente a partir de um arquivo
-// agent.cfg no formato INI compatível com o agente Perl, com sobreposição
-// por flags de linha de comando.
+// Package config loads the agent configuration from an agent.cfg file in the
+// INI format compatible with the Perl agent, with overrides from command-line
+// flags.
 package config
 
 import (
@@ -11,35 +11,36 @@ import (
 	"strings"
 )
 
-// DefaultConfFile é o caminho padrão do arquivo de configuração.
+// DefaultConfFile is the default path of the configuration file.
 const DefaultConfFile = "/etc/fusioninventory/agent.cfg"
 
-// Config contém os parâmetros suportados na v1. Campos não mapeados do
-// agent.cfg são ignorados (com aviso em debug) — ver design.md D7.
+// Config holds the parameters supported in v1. Unmapped fields from agent.cfg
+// are ignored (with a debug warning) — see design.md D7.
 type Config struct {
-	// Destino
+	// Target
 	Server string
 	Local  string
 
 	// Scheduling / daemon
-	DelayTime int  // segundos entre ciclos (default 3600)
-	Lazy      bool // não contacta servidor antes do schedule
-	Force     bool // envia mesmo sem solicitação
+	DelayTime int  // seconds between cycles (default 3600)
+	Lazy      bool // does not contact the server before the schedule
+	Force     bool // sends even without a request
 
-	// Coleta
-	BackendCollectTimeout int      // timeout por coletor, segundos (default 180)
-	NoCategory            []string // categorias desabilitadas
+	// Collection
+	BackendCollectTimeout int      // timeout per collector, seconds (default 180)
+	NoCategory            []string // disabled categories
 	ScanProcesses         bool
 
-	// Identificação
+	// Identification
 	Tag    string
-	VarDir string // diretório de persistência
+	VarDir string // persistence directory
 
 	// HTTP
-	Timeout  int // timeout HTTP, segundos (default 180)
-	User     string
-	Password string
-	Proxy    string
+	Timeout       int // HTTP timeout, seconds (default 180)
+	User          string
+	Password      string
+	Proxy         string
+	NoCompression bool // sends the body uncompressed (plain application/json)
 
 	// TLS
 	NoSSLCheck bool
@@ -52,11 +53,11 @@ type Config struct {
 	LogFacility string // default LOG_USER
 	Debug       bool
 
-	// chaves desconhecidas encontradas (para aviso em debug)
+	// unknown keys found (for a debug warning)
 	UnknownKeys []string
 }
 
-// Default retorna uma configuração com os padrões do agente Perl.
+// Default returns a configuration with the Perl agent defaults.
 func Default() *Config {
 	return &Config{
 		DelayTime:             3600,
@@ -68,17 +69,17 @@ func Default() *Config {
 	}
 }
 
-// chaves reconhecidas mas sem efeito na v1 (ignoradas sem aviso) — design.md D7.
+// keys recognized but with no effect in v1 (ignored without warning) — design.md D7.
 var ignoredKeys = map[string]bool{
 	"html": true, "scan-homedirs": true, "scan-profiles": true,
 	"additional-content": true, "no-httpd": true, "no-task": true,
-	"tasks": true, "no-p2p": true, "no-compression": true, "color": true,
+	"tasks": true, "no-p2p": true, "color": true,
 	"conf-reload-interval": true, "httpd-port": true, "httpd-trust": true,
 	"httpd-ip": true,
 }
 
-// Load lê o arquivo de configuração e aplica sobre os defaults. Suporta a
-// diretiva `include "dir/"` para carregar arquivos .cfg de um diretório.
+// Load reads the configuration file and applies it over the defaults. It supports
+// the `include "dir/"` directive to load .cfg files from a directory.
 func Load(path string) (*Config, error) {
 	cfg := Default()
 	if err := cfg.loadFile(path); err != nil {
@@ -102,7 +103,7 @@ func (c *Config) loadFile(path string) error {
 			continue
 		}
 
-		// diretiva include "conf.d/"
+		// include "conf.d/" directive
 		if strings.HasPrefix(line, "include") {
 			rest := strings.TrimSpace(strings.TrimPrefix(line, "include"))
 			rest = strings.Trim(rest, `"'`)
@@ -119,7 +120,7 @@ func (c *Config) loadFile(path string) error {
 	return scanner.Err()
 }
 
-// loadInclude carrega todos os .cfg de um diretório (relativo a baseDir).
+// loadInclude loads all .cfg files from a directory (relative to baseDir).
 func (c *Config) loadInclude(baseDir, pattern string) {
 	dir := pattern
 	if !filepath.IsAbs(dir) {
@@ -178,6 +179,8 @@ func (c *Config) applyKey(key, value string) {
 		c.Password = value
 	case "proxy":
 		c.Proxy = value
+	case "no-compression":
+		c.NoCompression = isTrue(value)
 	case "no-ssl-check":
 		c.NoSSLCheck = isTrue(value)
 	case "ca-cert-file":
@@ -199,7 +202,7 @@ func (c *Config) applyKey(key, value string) {
 	}
 }
 
-// HasCategory informa se uma categoria está desabilitada via no-category.
+// HasCategory reports whether a category is disabled via no-category.
 func (c *Config) CategoryDisabled(cat string) bool {
 	for _, v := range c.NoCategory {
 		if strings.EqualFold(v, cat) {

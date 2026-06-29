@@ -12,8 +12,8 @@ import (
 	"go-fusioninventory-agent/internal/sysutil"
 )
 
-// softwareCollector detecta automaticamente o(s) gerenciador(es) de pacotes
-// disponível(is) e coleta de todos. Cobre dpkg, rpm e pacman (design.md D8).
+// softwareCollector automatically detects the available package manager(s)
+// and collects from all of them. Covers dpkg, rpm and pacman (design.md D8).
 type softwareCollector struct{}
 
 func init() { collector.Register(softwareCollector{}) }
@@ -64,7 +64,7 @@ func collectDpkg(ctx context.Context, inv *inventory.Inventory) {
 		}
 		if len(f) > 3 {
 			if kb, e := strconv.ParseInt(strings.TrimSpace(f[3]), 10, 64); e == nil {
-				sw.FileSize = kb * 1024 // dpkg reporta em KB
+				sw.FileSize = kb * 1024 // dpkg reports in KB
 			}
 		}
 		if len(f) > 4 {

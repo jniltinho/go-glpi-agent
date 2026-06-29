@@ -1,5 +1,5 @@
-// Package transport define a interface de destino do inventário (servidor
-// GLPI ou arquivo local).
+// Package transport defines the inventory target interface (GLPI server
+// or local file).
 package transport
 
 import (
@@ -8,8 +8,8 @@ import (
 	"go-fusioninventory-agent/internal/inventory"
 )
 
-// Target é um destino para onde o inventário é enviado/gravado.
+// Target is a destination the inventory is sent/written to.
 type Target interface {
-	// Send entrega o inventário ao destino.
+	// Send delivers the inventory to the target.
 	Send(ctx context.Context, inv *inventory.Inventory) error
 }

@@ -19,19 +19,21 @@ import (
 	"go-fusioninventory-agent/internal/version"
 )
 
-// Target implementa transport.Target enviando o inventário a um servidor GLPI,
-// precedido pelo fluxo PROLOG.
+// Target implements transport.Target, sending the inventory to a GLPI server.
+// It tries the native JSON protocol (GLPI 10+) first and falls back to the
+// legacy XML/PROLOG flow for servers running the OCS/FusionInventory plugin.
 type Target struct {
-	url    string
-	cfg    *config.Config
-	log    *logger.Logger
-	client *http.Client
+	url     string
+	cfg     *config.Config
+	log     *logger.Logger
+	client  *http.Client
+	agentID string // sent as the GLPI-Agent-ID header (set per Send)
 
-	// PrologFreq é atualizado a partir da resposta PROLOG (em horas).
+	// PrologFreq is updated from the PROLOG reply (in hours).
 	PrologFreq int
 }
 
-// New cria um Target server a partir da configuração.
+// New creates a server Target from the configuration.
 func New(cfg *config.Config, log *logger.Logger) (*Target, error) {
 	tlsCfg, err := buildTLSConfig(cfg)
 	if err != nil {
@@ -91,43 +93,108 @@ func buildTLSConfig(cfg *config.Config) (*tls.Config, error) {
 	return tlsCfg, nil
 }
 
-// Send executa PROLOG e, em seguida, envia o inventário.
+// Send delivers the inventory. It probes the server with a native CONTACT
+// request: if the server answers as a GLPI 10+ native server, the inventory is
+// sent as JSON; otherwise it falls back to the legacy PROLOG + XML flow.
 func (t *Target) Send(ctx context.Context, inv *inventory.Inventory) error {
+	t.agentID = inv.AgentID
+
+	native, wantInventory, err := t.contact(ctx, inv)
+	if err != nil {
+		t.log.Debug("contact failed (%v); falling back to legacy XML/PROLOG", err)
+		return t.sendLegacy(ctx, inv)
+	}
+	if !native {
+		t.log.Info("server does not speak the native protocol; using legacy XML/PROLOG")
+		return t.sendLegacy(ctx, inv)
+	}
+	if !wantInventory && t.cfg.Lazy && !t.cfg.Force {
+		t.log.Info("server did not request an inventory (lazy); skipping this cycle")
+		return nil
+	}
+	return t.sendNative(ctx, inv)
+}
+
+// sendNative serializes the inventory as JSON and posts it to the GLPI native
+// endpoint with the GLPI-Agent-ID header.
+func (t *Target) sendNative(ctx context.Context, inv *inventory.Inventory) error {
+	body, err := BuildInventoryJSON(inv)
+	if err != nil {
+		return fmt.Errorf("json serialize: %w", err)
+	}
+	// Debug aid: GFI_DUMP_JSON=<file> writes the raw inventory JSON to disk so it
+	// can be validated against GLPI's inventory.schema.json offline.
+	if path := os.Getenv("GFI_DUMP_JSON"); path != "" {
+		_ = os.WriteFile(path, body, 0o644)
+	}
+	resp, err := t.postJSON(ctx, body)
+	if err != nil {
+		return err
+	}
+	t.log.Info("native JSON inventory sent to %s (%d bytes)", t.url, len(body))
+	t.log.Debug("server reply: %d bytes", len(resp))
+	return nil
+}
+
+// sendLegacy runs the legacy flow: PROLOG followed by the compressed XML
+// inventory.
+func (t *Target) sendLegacy(ctx context.Context, inv *inventory.Inventory) error {
 	if err := t.prolog(ctx, inv.DeviceID); err != nil {
 		return fmt.Errorf("prolog: %w", err)
 	}
-
 	body, err := Serialize(inv)
 	if err != nil {
 		return fmt.Errorf("serialize: %w", err)
 	}
-
-	resp, err := t.post(ctx, body)
+	resp, err := t.postXML(ctx, body)
 	if err != nil {
 		return err
 	}
-	t.log.Info("inventário enviado para %s (%d bytes)", t.url, len(body))
-	t.log.Debug("resposta do servidor: %d bytes", len(resp))
+	t.log.Info("legacy XML inventory sent to %s (%d bytes)", t.url, len(body))
+	t.log.Debug("server reply: %d bytes", len(resp))
 	return nil
 }
 
-// post envia um corpo XML comprimido com zlib ao servidor e retorna a resposta.
-func (t *Target) post(ctx context.Context, xmlBody []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	zw := zlib.NewWriter(&buf)
-	if _, err := zw.Write(xmlBody); err != nil {
-		return nil, err
+// postXML posts a zlib-compressed XML body (legacy protocol).
+func (t *Target) postXML(ctx context.Context, xmlBody []byte) ([]byte, error) {
+	return t.post(ctx, xmlBody, "application/x-compress-zlib", version.UserAgent(), true)
+}
+
+// postJSON posts a JSON body using the native protocol, honoring the
+// no-compression setting. The default is zlib (application/x-compress-zlib).
+func (t *Target) postJSON(ctx context.Context, jsonBody []byte) ([]byte, error) {
+	if t.cfg.NoCompression {
+		return t.post(ctx, jsonBody, "application/json", version.GLPIUserAgent(), false)
 	}
-	if err := zw.Close(); err != nil {
-		return nil, err
+	return t.post(ctx, jsonBody, "application/x-compress-zlib", version.GLPIUserAgent(), true)
+}
+
+// post is the low-level HTTP POST. When compress is true the body is wrapped in
+// zlib. It always sets the GLPI-Agent-ID header when an agentID is known, and
+// transparently decompresses a zlib reply.
+func (t *Target) post(ctx context.Context, body []byte, contentType, userAgent string, compress bool) ([]byte, error) {
+	payload := body
+	if compress {
+		var buf bytes.Buffer
+		zw := zlib.NewWriter(&buf)
+		if _, err := zw.Write(body); err != nil {
+			return nil, err
+		}
+		if err := zw.Close(); err != nil {
+			return nil, err
+		}
+		payload = buf.Bytes()
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, &buf)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, t.url, bytes.NewReader(payload))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/x-compress-zlib")
-	req.Header.Set("User-Agent", version.UserAgent())
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("User-Agent", userAgent)
+	if t.agentID != "" {
+		req.Header.Set("GLPI-Agent-ID", t.agentID)
+	}
 	if t.cfg.User != "" {
 		req.SetBasicAuth(t.cfg.User, t.cfg.Password)
 	}
@@ -140,12 +207,17 @@ func (t *Target) post(ctx context.Context, xmlBody []byte) ([]byte, error) {
 
 	data, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("POST %s: status %d", t.url, resp.StatusCode)
+		snippet := decompress(data)
+		if len(snippet) > 512 {
+			snippet = snippet[:512]
+		}
+		return nil, fmt.Errorf("POST %s: status %d: %s", t.url, resp.StatusCode, snippet)
 	}
 	return decompress(data), nil
 }
 
-// decompress tenta descomprimir zlib; se falhar, retorna os dados como estão.
+// decompress tries to inflate a zlib body; if it is not zlib, the data is
+// returned unchanged.
 func decompress(data []byte) []byte {
 	zr, err := zlib.NewReader(bytes.NewReader(data))
 	if err != nil {

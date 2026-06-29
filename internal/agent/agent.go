@@ -1,5 +1,5 @@
-// Package agent orquestra a execução do inventário: resolve o device ID,
-// roda os coletores e entrega o resultado ao destino (server ou local).
+// Package agent orchestrates the inventory run: it resolves the device ID,
+// runs the collectors and delivers the result to the target (server or local).
 package agent
 
 import (
@@ -18,20 +18,20 @@ import (
 	"go-fusioninventory-agent/internal/transport/local"
 	"go-fusioninventory-agent/internal/transport/server"
 
-	// importa os coletores para registrar via init()
+	// import the collectors to register them via init()
 	_ "go-fusioninventory-agent/internal/collector/generic"
 	_ "go-fusioninventory-agent/internal/collector/linux"
 )
 
-// Agent reúne configuração, logger e o destino do inventário.
+// Agent brings together configuration, logger and the inventory target.
 type Agent struct {
 	cfg    *config.Config
 	log    *logger.Logger
 	target transport.Target
 }
 
-// New cria um agente com o destino apropriado (server tem prioridade sobre
-// local). Retorna erro se nenhum destino foi configurado.
+// New creates an agent with the appropriate target (server takes priority over
+// local). Returns an error if no target was configured.
 func New(cfg *config.Config, log *logger.Logger) (*Agent, error) {
 	a := &Agent{cfg: cfg, log: log}
 
@@ -45,12 +45,12 @@ func New(cfg *config.Config, log *logger.Logger) (*Agent, error) {
 	case cfg.Local != "":
 		a.target = local.New(cfg.Local, log)
 	default:
-		return nil, fmt.Errorf("nenhum destino configurado (use --server ou --local)")
+		return nil, fmt.Errorf("no target configured (use --server or --local)")
 	}
 	return a, nil
 }
 
-// RunOnce executa um único ciclo de inventário.
+// RunOnce executes a single inventory cycle.
 func (a *Agent) RunOnce(ctx context.Context) error {
 	hostname, _ := os.Hostname()
 	deviceID, err := LoadOrCreateDeviceID(a.cfg.VarDir, hostname, time.Now())
@@ -59,18 +59,25 @@ func (a *Agent) RunOnce(ctx context.Context) error {
 	}
 	a.log.Info("device id: %s", deviceID)
 
+	agentID, err := LoadOrCreateAgentID(a.cfg.VarDir)
+	if err != nil {
+		a.log.Warning("agent id: %v", err)
+	}
+	a.log.Debug("agent id: %s", agentID)
+
 	inv := inventory.New(deviceID)
+	inv.AgentID = agentID
 	inv.Tag = a.cfg.Tag
 
 	engine := collector.NewEngine(a.cfg, a.log)
-	a.log.Info("coletando inventário...")
+	a.log.Info("collecting inventory...")
 	engine.Run(ctx, inv)
 
-	a.log.Info("enviando inventário...")
+	a.log.Info("sending inventory...")
 	return a.target.Send(ctx, inv)
 }
 
-// RunDaemon executa ciclos periódicos até receber SIGTERM/SIGINT.
+// RunDaemon executes periodic cycles until it receives SIGTERM/SIGINT.
 func (a *Agent) RunDaemon(ctx context.Context) error {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
@@ -80,16 +87,16 @@ func (a *Agent) RunDaemon(ctx context.Context) error {
 		delay = time.Hour
 	}
 
-	a.log.Info("modo daemon iniciado (intervalo: %s)", delay)
+	a.log.Info("daemon mode started (interval: %s)", delay)
 	for {
 		if err := a.RunOnce(ctx); err != nil {
-			a.log.Error("ciclo de inventário falhou: %v", err)
+			a.log.Error("inventory cycle failed: %v", err)
 		}
 
-		a.log.Debug("aguardando %s até o próximo ciclo", delay)
+		a.log.Debug("waiting %s until the next cycle", delay)
 		select {
 		case <-ctx.Done():
-			a.log.Info("sinal recebido, encerrando daemon")
+			a.log.Info("signal received, shutting down daemon")
 			return nil
 		case <-time.After(delay):
 		}

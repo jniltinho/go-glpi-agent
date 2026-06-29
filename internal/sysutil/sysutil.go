@@ -1,5 +1,5 @@
-// Package sysutil reúne helpers para executar comandos externos e ler
-// arquivos de /proc, /sys e /etc com tratamento gracioso de erros.
+// Package sysutil gathers helpers to run external commands and read
+// files from /proc, /sys and /etc with graceful error handling.
 package sysutil
 
 import (
@@ -10,21 +10,21 @@ import (
 	"strings"
 )
 
-// CommandExists informa se um binário está disponível no PATH.
+// CommandExists reports whether a binary is available in PATH.
 func CommandExists(name string) bool {
 	_, err := exec.LookPath(name)
 	return err == nil
 }
 
-// RunContext executa um comando respeitando o contexto (timeout/cancel) e
-// retorna stdout. Erros são retornados ao chamador para decisão.
+// RunContext runs a command honoring the context (timeout/cancel) and
+// returns stdout. Errors are returned to the caller to decide.
 func RunContext(ctx context.Context, name string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...)
 	out, err := cmd.Output()
 	return string(out), err
 }
 
-// RunLines executa um comando e retorna stdout dividido em linhas não vazias.
+// RunLines runs a command and returns stdout split into non-empty lines.
 func RunLines(ctx context.Context, name string, args ...string) ([]string, error) {
 	out, err := RunContext(ctx, name, args...)
 	if err != nil {
@@ -33,7 +33,7 @@ func RunLines(ctx context.Context, name string, args ...string) ([]string, error
 	return SplitLines(out), nil
 }
 
-// SplitLines divide texto em linhas, descartando linhas vazias no fim.
+// SplitLines splits text into lines, discarding trailing empty lines.
 func SplitLines(s string) []string {
 	var lines []string
 	sc := bufio.NewScanner(strings.NewReader(s))
@@ -44,8 +44,8 @@ func SplitLines(s string) []string {
 	return lines
 }
 
-// ReadFileTrim lê um arquivo e retorna seu conteúdo sem espaços nas pontas.
-// Retorna string vazia se o arquivo não existir ou não puder ser lido.
+// ReadFileTrim reads a file and returns its content with surrounding whitespace trimmed.
+// Returns an empty string if the file does not exist or cannot be read.
 func ReadFileTrim(path string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -54,7 +54,7 @@ func ReadFileTrim(path string) string {
 	return strings.TrimSpace(string(b))
 }
 
-// FileExists informa se um caminho existe.
+// FileExists reports whether a path exists.
 func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil

@@ -1,16 +1,22 @@
-// Package version centraliza a versão do agente e a string de User-Agent
-// usada na comunicação com o GLPI.
+// Package version centralizes the agent version and the User-Agent string
+// used when communicating with GLPI.
 package version
 
-// Version é a versão do agente Go. Sobrescrita no build via -ldflags.
+// Version is the Go agent version. Overridden at build time via -ldflags.
 var Version = "0.1.0-dev"
 
-// Name é o nome do agente.
+// Name is the agent name.
 const Name = "go-fusioninventory-agent"
 
-// UserAgent retorna a string enviada como VERSIONCLIENT no XML e como
-// header User-Agent nas requisições HTTP. O GLPI espera o prefixo
-// "FusionInventory-Agent" para reconhecer o cliente.
+// UserAgent returns the string sent as VERSIONCLIENT in the XML and as the
+// User-Agent header in HTTP requests. GLPI expects the prefix
+// "FusionInventory-Agent" to recognize the client.
 func UserAgent() string {
 	return "FusionInventory-Agent_v" + Version + " (" + Name + ")"
+}
+
+// GLPIUserAgent returns the native protocol User-Agent. GLPI 10+ recognizes
+// the modern client by the prefix "GLPI-Agent_v".
+func GLPIUserAgent() string {
+	return "GLPI-Agent_v" + Version
 }

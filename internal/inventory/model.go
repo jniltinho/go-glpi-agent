@@ -1,16 +1,17 @@
-// Package inventory define o modelo de dados do inventário e sua serialização
-// para o formato XML OCS/FusionInventory aceito pelo servidor GLPI.
+// Package inventory defines the inventory data model and its serialization
+// to the OCS/FusionInventory XML format accepted by the GLPI server.
 package inventory
 
 import "sync"
 
-// Inventory acumula os dados coletados. É seguro para escrita concorrente:
-// cada coletor roda em sua própria goroutine e usa os métodos Set*/Add* que
-// protegem o acesso com mutex.
+// Inventory accumulates the collected data. It is safe for concurrent writes:
+// each collector runs in its own goroutine and uses the Set*/Add* methods that
+// guard access with a mutex.
 type Inventory struct {
 	mu sync.Mutex
 
 	DeviceID string
+	AgentID  string // UUID sent in the GLPI-Agent-ID header (native protocol)
 	Tag      string
 
 	Hardware        Hardware
@@ -18,8 +19,8 @@ type Inventory struct {
 	OperatingSystem OperatingSystem
 	CPUs            []CPU
 	Memories        []Memory
-	Drives          []Drive   // sistemas de arquivos montados (DRIVES)
-	Storages        []Storage // discos físicos (STORAGES)
+	Drives          []Drive   // mounted filesystems (DRIVES)
+	Storages        []Storage // physical disks (STORAGES)
 	Networks        []Network
 	Softwares       []Software
 	USBDevices      []USBDevice
@@ -30,12 +31,12 @@ type Inventory struct {
 	Volumes         []Volume // LVM logical volumes
 }
 
-// New cria um inventário vazio.
+// New creates an empty inventory.
 func New(deviceID string) *Inventory {
 	return &Inventory{DeviceID: deviceID}
 }
 
-// Hardware corresponde à seção <HARDWARE> do XML.
+// Hardware corresponds to the <HARDWARE> section of the XML.
 type Hardware struct {
 	Name               string
 	OSName             string
@@ -54,21 +55,21 @@ type Hardware struct {
 	DateLastLoggedUser string
 }
 
-// BIOS corresponde à seção <BIOS>.
+// BIOS corresponds to the <BIOS> section.
 type BIOS struct {
-	SManufacturer string // fabricante do sistema
-	SModel        string // modelo do sistema
-	SSN           string // serial do sistema
-	BManufacturer string // fabricante do BIOS
+	SManufacturer string // system manufacturer
+	SModel        string // system model
+	SSN           string // system serial
+	BManufacturer string // BIOS manufacturer
 	BVersion      string
 	BDate         string
 	AssetTag      string
-	MManufacturer string // fabricante da placa-mãe
+	MManufacturer string // motherboard manufacturer
 	MModel        string
 	MSN           string
 }
 
-// OperatingSystem corresponde à seção <OPERATINGSYSTEM>.
+// OperatingSystem corresponds to the <OPERATINGSYSTEM> section.
 type OperatingSystem struct {
 	Name          string
 	Version       string
@@ -82,25 +83,25 @@ type OperatingSystem struct {
 	HostID        string
 	InstallDate   string
 	TimezoneName  string
-	TimezoneUTCO  string // offset, ex: "+0200"
+	TimezoneUTCO  string // offset, e.g. "+0200"
 }
 
-// CPU corresponde a cada <CPUS>.
+// CPU corresponds to each <CPUS>.
 type CPU struct {
 	Name         string
 	Manufacturer string
 	Speed        int // MHz
-	Core         int // núcleos físicos
-	Thread       int // threads por core
+	Core         int // physical cores
+	Thread       int // threads per core
 	Arch         string
-	CoreCount    int // total de cores lógicos
+	CoreCount    int // total logical cores
 	ID           string
 	Stepping     string
 	FamilyNumber string
 	Model        string
 }
 
-// Memory corresponde a cada <MEMORIES> (slot físico).
+// Memory corresponds to each <MEMORIES> (physical slot).
 type Memory struct {
 	Capacity     int // MB
 	Type         string
@@ -112,10 +113,10 @@ type Memory struct {
 	Manufacturer string
 }
 
-// Drive corresponde a cada <DRIVES> (sistema de arquivos montado).
+// Drive corresponds to each <DRIVES> (mounted filesystem).
 type Drive struct {
-	Volumn     string // dispositivo (ex: /dev/sda1)
-	Type       string // ponto de montagem
+	Volumn     string // device (e.g. /dev/sda1)
+	Type       string // mount point
 	FileSystem string
 	Total      int // MB
 	Free       int // MB
@@ -123,7 +124,7 @@ type Drive struct {
 	Serial     string
 }
 
-// Storage corresponde a cada <STORAGES> (disco físico).
+// Storage corresponds to each <STORAGES> (physical disk).
 type Storage struct {
 	Name         string
 	Manufacturer string
@@ -136,14 +137,14 @@ type Storage struct {
 	WWN          string
 }
 
-// Network corresponde a cada <NETWORKS> (interface).
+// Network corresponds to each <NETWORKS> (interface).
 type Network struct {
 	Description string
 	Type        string // ethernet, wifi, loopback...
 	Speed       string
 	MACAddr     string
 	Status      string // Up / Down
-	VirtualDev  string // 1 se virtual
+	VirtualDev  string // 1 if virtual
 	IPAddress   string
 	IPMask      string
 	IPSubnet    string
@@ -153,7 +154,7 @@ type Network struct {
 	Driver      string
 }
 
-// Software corresponde a cada <SOFTWARES>.
+// Software corresponds to each <SOFTWARES>.
 type Software struct {
 	Name        string
 	Version     string
@@ -166,7 +167,7 @@ type Software struct {
 	Section     string
 }
 
-// USBDevice corresponde a cada <USBDEVICES>.
+// USBDevice corresponds to each <USBDEVICES>.
 type USBDevice struct {
 	VendorID     string
 	ProductID    string
@@ -178,7 +179,7 @@ type USBDevice struct {
 	Name         string
 }
 
-// LocalUser corresponde a cada <LOCAL_USERS>.
+// LocalUser corresponds to each <LOCAL_USERS>.
 type LocalUser struct {
 	Login string
 	ID    string
@@ -187,20 +188,20 @@ type LocalUser struct {
 	Shell string
 }
 
-// LocalGroup corresponde a cada <LOCAL_GROUPS>.
+// LocalGroup corresponds to each <LOCAL_GROUPS>.
 type LocalGroup struct {
 	ID     string
 	Name   string
 	Member []string
 }
 
-// User corresponde a cada <USERS> (sessão logada).
+// User corresponds to each <USERS> (logged-in session).
 type User struct {
 	Login  string
 	Domain string
 }
 
-// Process corresponde a cada <PROCESSES>.
+// Process corresponds to each <PROCESSES>.
 type Process struct {
 	User          string
 	PID           int32
@@ -212,7 +213,7 @@ type Process struct {
 	Cmd           string
 }
 
-// Volume corresponde a um volume lógico LVM (mapeado em STORAGES no XML).
+// Volume corresponds to an LVM logical volume (mapped to STORAGES in the XML).
 type Volume struct {
 	LVName   string
 	VGName   string
@@ -223,7 +224,7 @@ type Volume struct {
 	SegCount string
 }
 
-// ---- Setters/Adders thread-safe ----
+// ---- Thread-safe setters/adders ----
 
 func (inv *Inventory) SetHardware(fn func(h *Hardware)) {
 	inv.mu.Lock()

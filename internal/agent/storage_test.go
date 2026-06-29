@@ -12,7 +12,7 @@ func TestGenerateDeviceIDFormat(t *testing.T) {
 	id := generateDeviceID("srv-web.example.com", now)
 	want := "srv-web-2026-06-29-15-30-45"
 	if id != want {
-		t.Errorf("id = %q, esperado %q", id, want)
+		t.Errorf("id = %q, expected %q", id, want)
 	}
 }
 
@@ -24,25 +24,25 @@ func TestLoadOrCreatePersists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("primeira chamada: %v", err)
 	}
-	// segunda chamada (tempo diferente) deve reusar o mesmo ID persistido
+	// second call (different time) should reuse the same persisted ID
 	id2, err := LoadOrCreateDeviceID(dir, "host", now.Add(time.Hour))
 	if err != nil {
 		t.Fatalf("segunda chamada: %v", err)
 	}
 	if id1 != id2 {
-		t.Errorf("device id não persistiu: %q != %q", id1, id2)
+		t.Errorf("device id did not persist: %q != %q", id1, id2)
 	}
 }
 
 func TestImportPerlDeviceID(t *testing.T) {
 	dir := t.TempDir()
-	// simula um .dump Storable com o deviceid embutido em bytes binários
+	// simulate a Storable .dump with the deviceid embedded in binary bytes
 	perlID := "old-srv-2024-03-15-08-00-00"
-	// no Storable, chave e valor são strings com prefixo de comprimento
-	// (byte binário), então há um separador não-textual antes do valor.
+	// in Storable, key and value are strings with a length prefix
+	// (binary byte), so there is a non-textual separator before the value.
 	dump := []byte{0x04, 0x08, 0x00}
 	dump = append(dump, []byte("deviceid")...)
-	dump = append(dump, byte(len(perlID))) // prefixo de comprimento (não-\w)
+	dump = append(dump, byte(len(perlID))) // length prefix (non-\w)
 	dump = append(dump, []byte(perlID)...)
 	dump = append(dump, 0x00)
 	dump = append(dump, []byte("more")...)
@@ -55,6 +55,6 @@ func TestImportPerlDeviceID(t *testing.T) {
 		t.Fatalf("LoadOrCreateDeviceID: %v", err)
 	}
 	if id != perlID {
-		t.Errorf("device id = %q, esperado importar %q do .dump", id, perlID)
+		t.Errorf("device id = %q, expected to import %q from .dump", id, perlID)
 	}
 }

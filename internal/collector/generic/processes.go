@@ -10,8 +10,8 @@ import (
 	"go-fusioninventory-agent/internal/inventory"
 )
 
-// processCollector só roda quando scan-processes=1 (desabilitado por padrão,
-// como no Perl).
+// processCollector only runs when scan-processes=1 (disabled by default, as in
+// the Perl agent).
 type processCollector struct{}
 
 func init() { collector.Register(processCollector{}) }

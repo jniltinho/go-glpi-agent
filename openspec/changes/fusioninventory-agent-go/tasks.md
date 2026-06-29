@@ -12,14 +12,14 @@
 > Caminho padrão para GLPI 10+. Sem isto o agente não funciona contra inventário nativo.
 > Referência: `research-glpi-agent.md`, capability `glpi-native-protocol`.
 
-- [ ] 2.1 Gerar/persistir `agentid` (UUID v4) em `FusionInventory-Agent.json` e importar de `GLPI-Agent.dump` quando existir (`internal/agent/storage.go`)
-- [ ] 2.2 Implementar serializador JSON do inventário em `internal/transport/server/json.go` (mesmo modelo de `internal/inventory`)
-- [ ] 2.3 Implementar requisição CONTACT (`action=contact`) e parsing da resposta de capacidades (`internal/transport/server/contact.go`)
-- [ ] 2.4 Detectar nativo vs legado e selecionar protocolo/cliente automaticamente (`internal/transport/server/detect.go`)
-- [ ] 2.5 Enviar headers `GLPI-Agent-ID` e `User-Agent: GLPI-Agent_v<ver>`; POST em `/front/inventory.php` (ou URL configurada)
-- [ ] 2.6 Negociação de compressão zlib/gzip/none respeitando `no-compression` no protocolo nativo
-- [ ] 2.7 Integrar fluxo nativo no `Target.Send()`: CONTACT → inventário JSON (pular PROLOG quando nativo)
-- [ ] 2.8 Validar inventário JSON aceito pelo GLPI 10+ no ambiente `test/` (Debian 12 + Rocky 9)
+- [x] 2.1 Gerar/persistir `agentid` (UUID v4) em `FusionInventory-Agent.json` e importar de `GLPI-Agent.dump` quando existir (`internal/agent/storage.go`)
+- [x] 2.2 Implementar serializador JSON do inventário em `internal/transport/server/json.go` (mesmo modelo de `internal/inventory`)
+- [x] 2.3 Implementar requisição CONTACT (`action=contact`) e parsing da resposta de capacidades (`internal/transport/server/contact.go`)
+- [x] 2.4 Detectar nativo vs legado e selecionar protocolo/cliente automaticamente (em `client.go`: CONTACT JSON → nativo; senão fallback XML/PROLOG)
+- [x] 2.5 Enviar headers `GLPI-Agent-ID` e `User-Agent: GLPI-Agent_v<ver>`; POST em `/front/inventory.php` (ou URL configurada)
+- [~] 2.6 Negociação de compressão respeitando `no-compression` — **feito**: zlib (padrão) e none; **falta**: gzip
+- [x] 2.7 Integrar fluxo nativo no `Target.Send()`: CONTACT → inventário JSON (pular PROLOG quando nativo)
+- [x] 2.8 Validar inventário JSON aceito pelo GLPI 10+ (validado no GLPI 10 docker: computador `linux-desktop` criado com 2888 softwares, 23 portas de rede, CPU e SO; 0 violações no `inventory.schema.json`)
 
 ## 3. Transport legado XML + saída local (fallback e `--local`)
 
@@ -87,14 +87,14 @@
 - [x] 10.2 Criar unit systemd oneshot + timer em `contrib/fusioninventory-agent.service` e `.timer`
 - [x] 10.3 Criar `Dockerfile` para testes de integração
 - [x] 10.4 Documentar lacunas v1 vs Perl no `README.md`
-- [ ] 10.5 Criar `nfpm.yaml` para `package-deb`/`package-rpm` funcionarem de fato
-- [ ] 10.6 Incluir `.timer` no target `install` do Makefile
+- [x] 10.5 Criar `nfpm.yaml` para `package-deb`/`package-rpm` funcionarem de fato
+- [x] 10.6 Incluir `.timer` no target `install` do Makefile
 
 ## 11. Validação
 
 - [x] 11.1 Comparar XML Go vs Perl no mesmo host (Ubuntu 24.04)
 - [x] 11.1b Infraestrutura `test/` (GLPI docker-compose, Vagrant Rocky 9 + Debian 12)
-- [ ] 11.2 Validar inventário **JSON** aceito pelo GLPI 10+ nativo (bloqueante — depende de 2.8)
+- [x] 11.2 Validar inventário **JSON** aceito pelo GLPI 10+ nativo (validado contra GLPI 10 em docker; ver 2.8)
 - [ ] 11.3 Validar fallback XML/PROLOG contra plugin FusionInventory (se disponível no ambiente de teste)
 - [~] 11.4 Testes unitários por coletor com mocks/fixtures (serialize/config/storage feitos; coletores pendentes)
 - [x] 11.5 Migração device ID: import de `FusionInventory-Agent.dump`

@@ -7,8 +7,8 @@ import (
 	"go-fusioninventory-agent/internal/version"
 )
 
-// Serialize converte um Inventory no XML <REQUEST> do protocolo
-// OCS/FusionInventory, com QUERY=INVENTORY.
+// Serialize converts an Inventory into the OCS/FusionInventory protocol's
+// <REQUEST> XML, with QUERY=INVENTORY.
 func Serialize(inv *inventory.Inventory) ([]byte, error) {
 	req := BuildRequest(inv)
 	body, err := xml.MarshalIndent(req, "", "  ")
@@ -19,8 +19,8 @@ func Serialize(inv *inventory.Inventory) ([]byte, error) {
 	return append(out, '\n'), nil
 }
 
-// BuildRequest monta a struct Request a partir do inventário (exposto para
-// testes de compatibilidade).
+// BuildRequest assembles the Request struct from the inventory (exposed for
+// compatibility tests).
 func BuildRequest(inv *inventory.Inventory) Request {
 	c := Content{VersionClient: version.UserAgent()}
 
@@ -55,7 +55,7 @@ func BuildRequest(inv *inventory.Inventory) Request {
 			Type: s.Type, DiskSize: s.DiskSize, SerialNumber: s.SerialNumber, Firmware: s.Firmware, WWN: s.WWN,
 		})
 	}
-	// volumes LVM viram STORAGES tipo "lvm"
+	// LVM volumes become STORAGES of type "lvm"
 	for _, v := range inv.Volumes {
 		c.Storages = append(c.Storages, xmlStorage{
 			Name:        v.LVName,
@@ -101,7 +101,7 @@ func BuildRequest(inv *inventory.Inventory) Request {
 		})
 	}
 
-	// tag de entidade vai em ACCOUNTINFO/TAG
+	// entity tag goes in ACCOUNTINFO/TAG
 	if inv.Tag != "" {
 		c.AccountInfo = &xmlAccount{KeyName: "TAG", KeyValue: inv.Tag}
 	}

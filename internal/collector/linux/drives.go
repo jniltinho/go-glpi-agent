@@ -21,9 +21,9 @@ func (driveCollector) Name() string                      { return "linux/drives"
 func (driveCollector) Category() string                  { return "drive" }
 func (driveCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
-// pseudoFS são filesystems virtuais do kernel que não carregam dados de
-// usuário. overlay/9p/rootfs/squashfs NÃO entram aqui pois representam
-// montagens reais (e o agente Perl as reporta).
+// pseudoFS are virtual kernel filesystems that hold no user data.
+// overlay/9p/rootfs/squashfs are NOT listed here because they represent
+// real mounts (and the Perl agent reports them).
 var pseudoFS = map[string]bool{
 	"proc": true, "sysfs": true, "devtmpfs": true, "devpts": true,
 	"tmpfs": true, "cgroup": true, "cgroup2": true, "pstore": true,
@@ -55,7 +55,7 @@ func (driveCollector) Collect(ctx context.Context, inv *inventory.Inventory) err
 	return nil
 }
 
-// --- discos físicos via lsblk (STORAGES) ---
+// --- physical disks via lsblk (STORAGES) ---
 
 type storageCollector struct{}
 

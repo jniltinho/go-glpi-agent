@@ -8,8 +8,8 @@ import (
 	"go-fusioninventory-agent/internal/inventory"
 )
 
-// TestSerializeStructure verifica que o XML gerado tem o envelope correto e
-// inclui as seções/campos esperados pelo GLPI.
+// TestSerializeStructure verifies that the generated XML has the correct
+// envelope and includes the sections/fields expected by GLPI.
 func TestSerializeStructure(t *testing.T) {
 	inv := inventory.New("host-2026-06-29-10-00-00")
 	inv.Tag = "entidade1"
@@ -34,7 +34,7 @@ func TestSerializeStructure(t *testing.T) {
 	s := string(out)
 
 	if !strings.HasPrefix(s, xml.Header) {
-		t.Error("falta o cabeçalho XML")
+		t.Error("missing XML header")
 	}
 	for _, want := range []string{
 		"<REQUEST>", "<QUERY>INVENTORY</QUERY>",
@@ -46,12 +46,12 @@ func TestSerializeStructure(t *testing.T) {
 		"FusionInventory-Agent",
 	} {
 		if !strings.Contains(s, want) {
-			t.Errorf("XML não contém %q", want)
+			t.Errorf("XML does not contain %q", want)
 		}
 	}
 }
 
-// TestSerializeRoundTrip garante que o XML gerado é parseável de volta.
+// TestSerializeRoundTrip ensures the generated XML can be parsed back.
 func TestSerializeRoundTrip(t *testing.T) {
 	inv := inventory.New("dev-1")
 	inv.AddCPU(inventory.CPU{Name: "Test CPU", Core: 2})
@@ -66,26 +66,26 @@ func TestSerializeRoundTrip(t *testing.T) {
 		t.Fatalf("Unmarshal: %v", err)
 	}
 	if req.DeviceID != "dev-1" {
-		t.Errorf("DeviceID = %q, esperado dev-1", req.DeviceID)
+		t.Errorf("DeviceID = %q, expected dev-1", req.DeviceID)
 	}
 	if req.Query != "INVENTORY" {
-		t.Errorf("Query = %q, esperado INVENTORY", req.Query)
+		t.Errorf("Query = %q, expected INVENTORY", req.Query)
 	}
 	if len(req.Content.CPUs) != 1 || req.Content.CPUs[0].Name != "Test CPU" {
-		t.Errorf("CPU não round-trip corretamente: %+v", req.Content.CPUs)
+		t.Errorf("CPU did not round-trip correctly: %+v", req.Content.CPUs)
 	}
 }
 
-// TestEmptyFieldsOmitted verifica que campos vazios não aparecem no XML.
+// TestEmptyFieldsOmitted verifies that empty fields do not appear in the XML.
 func TestEmptyFieldsOmitted(t *testing.T) {
 	inv := inventory.New("dev-2")
 	out, _ := Serialize(inv)
 	s := string(out)
 
 	if strings.Contains(s, "<BIOS>") {
-		t.Error("BIOS vazio não deveria aparecer")
+		t.Error("empty BIOS should not appear")
 	}
 	if strings.Contains(s, "<SOFTWARES>") {
-		t.Error("SOFTWARES vazio não deveria aparecer")
+		t.Error("empty SOFTWARES should not appear")
 	}
 }

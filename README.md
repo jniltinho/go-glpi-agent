@@ -21,22 +21,27 @@ make test           # testes unitários
 
 ## Uso
 
+CLI em subcomandos (Cobra):
+
 ```sh
 # saída em arquivo XML local
-./fusioninventory-agent --local /tmp/inventory
+./fusioninventory-agent run --local /tmp/inventory
 
-# envio para servidor GLPI (com fluxo PROLOG)
-./fusioninventory-agent --server http://glpi/plugins/fusioninventory/
-
-# modo daemon (ciclos periódicos)
-./fusioninventory-agent --daemon
+# envio para o GLPI 10+ (protocolo nativo JSON; fallback XML/PROLOG automático)
+./fusioninventory-agent run --server http://glpi/front/inventory.php
 
 # usa o mesmo agent.cfg do agente Perl
-./fusioninventory-agent --conf-file /etc/fusioninventory/agent.cfg
+./fusioninventory-agent run --conf-file /etc/fusioninventory/agent.cfg
+
+# modo daemon (ciclos periódicos)
+./fusioninventory-agent daemon
+
+# versão
+./fusioninventory-agent version
 ```
 
-Flags: `--server`, `--local`, `--conf-file`, `--daemon`, `--run-once`,
-`--debug`, `--force`, `--no-category`, `--version`.
+Flags globais: `--server`, `--local`, `--conf-file`, `--debug`, `--force`,
+`--no-category`.
 
 ## Coletores (v1)
 

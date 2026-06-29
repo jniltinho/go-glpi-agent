@@ -1,5 +1,5 @@
-// Package logger fornece logging com níveis e backends configuráveis
-// (stderr, arquivo, syslog), espelhando os backends do agente Perl.
+// Package logger provides logging with configurable levels and backends
+// (stderr, file, syslog), mirroring the Perl agent's backends.
 package logger
 
 import (
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// Level representa a severidade da mensagem.
+// Level represents the message severity.
 type Level int
 
 const (
@@ -35,14 +35,14 @@ func (l Level) String() string {
 	}
 }
 
-// Logger emite mensagens conforme o nível configurado.
+// Logger emits messages according to the configured level.
 type Logger struct {
 	level   Level
 	out     io.Writer
 	syslogW *syslog.Writer
 }
 
-// Options configura a criação de um Logger.
+// Options configures the creation of a Logger.
 type Options struct {
 	Backend     string // Stderr | File | Syslog
 	LogFile     string
@@ -50,8 +50,8 @@ type Options struct {
 	Debug       bool
 }
 
-// New cria um logger conforme as opções. Em caso de falha ao abrir
-// arquivo/syslog, faz fallback para stderr.
+// New creates a logger according to the options. If opening the
+// file/syslog fails, it falls back to stderr.
 func New(opts Options) *Logger {
 	level := LevelInfo
 	if opts.Debug {
@@ -65,14 +65,14 @@ func New(opts Options) *Logger {
 			if f, err := os.OpenFile(opts.LogFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); err == nil {
 				l.out = f
 			} else {
-				fmt.Fprintf(os.Stderr, "[logger] falha ao abrir %s: %v; usando stderr\n", opts.LogFile, err)
+				fmt.Fprintf(os.Stderr, "[logger] failed to open %s: %v; using stderr\n", opts.LogFile, err)
 			}
 		}
 	case "syslog":
 		if w, err := syslog.New(syslog.LOG_INFO|facility(opts.LogFacility), "fusioninventory-agent"); err == nil {
 			l.syslogW = w
 		} else {
-			fmt.Fprintf(os.Stderr, "[logger] falha ao conectar syslog: %v; usando stderr\n", err)
+			fmt.Fprintf(os.Stderr, "[logger] failed to connect to syslog: %v; using stderr\n", err)
 		}
 	}
 	return l

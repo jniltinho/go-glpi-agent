@@ -1,5 +1,5 @@
-// Package generic contém coletores cross-cutting que dependem mais de
-// arquivos padrão (/etc) e ferramentas comuns do que de um SO específico.
+// Package generic contains cross-cutting collectors that rely more on standard
+// files (/etc) and common tools than on a specific OS.
 package generic
 
 import (
@@ -25,7 +25,7 @@ func (hostnameCollector) IsEnabled(cfg *config.Config) bool { return true }
 func (hostnameCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	hostname, _ := os.Hostname()
 
-	// hostname curto + domínio
+	// short hostname + domain
 	short := hostname
 	domain := ""
 	if i := strings.Index(hostname, "."); i >= 0 {
@@ -58,7 +58,7 @@ func (hostnameCollector) Collect(ctx context.Context, inv *inventory.Inventory) 
 	return nil
 }
 
-// resolvDomain lê a primeira diretiva "domain" ou "search" de /etc/resolv.conf.
+// resolvDomain reads the first "domain" or "search" directive from /etc/resolv.conf.
 func resolvDomain() string {
 	content := sysutil.ReadFileTrim("/etc/resolv.conf")
 	for _, line := range sysutil.SplitLines(content) {

@@ -1,5 +1,5 @@
-// Package collector define a interface de coleta de inventário e o motor
-// que executa os coletores registrados de forma concorrente.
+// Package collector defines the inventory collection interface and the engine
+// that runs the registered collectors concurrently.
 package collector
 
 import (
@@ -12,41 +12,41 @@ import (
 	"go-fusioninventory-agent/internal/logger"
 )
 
-// Collector é a unidade de coleta. Cada tipo de dado (CPU, rede, software...)
-// implementa esta interface. Espelha o padrão isEnabled/doInventory do Perl.
+// Collector is the unit of collection. Each kind of data (CPU, network, software...)
+// implements this interface. It mirrors the Perl isEnabled/doInventory pattern.
 type Collector interface {
-	// Name é o identificador do coletor (usado em logs).
+	// Name is the collector identifier (used in logs).
 	Name() string
-	// Category é a categoria para fins de --no-category (ex: "cpu", "software").
+	// Category is the category for --no-category purposes (e.g. "cpu", "software").
 	Category() string
-	// IsEnabled decide se o coletor deve rodar neste host/config.
+	// IsEnabled decides whether the collector should run on this host/config.
 	IsEnabled(cfg *config.Config) bool
-	// Collect coleta os dados e os adiciona ao inventário.
+	// Collect gathers the data and adds it to the inventory.
 	Collect(ctx context.Context, inv *inventory.Inventory) error
 }
 
-// registry guarda os coletores registrados via Register.
+// registry holds the collectors registered via Register.
 var registry []Collector
 
-// Register adiciona um coletor ao registry global. Chamado em init() de cada
-// pacote de coletores.
+// Register adds a collector to the global registry. Called from each collector
+// package's init().
 func Register(c Collector) {
 	registry = append(registry, c)
 }
 
-// Registered retorna a lista de coletores registrados.
+// Registered returns the list of registered collectors.
 func Registered() []Collector {
 	return registry
 }
 
-// Engine executa os coletores habilitados concorrentemente.
+// Engine runs the enabled collectors concurrently.
 type Engine struct {
 	cfg     *config.Config
 	log     *logger.Logger
 	timeout time.Duration
 }
 
-// NewEngine cria o motor com a configuração e logger fornecidos.
+// NewEngine creates the engine with the given config and logger.
 func NewEngine(cfg *config.Config, log *logger.Logger) *Engine {
 	timeout := time.Duration(cfg.BackendCollectTimeout) * time.Second
 	if timeout <= 0 {
@@ -55,20 +55,20 @@ func NewEngine(cfg *config.Config, log *logger.Logger) *Engine {
 	return &Engine{cfg: cfg, log: log, timeout: timeout}
 }
 
-// Run executa todos os coletores habilitados em paralelo. Cada coletor tem um
-// timeout individual; um que exceda o timeout ou retorne erro é logado como
-// warning sem cancelar os demais.
+// Run executes all enabled collectors in parallel. Each collector has its own
+// timeout; one that exceeds the timeout or returns an error is logged as a
+// warning without canceling the others.
 func (e *Engine) Run(ctx context.Context, inv *inventory.Inventory) {
 	var wg sync.WaitGroup
 
 	for _, c := range Registered() {
 		c := c
 		if !c.IsEnabled(e.cfg) {
-			e.log.Debug("coletor %s desabilitado", c.Name())
+			e.log.Debug("collector %s disabled", c.Name())
 			continue
 		}
 		if e.cfg.CategoryDisabled(c.Category()) {
-			e.log.Debug("coletor %s pulado (no-category=%s)", c.Name(), c.Category())
+			e.log.Debug("collector %s skipped (no-category=%s)", c.Name(), c.Category())
 			continue
 		}
 
@@ -83,12 +83,12 @@ func (e *Engine) Run(ctx context.Context, inv *inventory.Inventory) {
 
 			select {
 			case <-cctx.Done():
-				e.log.Warning("coletor %s excedeu timeout (%s)", c.Name(), e.timeout)
+				e.log.Warning("collector %s exceeded timeout (%s)", c.Name(), e.timeout)
 			case err := <-done:
 				if err != nil {
-					e.log.Warning("coletor %s falhou: %v", c.Name(), err)
+					e.log.Warning("collector %s failed: %v", c.Name(), err)
 				} else {
-					e.log.Debug("coletor %s concluído", c.Name())
+					e.log.Debug("collector %s completed", c.Name())
 				}
 			}
 		}()

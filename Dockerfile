@@ -4,7 +4,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o /out/fusioninventory-agent ./cmd/fusioninventory-agent
+RUN CGO_ENABLED=0 go build -ldflags "-s -w" -o /out/fusioninventory-agent .
 
 # Imagem final mínima. Para inventário completo (dmidecode, lsblk) use uma
 # base com essas ferramentas e rode com acesso a /sys e /proc do host.

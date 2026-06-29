@@ -29,12 +29,12 @@ func (cpuCollector) Collect(ctx context.Context, inv *inventory.Inventory) error
 	physical, _ := cpu.CountsWithContext(ctx, false)
 	logical, _ := cpu.CountsWithContext(ctx, true)
 
-	// gopsutil retorna uma entrada por core lógico. Agrupamos por physical id
-	// para representar sockets físicos, como o GLPI espera.
+	// gopsutil returns one entry per logical core. We group by physical id
+	// to represent physical sockets, as GLPI expects.
 	type sock struct {
 		info    cpu.InfoStat
 		cores   map[string]bool
-		threads int // total de processadores lógicos no socket
+		threads int // total logical processors in the socket
 	}
 	socks := map[string]*sock{}
 	var order []string
@@ -54,7 +54,7 @@ func (cpuCollector) Collect(ctx context.Context, inv *inventory.Inventory) error
 	}
 
 	if len(order) == 0 {
-		// fallback: um único CPU lógico
+		// fallback: a single logical CPU
 		inv.AddCPU(inventory.CPU{
 			Arch:      runtime.GOARCH,
 			CoreCount: logical,
@@ -74,7 +74,7 @@ func (cpuCollector) Collect(ctx context.Context, inv *inventory.Inventory) error
 			Manufacturer: normalizeVendor(s.info.VendorID),
 			Speed:        int(s.info.Mhz),
 			Core:         coreCount,
-			Thread:       s.threads, // total de threads no socket (igual ao Perl)
+			Thread:       s.threads, // total threads in the socket (same as Perl)
 			CoreCount:    s.threads,
 			Arch:         runtime.GOARCH,
 			ID:           s.info.PhysicalID,
@@ -86,8 +86,8 @@ func (cpuCollector) Collect(ctx context.Context, inv *inventory.Inventory) error
 	return nil
 }
 
-// normalizeVendor traduz o vendor_id do /proc/cpuinfo para o nome usado pelo
-// agente Perl/GLPI.
+// normalizeVendor translates the vendor_id from /proc/cpuinfo to the name used
+// by the Perl/GLPI agent.
 func normalizeVendor(v string) string {
 	switch v {
 	case "GenuineIntel":

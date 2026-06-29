@@ -39,7 +39,7 @@ func (memoryCollector) Collect(ctx context.Context, inv *inventory.Inventory) er
 		h.Swap = swapMB
 	})
 
-	// Slots físicos via dmidecode (requer root). Falha graciosamente.
+	// Physical slots via dmidecode (requires root). Fails gracefully.
 	if sysutil.CommandExists("dmidecode") {
 		collectMemorySlots(ctx, inv)
 	}
@@ -53,7 +53,7 @@ func collectMemorySlots(ctx context.Context, inv *inventory.Inventory) {
 	if err != nil {
 		return
 	}
-	// separa em blocos "Memory Device"
+	// split into "Memory Device" blocks
 	idxs := dmiMemBlock.FindAllStringIndex(out, -1)
 	for i, loc := range idxs {
 		end := len(out)
@@ -62,7 +62,7 @@ func collectMemorySlots(ctx context.Context, inv *inventory.Inventory) {
 		}
 		block := out[loc[0]:end]
 		m := parseMemoryBlock(block)
-		// pula slots vazios ("No Module Installed")
+		// skip empty slots ("No Module Installed")
 		if m.Capacity == 0 && m.SerialNumber == "" {
 			continue
 		}
@@ -109,7 +109,7 @@ func parseMemoryBlock(block string) inventory.Memory {
 	return m
 }
 
-// parseDmiSizeMB converte "16384 MB" / "16 GB" em MB.
+// parseDmiSizeMB converts "16384 MB" / "16 GB" to MB.
 func parseDmiSizeMB(s string) int {
 	fields := strings.Fields(s)
 	if len(fields) < 1 {

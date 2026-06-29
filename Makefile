@@ -1,7 +1,7 @@
 # Makefile do go-fusioninventory-agent
 
 BINARY      := fusioninventory-agent
-PKG         := ./cmd/fusioninventory-agent
+PKG         := .
 VERSION     ?= $(shell git describe --tags --always 2>/dev/null || echo 0.1.0-dev)
 LDFLAGS     := -s -w -X go-fusioninventory-agent/internal/version.Version=$(VERSION)
 PREFIX      ?= /usr
@@ -31,10 +31,11 @@ clean:
 install: build
 	install -D -m 0755 $(BINARY) $(DESTDIR)$(PREFIX)/bin/$(BINARY)
 	install -D -m 0644 contrib/$(BINARY).service $(DESTDIR)/lib/systemd/system/$(BINARY).service
+	install -D -m 0644 contrib/$(BINARY).timer $(DESTDIR)/lib/systemd/system/$(BINARY).timer
 
-# requer nfpm (https://nfpm.goreleaser.com)
+# requer nfpm (https://nfpm.goreleaser.com); usa nfpm.yaml na raiz
 package-deb: build-all
-	nfpm package --packager deb --target dist/
+	VERSION=$(VERSION) nfpm package --packager deb --target dist/
 
 package-rpm: build-all
-	nfpm package --packager rpm --target dist/
+	VERSION=$(VERSION) nfpm package --packager rpm --target dist/

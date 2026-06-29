@@ -10,10 +10,10 @@ import (
 	"go-fusioninventory-agent/internal/sysutil"
 )
 
-// usersCollector coleta três seções como o agente Perl:
+// usersCollector collects three sections like the Perl agent:
 //   - LOCAL_USERS  (/etc/passwd)
 //   - LOCAL_GROUPS (/etc/group)
-//   - USERS        (who: sessões logadas) + LASTLOGGEDUSER (last)
+//   - USERS        (who: logged-in sessions) + LASTLOGGEDUSER (last)
 type usersCollector struct{}
 
 func init() { collector.Register(usersCollector{}) }
@@ -59,7 +59,7 @@ func collectLocalGroups(inv *inventory.Inventory) {
 		if len(f) < 4 {
 			continue
 		}
-		// o agente Perl só reporta grupos que possuem membros
+		// the Perl agent only reports groups that have members
 		if f[3] == "" {
 			continue
 		}
@@ -87,7 +87,7 @@ func collectLoggedUsers(ctx context.Context, inv *inventory.Inventory) {
 		}
 	}
 
-	// último usuário logado via `last`, pulando pseudo-registros do wtmp.
+	// last logged-in user via `last`, skipping wtmp pseudo-records.
 	if sysutil.CommandExists("last") {
 		out, err := sysutil.RunContext(ctx, "last", "-R")
 		if err == nil {
@@ -105,7 +105,7 @@ func collectLoggedUsers(ctx context.Context, inv *inventory.Inventory) {
 	}
 }
 
-// pseudo-usuários que o `last` emite e não são logins reais.
+// pseudo-users that `last` emits and that are not real logins.
 var pseudoLastUser = map[string]bool{
 	"reboot": true, "shutdown": true, "runlevel": true, "wtmp": true, "": true,
 }

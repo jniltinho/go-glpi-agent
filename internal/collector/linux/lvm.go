@@ -23,7 +23,7 @@ func (lvmCollector) IsEnabled(cfg *config.Config) bool {
 }
 
 func (lvmCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
-	// Saída sem cabeçalho, separada por '|', tamanho em bytes.
+	// Output without header, separated by '|', size in bytes.
 	out, err := sysutil.RunContext(ctx, "lvs", "--noheadings", "--units", "b", "--nosuffix",
 		"--separator", "|", "-o", "lv_name,vg_name,lv_size,lv_attr,lv_uuid")
 	if err != nil {

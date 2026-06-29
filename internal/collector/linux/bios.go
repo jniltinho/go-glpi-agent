@@ -21,7 +21,7 @@ func (biosCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS ==
 const dmiPath = "/sys/class/dmi/id/"
 
 func (biosCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
-	// /sys/class/dmi/id/ é legível sem root para a maioria dos campos.
+	// /sys/class/dmi/id/ is readable without root for most fields.
 	b := inventory.BIOS{
 		SManufacturer: sysutil.ReadFileTrim(dmiPath + "sys_vendor"),
 		SModel:        sysutil.ReadFileTrim(dmiPath + "product_name"),
@@ -38,7 +38,7 @@ func (biosCollector) Collect(ctx context.Context, inv *inventory.Inventory) erro
 
 	hasData := b.SManufacturer != "" || b.SModel != "" || b.BVersion != ""
 	if !hasData {
-		return nil // sistema sem DMI (ex: VM sem passthrough)
+		return nil // system without DMI (e.g. VM without passthrough)
 	}
 
 	inv.SetBIOS(func(dst *inventory.BIOS) { *dst = b })
