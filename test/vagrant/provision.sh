@@ -9,9 +9,12 @@ set -euo pipefail
 
 FAMILY="${1:-unknown}"
 DISTRO="${2:-$FAMILY}"
-BIN=/opt/gfi/fusioninventory-agent
+# binário Go e AppImage do glpi-agent são copiados para /tmp pelo file provisioner
+BIN=/tmp/fusioninventory-agent
+APP=/tmp/glpi-agent.AppImage
 OUTDIR=/tmp/gfi-test
 mkdir -p "$OUTDIR"
+chmod +x "$BIN" "$APP" 2>/dev/null || true
 
 echo "==> Distro: $DISTRO (família: $FAMILY)"
 
@@ -69,7 +72,6 @@ echo "==> Go agent: enviando ao GLPI ($GLPI_URL)..."
 # --- Agente de referência: glpi-agent oficial (instalado a partir do AppImage
 # montado em /opt/gfi). Roda local e também envia ao GLPI para comparação web.
 REF_OUT=""
-APP=/opt/gfi/glpi-agent.AppImage
 if [[ -x "$APP" ]]; then
   echo "==> Instalando glpi-agent (referência) via AppImage..."
   APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --silent >/dev/null 2>&1 || true

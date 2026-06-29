@@ -61,3 +61,33 @@ func TestBuildInventoryJSON(t *testing.T) {
 		t.Errorf("networks = %+v, expected status=up type=ethernet virtualdev=true mtu=65536", n)
 	}
 }
+
+// TestBuildInventoryJSONDropsNamelessTimezone verifies a timezone with only an
+// offset (no name) is dropped, since GLPI's schema requires timezone.name.
+func TestBuildInventoryJSONDropsNamelessTimezone(t *testing.T) {
+	inv := inventory.New("dev-1")
+	inv.SetOperatingSystem(func(o *inventory.OperatingSystem) {
+		o.Name = "linux"
+		o.TimezoneUTCO = "+0000" // offset present, name empty
+	})
+
+	raw, err := BuildInventoryJSON(inv)
+	if err != nil {
+		t.Fatalf("BuildInventoryJSON: %v", err)
+	}
+	var msg struct {
+		Content struct {
+			OS struct {
+				Timezone *struct {
+					Name string `json:"name"`
+				} `json:"timezone"`
+			} `json:"operatingsystem"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if msg.Content.OS.Timezone != nil {
+		t.Errorf("timezone = %+v, expected nil (nameless timezone must be dropped)", msg.Content.OS.Timezone)
+	}
+}

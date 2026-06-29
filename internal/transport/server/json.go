@@ -82,6 +82,12 @@ func BuildInventoryJSON(inv *inventory.Inventory) ([]byte, error) {
 	c := BuildRequest(inv).Content
 	normalizeDates(&c)
 	normalizeArch(&c)
+	// GLPI's schema requires operatingsystem.timezone.name when the timezone
+	// object is present; drop a nameless timezone (e.g. minimal hosts where only
+	// the UTC offset was resolved) rather than fail validation.
+	if c.OperatingSystem != nil && c.OperatingSystem.Timezone != nil && c.OperatingSystem.Timezone.Name == "" {
+		c.OperatingSystem.Timezone = nil
+	}
 
 	jc := jsonContent{
 		Hardware:        c.Hardware,

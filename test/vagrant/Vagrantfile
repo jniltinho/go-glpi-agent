@@ -15,6 +15,9 @@
 
 VMS = [
   { name: "rocky9",     box: "generic/rocky9",         family: "rhel"   },
+  { name: "rhel8",      box: "generic/rhel8",          family: "rhel"   },
+  { name: "rhel9",      box: "generic/rhel9",          family: "rhel"   },
+  { name: "centos10",   box: "centos/stream10",        family: "rhel"   },
   { name: "alma8",      box: "bento/almalinux-8",      family: "rhel"   },
   { name: "alma9",      box: "bento/almalinux-9",      family: "rhel"   },
   { name: "oracle8",    box: "bento/oraclelinux-8",    family: "rhel"   },
@@ -27,8 +30,13 @@ VMS = [
 ].freeze
 
 Vagrant.configure("2") do |config|
-  # diretório dist/ do projeto Go é montado em /opt/gfi dentro de cada VM
-  config.vm.synced_folder "../../dist", "/opt/gfi", disabled: false
+  # Sem synced_folder: várias boxes (RHEL/CentOS) não trazem o VirtualBox Guest
+  # Additions, então o vboxsf falha. Copiamos o binário Go e o AppImage do
+  # glpi-agent via "file" provisioner (SCP/SSH), que funciona em qualquer box.
+  config.vm.provision "file", source: "../../dist/fusioninventory-agent",
+                              destination: "/tmp/fusioninventory-agent"
+  config.vm.provision "file", source: "../../dist/glpi-agent.AppImage",
+                              destination: "/tmp/glpi-agent.AppImage"
 
   # recursos modestos; ajuste se quiser
   %w[virtualbox libvirt].each do |p|
