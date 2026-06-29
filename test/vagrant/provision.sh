@@ -1,37 +1,49 @@
 #!/usr/bin/env bash
 # Provisiona a VM: instala dependências de coleta, instala o agente Perl
-# (referência) e o binário Go, roda os dois e compara as seções do XML.
+# (referência, quando disponível) e o binário Go, roda os dois e compara as
+# seções do XML.
 #
-# Uso (chamado pelo Vagrant):  provision.sh {rocky|debian}
+# Uso (chamado pelo Vagrant):  provision.sh {debian|rhel|suse} [nome-distro]
+#   família = gerenciador de pacotes:  debian=apt  rhel=dnf  suse=zypper
 set -euo pipefail
 
-DISTRO="${1:-unknown}"
+FAMILY="${1:-unknown}"
+DISTRO="${2:-$FAMILY}"
 BIN=/opt/gfi/fusioninventory-agent
 OUTDIR=/tmp/gfi-test
 mkdir -p "$OUTDIR"
 
-echo "==> Distro: $DISTRO"
+echo "==> Distro: $DISTRO (família: $FAMILY)"
 
-install_rocky() {
-  dnf install -y dmidecode util-linux lvm2 pciutils usbutils which \
-                 epel-release >/dev/null 2>&1 || true
-  # agente Perl de referência (opcional; pode não existir no repo)
-  dnf install -y fusioninventory-agent >/dev/null 2>&1 || \
-    echo "   (fusioninventory-agent Perl indisponível no repo Rocky — segue só com o Go)"
-}
-
+# pacotes de coleta: dmidecode (BIOS/DMI), lsblk (util-linux), lvm2, pciutils,
+# usbutils. O agente Perl é referência opcional para comparação.
 install_debian() {
   export DEBIAN_FRONTEND=noninteractive
-  apt-get update -y >/dev/null 2>&1
-  apt-get install -y dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1
+  apt-get update -y >/dev/null 2>&1 || true
+  apt-get install -y dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1 || true
   apt-get install -y fusioninventory-agent >/dev/null 2>&1 || \
-    echo "   (fusioninventory-agent Perl indisponível — segue só com o Go)"
+    echo "   (agente Perl indisponível — segue só com o Go)"
 }
 
-case "$DISTRO" in
-  rocky)  install_rocky ;;
+install_rhel() {
+  dnf install -y dmidecode util-linux lvm2 pciutils usbutils which >/dev/null 2>&1 || true
+  dnf install -y epel-release >/dev/null 2>&1 || true
+  dnf install -y fusioninventory-agent >/dev/null 2>&1 || \
+    echo "   (agente Perl indisponível no repo — segue só com o Go)"
+}
+
+install_suse() {
+  zypper --non-interactive --gpg-auto-import-keys refresh >/dev/null 2>&1 || true
+  zypper --non-interactive install -y dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1 || true
+  zypper --non-interactive install -y fusioninventory-agent >/dev/null 2>&1 || \
+    echo "   (agente Perl indisponível no repo — segue só com o Go)"
+}
+
+case "$FAMILY" in
   debian) install_debian ;;
-  *) echo "distro desconhecida: $DISTRO"; exit 1 ;;
+  rhel)   install_rhel ;;
+  suse)   install_suse ;;
+  *) echo "família desconhecida: $FAMILY (use debian|rhel|suse)"; exit 1 ;;
 esac
 
 if [[ ! -x "$BIN" ]]; then
@@ -40,32 +52,62 @@ if [[ ! -x "$BIN" ]]; then
   exit 1
 fi
 
+# GLPI server: por padrão o gateway NAT do VirtualBox (10.0.2.2) aponta para o
+# host, onde roda o docker do GLPI na porta 8080. Sobrescreva com GLPI_URL.
+GLPI_URL="${GLPI_URL:-http://10.0.2.2:8080/front/inventory.php}"
+
 echo "==> Versão do binário Go:"
 "$BIN" version
 
-echo "==> Rodando agente Go (run --local) como root..."
-"$BIN" run --local "$OUTDIR/go" --debug 2>&1 | tail -20 || true
+echo "==> Go agent: inventário local..."
+"$BIN" run --local "$OUTDIR/go" 2>&1 | tail -5 || true
 GO_XML=$(ls "$OUTDIR"/go/*.xml 2>/dev/null | head -1 || true)
 
-echo "==> Rodando agente Perl (referência), se disponível..."
-PERL_XML=""
-if command -v fusioninventory-inventory >/dev/null 2>&1; then
-  fusioninventory-inventory > "$OUTDIR/perl.xml" 2>/dev/null && PERL_XML="$OUTDIR/perl.xml"
+echo "==> Go agent: enviando ao GLPI ($GLPI_URL)..."
+"$BIN" run --server "$GLPI_URL" --debug 2>&1 | grep -iE "native|sent|status|error" | tail -3 || true
+
+# --- Agente de referência: glpi-agent oficial (instalado a partir do AppImage
+# montado em /opt/gfi). Roda local e também envia ao GLPI para comparação web.
+REF_OUT=""
+APP=/opt/gfi/glpi-agent.AppImage
+if [[ -x "$APP" ]]; then
+  echo "==> Instalando glpi-agent (referência) via AppImage..."
+  APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --silent >/dev/null 2>&1 || true
+  if command -v glpi-agent >/dev/null 2>&1; then
+    echo "==> glpi-agent: inventário local + envio ao GLPI..."
+    glpi-agent --local "$OUTDIR/glpi" >/dev/null 2>&1 || true
+    glpi-agent --server "$GLPI_URL" >/dev/null 2>&1 || true
+    REF_OUT=$(ls "$OUTDIR"/glpi/* 2>/dev/null | head -1 || true)
+  else
+    echo "   (glpi-agent não ficou disponível após instalar)"
+  fi
+else
+  echo "   (AppImage do glpi-agent ausente em $APP — baixe com 'make fetch-glpi-agent')"
 fi
 
+# count_sec conta itens de uma seção: XML conta <SEC>; JSON usa o tamanho do
+# array em content[sec] (via python3, com fallback para presença).
+count_sec() {
+  local f="$1" up="$2" low="$3"
+  [[ -z "$f" || ! -f "$f" ]] && { echo 0; return; }
+  case "$f" in
+    *.json)
+      python3 -c "import json,sys;d=json.load(open(sys.argv[1])).get('content',{});v=d.get(sys.argv[2],[]);print(len(v) if isinstance(v,list) else (1 if v else 0))" "$f" "$low" 2>/dev/null \
+        || grep -c "\"$low\"" "$f" 2>/dev/null || echo 0 ;;
+    *) grep -c "<$up>" "$f" 2>/dev/null || echo 0 ;;
+  esac
+}
+
 echo
-echo "================ Comparação de seções ($DISTRO) ================"
-printf "%-18s %-6s %-6s\n" "SEÇÃO" "GO" "PERL"
-for sec in HARDWARE BIOS OPERATINGSYSTEM CPUS MEMORIES DRIVES STORAGES \
-           NETWORKS SOFTWARES LOCAL_USERS LOCAL_GROUPS USERS; do
-  g=0; p=0
-  [[ -n "$GO_XML"   ]] && g=$(grep -c "<$sec>" "$GO_XML" 2>/dev/null || echo 0)
-  [[ -n "$PERL_XML" ]] && p=$(grep -c "<$sec>" "$PERL_XML" 2>/dev/null || echo 0)
-  printf "%-18s %-6s %-6s\n" "$sec" "$g" "$p"
+echo "============ Comparação de seções ($DISTRO): Go vs glpi-agent ============"
+printf "%-18s %-6s %-9s\n" "SEÇÃO" "GO" "GLPI-AGT"
+for pair in HARDWARE:hardware BIOS:bios OPERATINGSYSTEM:operatingsystem CPUS:cpus \
+            MEMORIES:memories DRIVES:drives STORAGES:storages NETWORKS:networks \
+            SOFTWARES:softwares LOCAL_USERS:local_users LOCAL_GROUPS:local_groups USERS:users; do
+  up="${pair%%:*}"; low="${pair##*:}"
+  printf "%-18s %-6s %-9s\n" "$up" "$(count_sec "$GO_XML" "$up" "$low")" "$(count_sec "$REF_OUT" "$up" "$low")"
 done
-echo "==============================================================="
-echo "XML do Go gravado em (dentro da VM): $GO_XML"
-[[ -n "$PERL_XML" ]] && echo "XML do Perl em: $PERL_XML" || echo "(sem agente Perl para comparar nesta distro)"
-echo
-echo "Para enviar ao GLPI a partir desta VM:"
-echo "  $BIN run --server http://IP_DO_HOST:8080/front/inventory.php --debug"
+echo "========================================================================"
+echo "Go XML:         ${GO_XML:-(nenhum)}"
+echo "glpi-agent out: ${REF_OUT:-(não instalado/sem saída)}"
+echo "Ambos enviados ao GLPI em: $GLPI_URL"

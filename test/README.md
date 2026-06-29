@@ -15,6 +15,22 @@ test/
 └── README.md             # este arquivo
 ```
 
+## Quickstart (do zero)
+
+```sh
+# 1) gerar o binário linux/amd64 (vai para dist/, montado nas VMs)
+make build-all
+
+# 2) subir o GLPI 10 e habilitar o inventário (ver seção 1)
+cd test/glpi && cp .env.example .env && docker compose up -d
+
+# 3) subir as VMs e rodar o agente nelas (ver seção 2)
+cd ../vagrant && vagrant up
+```
+
+> O `Vagrantfile` e o `provision.sh` são versionados; o estado das VMs
+> (`.vagrant/`) e o `.env` do GLPI ficam fora do git e são recriados localmente.
+
 Fluxo geral:
 
 ```
@@ -57,8 +73,18 @@ GLPI 10 traz inventário nativo (substitui o plugin FusionInventory). Pela UI:
 
 > **Configurar → Geral → Inventário → "Habilitar inventário" = Sim**
 
-O endpoint passa a aceitar POST em **`/front/inventory.php`**, que aceita o
-formato XML FusionInventory que o agente Go gera.
+Ou direto no banco (mais rápido para automação), seguido de limpar o cache:
+
+```sh
+docker compose exec -T db mysql -uglpi -pglpi glpi -e \
+  "UPDATE glpi_configs SET value='1' WHERE context='inventory' AND name='enabled_inventory';"
+docker compose exec -T glpi sh -lc 'cd /var/www/glpi && php bin/console cache:clear'
+```
+
+O endpoint passa a aceitar POST em **`/front/inventory.php`**. O agente Go envia
+o **inventário nativo em JSON** (validado contra o `inventory.schema.json` do
+GLPI); o XML/PROLOG legado é fallback automático. Enquanto o inventário estiver
+desabilitado o endpoint responde **403**.
 
 > Segurança: em produção habilite autenticação básica HTTP no endpoint. Para
 > testes locais pode deixar aberto.

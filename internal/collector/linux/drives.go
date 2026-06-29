@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/shirou/gopsutil/v3/disk"
@@ -68,15 +69,41 @@ func (storageCollector) IsEnabled(cfg *config.Config) bool {
 }
 
 type lsblkDevice struct {
-	Name   string `json:"name"`
-	Type   string `json:"type"`
-	Size   int64  `json:"size"`
-	Model  string `json:"model"`
-	Serial string `json:"serial"`
-	Vendor string `json:"vendor"`
-	Rota   bool   `json:"rota"`
-	Rev    string `json:"rev"`
-	WWN    string `json:"wwn"`
+	Name   string    `json:"name"`
+	Type   string    `json:"type"`
+	Size   flexInt64 `json:"size"`
+	Model  string    `json:"model"`
+	Serial string    `json:"serial"`
+	Vendor string    `json:"vendor"`
+	Rota   flexBool  `json:"rota"`
+	Rev    string    `json:"rev"`
+	WWN    string    `json:"wwn"`
+}
+
+// flexInt64 / flexBool tolerate lsblk JSON from older util-linux (< 2.33, e.g.
+// AlmaLinux/Oracle 8), which emits every value as a quoted string ("107..."),
+// as well as newer lsblk, which emits real numbers/booleans.
+type flexInt64 int64
+
+func (f *flexInt64) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	if s == "" || s == "null" {
+		return nil
+	}
+	n, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return nil // non-numeric (e.g. a size with a unit suffix): best-effort 0
+	}
+	*f = flexInt64(n)
+	return nil
+}
+
+type flexBool bool
+
+func (f *flexBool) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), `"`)
+	*f = flexBool(s == "1" || s == "true")
+	return nil
 }
 
 type lsblkOutput struct {
@@ -98,7 +125,7 @@ func (storageCollector) Collect(ctx context.Context, inv *inventory.Inventory) e
 			continue
 		}
 		typ := "SSD"
-		if d.Rota {
+		if bool(d.Rota) {
 			typ = "HDD"
 		}
 		if strings.HasPrefix(d.Name, "nvme") {
@@ -109,7 +136,7 @@ func (storageCollector) Collect(ctx context.Context, inv *inventory.Inventory) e
 			Manufacturer: strings.TrimSpace(d.Vendor),
 			Model:        strings.TrimSpace(d.Model),
 			Type:         typ,
-			DiskSize:     int(d.Size / 1024 / 1024),
+			DiskSize:     int(int64(d.Size) / 1024 / 1024),
 			SerialNumber: strings.TrimSpace(d.Serial),
 			Firmware:     strings.TrimSpace(d.Rev),
 			WWN:          strings.TrimSpace(d.WWN),

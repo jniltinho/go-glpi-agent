@@ -1,17 +1,33 @@
-# Vagrantfile para validar o go-fusioninventory-agent em Rocky Linux 9 e
-# Debian 12. Funciona com VirtualBox ou libvirt/KVM.
+# Vagrantfile para validar o go-fusioninventory-agent em várias distros Linux.
+# Funciona com VirtualBox (boxes bento/generic têm provider virtualbox).
 #
 # Pré-requisito no host (faça antes de `vagrant up`):
 #   cd ../..              # raiz do projeto Go
 #   make build-all        # gera dist/fusioninventory-agent
 #
-# Subir as duas VMs:   vagrant up
-# Só uma:              vagrant up rocky9   |   vagrant up debian12
-# Rodar validação:     vagrant provision   (ou já roda no up)
+# Subir todas:         vagrant up
+# Só uma:              vagrant up alma9   |   vagrant up ubuntu2404 ...
+# Rodar validação:     vagrant provision  (ou já roda no up)
 # Destruir:            vagrant destroy -f
+#
+# família = gerenciador de pacotes usado pelo provision.sh:
+#   debian = apt   |   rhel = dnf   |   suse = zypper
+
+VMS = [
+  { name: "rocky9",     box: "generic/rocky9",         family: "rhel"   },
+  { name: "alma8",      box: "bento/almalinux-8",      family: "rhel"   },
+  { name: "alma9",      box: "bento/almalinux-9",      family: "rhel"   },
+  { name: "oracle8",    box: "bento/oraclelinux-8",    family: "rhel"   },
+  { name: "oracle9",    box: "bento/oraclelinux-9",    family: "rhel"   },
+  { name: "debian12",   box: "generic/debian12",       family: "debian" },
+  { name: "debian13",   box: "bento/debian-13",        family: "debian" },
+  { name: "ubuntu2404", box: "bento/ubuntu-24.04",     family: "debian" },
+  { name: "ubuntu2604", box: "bento/ubuntu-26.04",     family: "debian" },
+  { name: "opensuse15", box: "bento/opensuse-leap-15", family: "suse"   },
+].freeze
 
 Vagrant.configure("2") do |config|
-  # diretório dist/ do projeto Go é montado em /opt/gfi dentro da VM
+  # diretório dist/ do projeto Go é montado em /opt/gfi dentro de cada VM
   config.vm.synced_folder "../../dist", "/opt/gfi", disabled: false
 
   # recursos modestos; ajuste se quiser
@@ -22,15 +38,11 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  config.vm.define "rocky9" do |node|
-    node.vm.box = "generic/rocky9"
-    node.vm.hostname = "rocky9-gfi-test"
-    node.vm.provision "shell", path: "provision.sh", args: ["rocky"]
-  end
-
-  config.vm.define "debian12" do |node|
-    node.vm.box = "generic/debian12"
-    node.vm.hostname = "debian12-gfi-test"
-    node.vm.provision "shell", path: "provision.sh", args: ["debian"]
+  VMS.each do |vm|
+    config.vm.define vm[:name] do |node|
+      node.vm.box = vm[:box]
+      node.vm.hostname = "#{vm[:name]}-gfi-test"
+      node.vm.provision "shell", path: "provision.sh", args: [vm[:family], vm[:name]]
+    end
   end
 end

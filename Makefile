@@ -7,12 +7,21 @@ LDFLAGS     := -s -w -X go-fusioninventory-agent/internal/version.Version=$(VERS
 PREFIX      ?= /usr
 DESTDIR     ?=
 
-.PHONY: all build test vet clean install package-deb package-rpm
+GLPI_AGENT_VERSION ?= 1.18
+
+.PHONY: all build build-all test vet clean install package-deb package-rpm fetch-glpi-agent
 
 all: build
 
 build:
 	CGO_ENABLED=0 go build -ldflags "$(LDFLAGS)" -o $(BINARY) $(PKG)
+
+# baixa o glpi-agent oficial (AppImage) para dist/, usado como referência nas
+# VMs de teste (ver test/vagrant/provision.sh). dist/ é gitignored.
+fetch-glpi-agent:
+	mkdir -p dist
+	curl -fsSL https://github.com/glpi-project/glpi-agent/releases/download/$(GLPI_AGENT_VERSION)/glpi-agent-$(GLPI_AGENT_VERSION)-x86_64.AppImage -o dist/glpi-agent.AppImage
+	chmod +x dist/glpi-agent.AppImage
 
 # build estático para linux/amd64
 build-all:
