@@ -1,0 +1,29 @@
+--- GNUmakefile.orig
++++ GNUmakefile
+@@ -142,7 +142,7 @@
+ # (s)printf formatting of numbers, whereas the MS runtime might not.
+ # This option has no effect on MSVC builds.
+ #
+-USE_MINGW_ANSI_STDIO := define
++#USE_MINGW_ANSI_STDIO := define
+ 
+ #
+ # Comment this out if you want the legacy default behavior of including '.' at
+@@ -155,7 +155,7 @@
+ # HKEY_CURRENT_USER\Software\Perl and HKEY_LOCAL_MACHINE\Software\Perl in
+ # the Registry.
+ #
+-#USE_NO_REGISTRY := define
++USE_NO_REGISTRY := define
+ 
+ #
+ # uncomment exactly one of the following
+@@ -548,7 +548,7 @@
+ # Programs to compile, build .lib files and link
+ #
+ 
+-MINIBUILDOPT    :=
++MINIBUILDOPT    := $(BUILDOPTEXTRA)
+ 
+ ifeq ($(CCTYPE),GCC)
+ 

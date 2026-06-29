@@ -1,0 +1,400 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use English qw(-no_match_vars);
+use Getopt::Long;
+use Pod::Usage;
+
+use FusionInventory::Agent::Task::NetDiscovery;
+use FusionInventory::Agent::Task::NetDiscovery::Job;
+use FusionInventory::Agent::Logger;
+use FusionInventory::Agent::Version;
+
+our $options = {
+    debug   => 0,
+    threads => 1
+};
+
+GetOptions(
+    $options,
+    'first=s',
+    'last=s',
+    'community=s@',
+    'credentials=s@',
+    'entity=s',
+    'port=s@',
+    'protocol=s@',
+    'threads=i',
+    'timeout=i',
+    'control',
+    'debug+',
+    'help',
+    'inventory|i',
+    'save|s=s',
+    'version'
+) or pod2usage(-verbose => 0);
+
+if ($options->{version}) {
+    my $PROVIDER = $FusionInventory::Agent::Version::PROVIDER;
+    map { print $_."\n" }
+        "NetDiscovery task $FusionInventory::Agent::Task::NetDiscovery::VERSION",
+        "based on $PROVIDER Agent v$FusionInventory::Agent::Version::VERSION",
+        @{$FusionInventory::Agent::Version::COMMENTS}
+        ;
+    exit 0;
+}
+pod2usage(-verbose => 0, -exitval => 0) if $options->{help};
+
+pod2usage(
+    -message => "no first address, aborting\n", -verbose => 0
+) unless $options->{first};
+pod2usage(
+    -message => "no last address, aborting\n", -verbose => 0
+) unless $options->{last};
+pod2usage(
+    -message => "\nsave folder must exist, aborting\n", -verbose => 0
+) if ($options->{save} && ! -d $options->{save});
+
+my $discovery = FusionInventory::Agent::Task::NetDiscovery->new(
+    %setup,
+    target => FusionInventory::Agent::Task::NetInventory::Target->new(),
+    logger => FusionInventory::Agent::Logger->new(config => $options)
+);
+
+my $credentials_id = 1;
+our @credentials;
+if ($options->{community}) {
+    foreach my $community (@{$options->{community}}) {
+        push @credentials,
+            { ID => $credentials_id++, VERSION => 1, COMMUNITY => $community };
+    }
+} elsif ($options->{credentials}) {
+    foreach my $specification (@{$options->{credentials}}) {
+        my $credential = { ID => $credentials_id++ };
+        foreach my $parameter (split(',', $specification)) {
+            my ($key, $value) = split(':', $parameter);
+            $credential->{uc($key)} = $value;
+        }
+        push @credentials, $credential;
+    }
+} else {
+    push @credentials, {
+        ID => $credentials_id++, VERSION => 1, COMMUNITY => 'public'
+    };
+}
+
+$discovery->{jobs} = [
+    FusionInventory::Agent::Task::NetDiscovery::Job->new(
+        logger => $discovery->{logger},
+        params => {
+            PID               => 1,
+            THREADS_DISCOVERY => $options->{threads},
+            TIMEOUT           => $options->{timeout},
+        },
+        ranges => [
+            {
+                ID       => 1,
+                IPSTART  => $options->{first},
+                IPEND    => $options->{last},
+                PORT     => $options->{port},
+                PROTOCOL => $options->{protocol},
+            }
+        ],
+        credentials => \@credentials
+    )
+];
+if (defined($options->{entity})) {
+    $discovery->{jobs}->[0]->{ranges}->[0]->{ENTITY} = $options->{entity};
+}
+$discovery->{client} = FusionInventory::Agent::Task::NetDiscovery::Client->new(
+    logger => $discovery->{logger},
+);
+
+if ($options->{save} && $options->{debug}) {
+    print STDERR
+        "netdiscovery XMLs will be saved in: $options->{save}/netdiscovery\n";
+    print STDERR
+        "netinventory XMLs will be saved in: $options->{save}/netinventory\n"
+        if $options->{inventory};
+    print STDERR "====\n";
+}
+
+# Set target expiration to 15 minutes if we are chaining inventory
+$discovery->run(
+    target_expiration   => $options->{inventory} ? 900 : 60
+);
+
+## no critic (ProhibitMultiplePackages)
+package FusionInventory::Agent::Task::NetDiscovery::Client;
+
+use threads;
+
+use English qw(-no_match_vars);
+use UNIVERSAL::require;
+
+use FusionInventory::Agent::Task::NetInventory;
+use FusionInventory::Agent::Task::NetInventory::Job;
+use FusionInventory::Agent::Logger;
+
+sub new {
+    my ($class, %params) = @_;
+
+    return bless {
+        logger  => $params{logger} ||
+            FusionInventory::Agent::Logger->new(config => $main::options),
+    }, $class;
+}
+
+sub netdiscovery { 1 }
+
+sub ip {}
+
+sub send {
+    my ($self, %params) = @_;
+
+    # Get options from main program
+    my $options = $main::options;
+    my $devices = $params{message}->{h}->{CONTENT}->{DEVICE};
+    my $device  = ref($devices) eq 'ARRAY' ? $devices->[0] :
+                  ref($devices) eq 'HASH'  ? $devices      : undef;
+
+    # don't display control message by default
+    return unless ($options->{control} || $device);
+
+    my $ip  = $device ? $device->{IP} || $self->ip() : undef;
+    my $xml = $params{message}->getContent();
+
+    if ($options->{save} && $device) {
+        die "No ip given with device\n" unless $ip;
+        if ($self->netdiscovery()) {
+            $self->{logger}->info("Saving $ip discovery infos as XML...");
+            _writeXml($options->{save} . "/netdiscovery", "$ip.xml", $xml);
+        } else {
+            if ($device->{ERROR}) {
+                my $message = $device->{ERROR}->{MESSAGE};
+                $self->{logger}->error("Inventory failed on $message");
+                $self->{logger}->error("Check your credentials") if $message =~ /timeout/;
+            } else {
+                $self->{logger}->info("Saving $ip inventory infos as XML...");
+                _writeXml($options->{save} . "/netinventory", "$ip.xml", $xml);
+            }
+        }
+    } else {
+        print $xml;
+    }
+
+    if ($self->netdiscovery() && $options->{inventory} && $device) {
+        die "No ip given with device\n" unless $ip;
+
+        unless ($device->{TYPE}) {
+            $self->{logger}->info("Skipping inventory for $ip on not recognized device type");
+            return;
+        }
+
+        unless ($device->{AUTHSNMP}) {
+            $self->{logger}->info("Skipping inventory for $ip on no SNMP response");
+            return;
+        }
+
+        my $inventory = FusionInventory::Agent::Task::NetInventory->new(
+            %main::setup,
+            target => FusionInventory::Agent::Task::NetInventory::Target->new(),
+            logger => FusionInventory::Agent::Logger->new(config => $options)
+        );
+
+        # Multi-threading still set on NetDiscovery task and we are only
+        # requesting one device scan
+        $inventory->{jobs} = [
+            FusionInventory::Agent::Task::NetInventory::Job->new(
+                params => {
+                    PID           => 1,
+                    THREADS_QUERY => 1,
+                    TIMEOUT       => $options->{timeout},
+                },
+                devices     => [{
+                    ID           => 0,
+                    IP           => $ip,
+                    PORT         => $options->{port},
+                    PROTOCOL     => $options->{protocol},
+                    AUTHSNMP_ID  => $device->{AUTHSNMP}
+                }],
+                credentials => \@{main::credentials},
+            )
+        ];
+
+        $inventory->{client} = FusionInventory::Agent::Task::NetInventory::Client->new(
+            logger  => $self->{logger},
+            ip      => $ip
+        );
+
+        $inventory->run();
+    }
+}
+
+sub _writeXml {
+    my ($folder, $file, $xml) = @_;
+
+    mkdir $folder unless -d $folder;
+
+    die "Can't create $folder directory: $!\n" unless -d $folder;
+
+    if (open(my $XML,">", $folder.'/'.$file)) {
+        print $XML $xml;
+        close($XML);
+    } else {
+        die "Failed to write '$folder/$file': $!\n";
+    }
+}
+
+package FusionInventory::Agent::Task::NetInventory::Target;
+
+sub new {
+    my ($class, %params) = @_;
+
+    return bless {}, $class;
+}
+
+sub getUrl {
+    my ($self, %params) = @_;
+
+    ## no critic (ExplicitReturnUndef)
+    return undef;
+}
+
+package FusionInventory::Agent::Task::NetInventory::Client;
+
+use parent -norequire, 'FusionInventory::Agent::Task::NetDiscovery::Client';
+
+sub new {
+    my ($class, %params) = @_;
+
+    my $self = $class->SUPER::new(%params);
+
+    $self->{_ip} = $params{ip};
+
+    return bless $self, $class;
+}
+
+sub netdiscovery { 0 }
+
+sub ip {
+    my ($self) = @_;
+    return $self->{_ip};
+}
+
+__END__
+
+=head1 NAME
+
+fusioninventory-netdiscovery - Standalone network discovery
+
+=head1 SYNOPSIS
+
+fusioninventory-netdiscovery [options] --first <address> --last <address>
+
+  Options:
+    --first <ADDRESS>      IP range first address
+    --last <ADDRESS>       IP range last address
+    --port <PORT[,PORT2]>  SNMP port (161)
+    --protocol <PROT[,P2]> SNMP protocol/domain (udp/ipv4)
+    --community <STRING>   SNMP community string (public)
+    --credentials <STRING> SNMP credentials (version:1,community:public)
+    --timeout <TIME        SNMP timeout, in seconds (1)
+    --entity <ENTITY>      GLPI entity
+    --threads <COUNT>      number of discovery threads (1)
+    --control              output control messages
+    -i --inventory         chain with netinventory task for discovered devices
+    -s --save <FOLDER>     base folder where to save discovery and inventory xmls
+                            - netdiscovery xmls will go in <FOLDER>/netdiscovery
+                            - netinventory xmls will go in <FOLDER>/netinventory
+    --debug                debug output
+    -h --help              print this message and exit
+    --version              print the task version and exit
+
+=head1 DESCRIPTION
+
+F<fusioninventory-netdiscovery> can be used to run a network discovery task without a
+GLPI server.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--first> I<ADDRESS>
+
+Set the first IP address of the network range to scan.
+
+=item B<--last> I<ADDRESS>
+
+Set the last IP address of the network range to scan.
+
+=item B<--port> I<PORT[,PORT2]>
+
+List of ports to try, defaults to: 161
+
+Set it to 161,16100 to first try on default port and then on 16100.
+
+=item B<--protocol> I<PROTOCOL[,PROTOCOL2]>
+
+List of protocols to try, defaults to: udp/ipv4
+
+Possible values are: udp/ipv4,udp/ipv6,tcp/ipv4,tcp/ipv6
+
+=item B<--community> I<STRING>
+
+Use given string as SNMP community (assume SNMPv1).
+
+=item B<--credentials> I<STRING>
+
+Use given string as SNMP credentials specification. This specification is a
+comma-separated list of key:value authentication parameters, such as:
+
+=over
+
+=item * version:2c,community:public
+
+=item * version:3,username:admin,authprotocol:sha,authpassword:s3cr3t
+
+=item * etc.
+
+=back
+
+=item B<--timeout> I<TIME>
+
+Set SNMP timeout, in seconds.
+
+=item B<--entity> I<ENTITY>
+
+Set GLPI entity.
+
+=item B<--threads> I<COUNT>
+
+Use given number of inventory threads.
+
+=item B<--control>
+
+Output server-agent control messages, in addition to inventory result itself.
+
+=item B<--debug>
+
+Turn the debug mode on. Multiple usage allowed, for additional verbosity.
+
+=back
+
+=head1 EXAMPLES
+
+Run a discovery against a network range, using SNMP version 1:
+
+    $> fusioninventory-netdiscovery --first 192.168.0.1 --last 192.168.0.254 \
+    --community public
+
+Run a discovery against a network range, using multiple SNMP credentials:
+
+    $> fusioninventory-netdiscovery --first 192.168.0.1 --last 192.168.0.254 \
+    --credentials version:2c,community:public \
+    --credentials version:3,username:admin,authprotocol:sha,authpassword:s3cr3t

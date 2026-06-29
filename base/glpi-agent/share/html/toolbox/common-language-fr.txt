@@ -1,0 +1,85 @@
+# Traductions en français par Teclib Edition
+
+Home: Accueil
+GLPI Agent: Agent GLPI
+ToolBox GLPI Agent plugin: Agent GLPI plugin ToolBox
+Inventory: Inventaire
+Results: Résultats
+Raw YAML: YAML brut
+Raw YAML edition: Édition du YAML brut
+
+IP Ranges: Plages IP
+IP range: Plage IP
+Credentials: Identifiants
+Scheduling: Planification
+
+
+
+Inventory tasks: Tâches d'inventaire
+Agent home: Index agent
+
+Edit: Éditer
+Update: Mettre à jour
+Delete: Supprimer
+Rename: Renommer
+Revert selection: Inverser la sélection
+
+Anonymous: Anonyme
+
+yes: oui
+no: non
+
+From %d to %d of %s: De %d à %d sur %s
+
+Display (number of items): Affichage (nombre de lignes)
+no limit: pas de limite
+empty list: liste vide
+
+Add: Ajouter
+Name: Nom
+
+Cancel: Annuler
+Go back to list: Retourner à la liste
+
+Reset: Vider
+Reverse selection: Inverser la sélection
+
+
+Disable: Désactiver
+Enable: Activer
+First ip: Première ip
+Last ip: Dernière ip
+
+Delay: Délai
+delay: délai
+timeslot: créneau horaire
+Timeslot: Créneau horaire
+Timeslots: Créneaux horaires
+second: seconde
+seconds: secondes
+
+
+hour: heure
+hours: heures
+day: jour
+days: jours
+week: semaine
+weeks: semaines
+start: début
+duration: durée
+Duration: Durée
+all: tous
+mon: lun
+tue: mar
+wed: mer
+thu: jeu
+fri: ven
+sat: sam
+sun: dim
+monday: lundi
+tuesday: mardi
+wednesday: mercredi
+thursday: jeudi
+friday: vendredi
+saturday: samedi
+sunday: dimanche

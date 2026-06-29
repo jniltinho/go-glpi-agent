@@ -1,0 +1,57 @@
+Name:                                                           Kaspersky Endpoint Security 12.2 for Linux
+Version:                                                        12.2.0.2412
+Policy:                                                         Not applied
+
+Application license information:                                The key is valid
+Kaspersky Endpoint Security license expiration date:            2025-07-18 16:25:49
+MDR BLOB file status:                                           Not loaded
+
+Backup state:                                                   No objects in Backup
+Backup space usage:                                             Backup size is unlimited
+
+Last run date of the Scan_My_Computer task:                     Never run
+
+Last release date of databases:                                 2025-06-16 19:18:00
+Application databases loaded:                                   Yes
+
+Kaspersky Security Network usage:                               Extended KSN mode
+
+Kaspersky Security Network infrastructure:                      Kaspersky Security Network
+
+Kaspersky Managed Detection and Response Integration:           Disabled
+
+Kaspersky Endpoint Detection and Response Optimum Integration:  Stopped
+
+File Threat Protection:                                         Available and running
+
+Container Monitoring:                                           Unavailable due to license limitation
+
+System Integrity Monitoring:                                    Unavailable due to license limitation
+
+Firewall Management:                                            Available and stopped
+
+Anti-Cryptor:                                                   Available and stopped
+
+Web Threat Protection:                                          Available and stopped
+
+Device Control:                                                 Available and running
+
+Removable Drives Scan:                                          Available and stopped
+
+Network Threat Protection:                                      Available and stopped
+
+Behavior Detection:                                             Available and running
+
+Application Control:                                            Available and stopped
+
+Web Control:                                                    Available and stopped
+
+Kaspersky Endpoint Detection and Response (KATA) Integration:   Available and stopped
+
+KATA Sandbox Integration:                                       Available and stopped
+
+Kaspersky Unified Monitoring and Analysis Platform Integration: Unavailable due to license limitation
+
+Kaspersky Network Detection and Response (KATA) Integration:    Available and stopped
+
+Post-update actions:                                            No action required

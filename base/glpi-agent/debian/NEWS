@@ -1,0 +1,5 @@
+glpi-agent (1:1.0-1) unstable; urgency=medium
+
+  GLPI agent should be used in placed of FusionInventory agent when still installed.
+
+ -- Guillaume Bougard <gbougard@teclib.com>  Wed, 24 Feb 2021 16:30:48 +0100

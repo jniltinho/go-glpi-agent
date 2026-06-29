@@ -1,0 +1,103 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use File::Spec;
+
+use Getopt::Long;
+use Pod::Usage;
+
+use FusionInventory::Agent::Daemon::Win32;
+
+# Load dedicated .rc file if present. Sample one, if renamed, permits
+# to log stdout and stderr for early debugging purpose
+do __FILE__ . ".rc" if (!@ARGV && -e __FILE__ . ".rc");
+
+Getopt::Long::Configure( "no_ignorecase" );
+
+my %options = ();
+
+GetOptions(
+    \%options,
+    'register',
+    'delete',
+    'name|n=s',
+    'displayname|d=s',
+    'libdir|l=s',
+    'program|p=s',
+    'help'
+) or pod2usage(-verbose => 0);
+
+pod2usage(-verbose => 0, -exitstatus => 0) if $options{help};
+
+my $progfile  = File::Spec->rel2abs( __FILE__ );
+my $directory = File::Spec->rel2abs( '..', $progfile );
+
+our %setup;
+
+my $ret = 0;
+
+my $service = FusionInventory::Agent::Daemon::Win32->new( %setup )
+    or die "Can't create service object: $!";
+
+if ($options{register}) {
+
+    $ret = $service->RegisterService(
+        program     => $progfile,
+        %options
+    );
+    print "'", $service->displayname(), "' registred as ", $service->name()," service\n"
+        unless $ret;
+
+} elsif ($options{delete}) {
+    $ret = $service->DeleteService(%options);
+    print $service->name(), " service deleted\n"
+        unless $ret;
+
+} else {
+    # on Win2k, Windows do not chdir to the bin directory
+    # we need to do it by ourself
+    chdir($directory);
+
+    # Under newer win32 releases, setting accepted controls may be required
+    $service->AcceptedControls();
+
+    # Just start the service
+    $service->StartService();
+}
+
+exit($ret);
+
+__END__
+
+=head1 NAME
+
+fusioninventory-win32-service - FusionInventory Agent service for Windows
+
+=head1 SYNOPSIS
+
+fusioninventory-win32-service [--register|--delete|--help] [options]
+
+  Options are only needed to register or delete the service. They are handy
+  while using Fusioninventory agent from sources.
+
+  Register options:
+    -n --name=NAME                  unique system name for the service
+    -d --displayname="Nice Name"    display name of the service
+    -l --libdir=PATH                full path to agent perl libraries use it if
+                                    not found by the script
+    -p --program="path to program"  perl script to start as service
+
+  Delete options:
+    -n --name=NAME                  unique system name of the service to delete
+
+  Samples to use from sources base:
+    perl bin/fusioninventory-win32-service --help
+    perl bin/fusioninventory-win32-service --register
+    perl bin/fusioninventory-win32-service --delete
+    perl bin/fusioninventory-win32-service --register -n fia-test -d "[TEST] FIA Service"
+    perl bin/fusioninventory-win32-service --delete -n fia-test

@@ -1,0 +1,15 @@
+
+# Diverted from /usr/share/glpi-agent/etc during postinst
+etc/glpi-agent/agent.cfg
+etc/glpi-agent/basic-authentication-server-plugin.cfg
+etc/glpi-agent/inventory-server-plugin.cfg
+etc/glpi-agent/server-test-plugin.cfg
+etc/glpi-agent/ssl-server-plugin.cfg
+etc/glpi-agent/proxy-server-plugin.cfg
+etc/glpi-agent/proxy2-server-plugin.cfg
+etc/glpi-agent/toolbox-plugin.cfg
+etc/glpi-agent/snmp-advanced-support.cfg
+
+# Files provided by pciutils & usbutils or pci.ids & usb.ids packages
+usr/share/glpi-agent/pci.ids
+usr/share/glpi-agent/usb.ids

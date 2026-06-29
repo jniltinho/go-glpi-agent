@@ -1,0 +1,68 @@
+# Traductions en français par Teclib Edition
+
+#Create a new inventory task: Créer une nouvelle tâche d'inventaire
+Local inventory: Inventaire local
+Run local inventory for this computer: Lancer un inventaire local sur cet ordinateur
+Network scan: Scan réseau
+Choose IP range: Sélectionner la plage IP
+
+Threads: Nombre de processus
+Connection timeout: Délai d'expiration de connexion
+Run network scan: Lancer un scan réseau
+Inventory tag: Tag d'inventaire
+Use a tag: Utiliser un tag
+None: Aucun
+New tag: Nouveau tag
+New tag will be automatically selected: Le nouveau tag sera automatiquement sélectionné
+Add new tag: Ajouter un nouveau tag
+
+netdiscovery task not installed: Tâche netdiscovery non installée
+netinventory task not installed: Tâche netinventory non installée
+netdiscovery and netinventory tasks not installed: Tâches netdiscovery et netinventory non installées
+Agent folder: Dossier de l'agent
+Configured folder: Dossier configuré
+Target: Cible
+
+Created inventories: Inventaires créés
+Should match devices with SNMP support count: Devrait correspondre au nombre d'équipements avec support SNMP
+Show task progress: Montrer la progression de tâche
+Hide task progress: Cacher la progression de tâche
+Show task report: Montrer le rapport de tâche
+Hide task report: Cacher le rapport de tâche
+Show &laquo;&nbsp;%s&nbsp;&raquo; task log: Montrer le journal de la tâche &laquo;&nbsp;%s&nbsp;&raquo;
+Scanned IPs: IPs scannées
+Devices with SNMP support: &Eacute;quipements avec support SNMP
+IPs without SNMP response: IPs sans réponse SNMP
+IPs without PING response: IPs sans réponse au PING
+Scanned IPs for this IP range: Nombre d'IPs scannées sur cette plage IP
+IPs for which we found a device supporting SNMP with provided credentials: IPs trouvées avec un équipement supportant les identifiants SNMP fournis
+These IPs are responding to ping or are found in ARP table: Ces IPs répondent au ping ou sont trouvées dans la table ARP
+But we didn't find any device supporting SNMP with provided credentials: Mais aucun équipement supportant les identifiants SNMP fournis n'a été trouvé
+IPs not responding to ping and not seen in ARP table: IPs ne répondant pas au ping et non trouvées dans la table ARP
+Verbosity: Verbosité
+Completed: Terminée
+Abort: Interrompre
+Aborted: Interrompue
+%s network scan: Scan réseau de %s
+Freeze log output: Geler la mise à jour du journal
+Failure: &Eacute;chec
+
+Only for remote inventory and ESX tasks: Uniquement pour les tâches d'inventaire distant ou ESX
+Add new inventory task: Ajoûter une nouvelle tâche d'inventaire
+Edit &laquo;&nbsp;%s&nbsp;&raquo; inventory task: Éditer la tâche d'inventaire &laquo;&nbsp;%s&nbsp;&raquo;
+Create inventory task: Créer la tâche d'inventaire
+Run task: Lancer la tâche
+Task name: Nom de tâche
+
+Scheduling: Planification
+Last run date: Dernière exécution
+Next run date: Prochaine exécution
+Add ip range: Ajouter plage ip
+Remove ip range: Retirer plage ip
+Disabled task: Tâche désactivée
+Timeout: Délai d'expiration
+Associated ip ranges: Plages ip associées
+
+Scheduling type: Type de planification
+
+No inventory task defined: Pas de tâche d'inventaire définie

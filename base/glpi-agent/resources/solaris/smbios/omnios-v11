@@ -1,0 +1,1220 @@
+ID    SIZE TYPE
+0     64   SMB_TYPE_BIOS (type 0) (BIOS information)
+
+  Vendor: American Megatrends Inc.
+  Version String: 3703
+  Release Date: 07/16/2013
+  Address Segment: 0xf000
+  ROM Size: 4194304 bytes
+  Image Size: 65536 bytes
+  Characteristics: 0x53f8b9880
+	SMB_BIOSFL_PCI (PCI is supported)
+	SMB_BIOSFL_FLASH (BIOS is Flash Upgradeable)
+	SMB_BIOSFL_SHADOW (BIOS shadowing is allowed)
+	SMB_BIOSFL_CDBOOT (Boot from CD is supported)
+	SMB_BIOSFL_SELBOOT (Selectable Boot supported)
+	SMB_BIOSFL_ROMSOCK (BIOS ROM is socketed)
+	SMB_BIOSFL_EDD (EDD Spec is supported)
+	SMB_BIOSFL_525_12M (int 0x13 5.25" 1.2M floppy)
+	SMB_BIOSFL_35_720K (int 0x13 3.5" 720K floppy)
+	SMB_BIOSFL_35_288M (int 0x13 3.5" 2.88M floppy)
+	SMB_BIOSFL_I5_PRINT (int 0x5 print screen svcs)
+	SMB_BIOSFL_I9_KBD (int 0x9 8042 keyboard svcs)
+	SMB_BIOSFL_I14_SER (int 0x14 serial svcs)
+	SMB_BIOSFL_I17_PRINTER (int 0x17 printer svcs)
+	0x100000000
+	0x400000000
+  Characteristics Extension Byte 1: 0x3
+	SMB_BIOSXB1_ACPI (ACPI is supported)
+	SMB_BIOSXB1_USBL (USB legacy is supported)
+  Characteristics Extension Byte 2: 0x5
+	SMB_BIOSXB2_BBOOT (BIOS Boot Specification supported)
+	SMB_BIOSXB2_ETCDIST (Enable Targeted Content Distrib.)
+  Version Number: 4.6
+
+ID    SIZE TYPE
+1     129  SMB_TYPE_SYSTEM (type 1) (system information)
+
+  Manufacturer: System manufacturer
+  Product: System Product Name
+  Version: System Version
+  Serial Number: System Serial Number
+
+  UUID: 208f001e-8c00-0042-f346-f46d04d683ef
+  Wake-Up Event: 0x6 (power switch)
+  SKU Number: SKU
+  Family: To be filled by O.E.M.
+
+ID    SIZE TYPE
+2     115  SMB_TYPE_BASEBOARD (type 2) (base board)
+
+  Manufacturer: ASUSTeK COMPUTER INC.
+  Product: P8P67-M
+  Version: Rev X.0x
+  Serial Number: MT7014018701186
+  Asset Tag: To be filled by O.E.M.
+  Location Tag: To be filled by O.E.M.
+
+  Chassis: 3
+  Flags: 0x9
+	SMB_BBFL_MOTHERBOARD (board is a motherboard)
+	SMB_BBFL_REPLACABLE (board is field-replaceable)
+  Board Type: 0xa (motherboard)
+
+ID    SIZE TYPE
+3     95   SMB_TYPE_CHASSIS (type 3) (system enclosure or chassis)
+
+  Manufacturer: Chassis Manufacture
+  Version: Chassis Version
+  Serial Number: Chassis Serial Number
+  Asset Tag: Asset-1234567890
+
+  OEM Data: 0x0
+  SKU Number: <unknown>
+  Lock Present: N
+  Chassis Type: 0x3 (desktop)
+  Boot-Up State: 0x3 (safe)
+  Power Supply State: 0x3 (safe)
+  Thermal State: 0x3 (safe)
+  Chassis Height: 0u
+  Power Cords: 1
+  Element Records: 0
+
+ID    SIZE TYPE
+4     184  SMB_TYPE_PROCESSOR (type 4) (processor)
+
+  Manufacturer: Intel            
+  Version: Intel(R) Core(TM) i7-2600K CPU @ 3.40GHz       
+  Serial Number: To Be Filled By O.E.M.
+  Asset Tag: To Be Filled By O.E.M.
+  Location Tag: LGA1155
+  Part Number: To Be Filled By O.E.M.
+
+  Family: 191 (Intel Core 2 Duo)
+  CPUID: 0xbfebfbff000206a7
+  Type: 3 (central processor)
+  Socket Upgrade: 1 (other)
+  Socket Status: Populated
+  Processor Status: 1 (enabled)
+  Supported Voltages: 1.0V
+  Core Count: 4
+  Cores Enabled: 1
+  Thread Count: 2
+  Processor Characteristics: 0x4
+	SMB_PRC_64BIT (64-bit capable)
+  External Clock Speed: 100MHz
+  Maximum Speed: 3800MHz
+  Current Speed: 3400MHz
+  L1 Cache Handle: 5
+  L2 Cache Handle: 6
+  L3 Cache Handle: 7
+  Threads Enabled: Unknown
+
+ID    SIZE TYPE
+5     27   SMB_TYPE_CACHE (type 7) (processor cache)
+
+  Location Tag: L1-Cache
+
+  Level: 1
+  Maximum Installed Size: 262144 bytes
+  Installed Size: 262144 bytes
+  Speed: Unknown
+  Supported SRAM Types: 0x1
+	SMB_CAT_OTHER (other)
+  Current SRAM Type: 0x1 (other)
+  Error Correction Type: 3 (none)
+  Logical Cache Type: 5 (unified)
+  Associativity: 7 (8-way set associative)
+  Mode: 1 (write-back)
+  Location: 0 (internal)
+  Flags: 0x1
+	SMB_CAF_ENABLED (enabled at boot time)
+
+ID    SIZE TYPE
+6     27   SMB_TYPE_CACHE (type 7) (processor cache)
+
+  Location Tag: L2-Cache
+
+  Level: 2
+  Maximum Installed Size: 1048576 bytes
+  Installed Size: 1048576 bytes
+  Speed: Unknown
+  Supported SRAM Types: 0x1
+	SMB_CAT_OTHER (other)
+  Current SRAM Type: 0x1 (other)
+  Error Correction Type: 3 (none)
+  Logical Cache Type: 5 (unified)
+  Associativity: 7 (8-way set associative)
+  Mode: 2 (varies by address)
+  Location: 0 (internal)
+  Flags: 0x1
+	SMB_CAF_ENABLED (enabled at boot time)
+
+ID    SIZE TYPE
+7     27   SMB_TYPE_CACHE (type 7) (processor cache)
+
+  Location Tag: L3-Cache
+
+  Level: 3
+  Maximum Installed Size: 8388608 bytes
+  Installed Size: 8388608 bytes
+  Speed: Unknown
+  Supported SRAM Types: 0x1
+	SMB_CAT_OTHER (other)
+  Current SRAM Type: 0x1 (other)
+  Error Correction Type: 3 (none)
+  Logical Cache Type: 5 (unified)
+  Associativity: 8 (16-way set associative)
+  Mode: 3 (unknown)
+  Location: 0 (internal)
+  Flags: 0x0
+
+ID    SIZE TYPE
+8     36   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: PS/2 Keyboard
+
+  Internal Reference Designator: PS/2 Keyboard
+  External Reference Designator: PS/2 Keyboard
+  Internal Connector Type: 0 (none)
+  External Connector Type: 15 (PS/2)
+  Port Type: 13 (Keyboard port)
+
+ID    SIZE TYPE
+9     30   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: PS/2 Mouse
+
+  Internal Reference Designator: PS/2 Mouse
+  External Reference Designator: PS/2 Mouse
+  Internal Connector Type: 0 (none)
+  External Connector Type: 15 (PS/2)
+  Port Type: 13 (Keyboard port)
+
+ID    SIZE TYPE
+10    22   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB7_8
+
+  Internal Reference Designator: USB7_8
+  External Reference Designator: USB7_8
+  Internal Connector Type: 0 (none)
+  External Connector Type: 18 (USB)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+11    22   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB6_5
+
+  Internal Reference Designator: USB6_5
+  External Reference Designator: USB6_5
+  Internal Connector Type: 0 (none)
+  External Connector Type: 18 (USB)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+12    22   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB4_3
+
+  Internal Reference Designator: USB4_3
+  External Reference Designator: USB4_3
+  Internal Connector Type: 0 (none)
+  External Connector Type: 18 (USB)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+13    22   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB1_2
+
+  Internal Reference Designator: USB1_2
+  External Reference Designator: USB1_2
+  Internal Connector Type: 0 (none)
+  External Connector Type: 18 (USB)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+14    26   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SPDIF_O2
+
+  Internal Reference Designator: SPDIF_O2
+  External Reference Designator: SPDIF_O2
+  Internal Connector Type: 0 (none)
+  External Connector Type: 255 (other)
+  Port Type: 255 (other)
+
+ID    SIZE TYPE
+15    24   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: GbE LAN
+
+  Internal Reference Designator: GbE LAN
+  External Reference Designator: GbE LAN
+  Internal Connector Type: 0 (none)
+  External Connector Type: 11 (RJ-45)
+  Port Type: 31 (Network port)
+
+ID    SIZE TYPE
+16    20   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: AUDIO
+
+  Internal Reference Designator: AUDIO
+  External Reference Designator: AUDIO
+  Internal Connector Type: 0 (none)
+  External Connector Type: 255 (other)
+  Port Type: 29 (Audio port)
+
+ID    SIZE TYPE
+17    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA3G_1
+
+  Internal Reference Designator: SATA3G_1
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+18    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA3G_2
+
+  Internal Reference Designator: SATA3G_2
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+19    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA3G_3
+
+  Internal Reference Designator: SATA3G_3
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+20    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA3G_4
+
+  Internal Reference Designator: SATA3G_4
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+21    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA6G_1
+
+  Internal Reference Designator: SATA6G_1
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+22    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: SATA6G_2
+
+  Internal Reference Designator: SATA6G_2
+  External Reference Designator: 
+  Internal Connector Type: 34 (SAS/SATA plug receptacle)
+  External Connector Type: 0 (none)
+  Port Type: 32 (SATA)
+
+ID    SIZE TYPE
+23    16   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB9_10
+
+  Internal Reference Designator: USB9_10
+  External Reference Designator: 
+  Internal Connector Type: 18 (USB)
+  External Connector Type: 0 (none)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+24    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB11_12
+
+  Internal Reference Designator: USB11_12
+  External Reference Designator: 
+  Internal Connector Type: 18 (USB)
+  External Connector Type: 0 (none)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+25    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: USB13_14
+
+  Internal Reference Designator: USB13_14
+  External Reference Designator: 
+  Internal Connector Type: 18 (USB)
+  External Connector Type: 0 (none)
+  Port Type: 16 (USB)
+
+ID    SIZE TYPE
+26    13   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: COM1
+
+  Internal Reference Designator: COM1
+  External Reference Designator: 
+  Internal Connector Type: 8 (DB-9 pin male)
+  External Connector Type: 0 (none)
+  Port Type: 9 (Serial Port 16550A compat)
+
+ID    SIZE TYPE
+27    12   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: LPT
+
+  Internal Reference Designator: LPT
+  External Reference Designator: 
+  Internal Connector Type: 8 (DB-9 pin male)
+  External Connector Type: 0 (none)
+  Port Type: 9 (Serial Port 16550A compat)
+
+ID    SIZE TYPE
+28    13   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: AAFP
+
+  Internal Reference Designator: AAFP
+  External Reference Designator: 
+  Internal Connector Type: 31 (Mini-jack (headphones))
+  External Connector Type: 0 (none)
+  Port Type: 29 (Audio port)
+
+ID    SIZE TYPE
+29    16   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: CPU_FAN
+
+  Internal Reference Designator: CPU_FAN
+  External Reference Designator: 
+  Internal Connector Type: 255 (other)
+  External Connector Type: 0 (none)
+  Port Type: 255 (other)
+
+ID    SIZE TYPE
+30    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: CHA_FAN1
+
+  Internal Reference Designator: CHA_FAN1
+  External Reference Designator: 
+  Internal Connector Type: 255 (other)
+  External Connector Type: 0 (none)
+  Port Type: 255 (other)
+
+ID    SIZE TYPE
+31    16   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: PWR_FAN
+
+  Internal Reference Designator: PWR_FAN
+  External Reference Designator: 
+  Internal Connector Type: 255 (other)
+  External Connector Type: 0 (none)
+  Port Type: 255 (other)
+
+ID    SIZE TYPE
+32    17   SMB_TYPE_PORT (type 8) (port connector)
+
+  Location Tag: PATA_IDE
+
+  Internal Reference Designator: PATA_IDE
+  External Reference Designator: 
+  Internal Connector Type: 22 (on-board IDE)
+  External Connector Type: 0 (none)
+  Port Type: 255 (other)
+
+ID    SIZE TYPE
+33    26   SMB_TYPE_SLOT (type 9) (upgradeable system slot)
+
+  Location Tag: PCIEX16_1
+
+  Reference Designator: PCIEX16_1
+  Slot ID: 0x1
+  Type: 0xa5 (PCI Express)
+  Width: 0x5 (32 bit)
+  Usage: 0x4 (in use)
+  Length: 0x3 (short length)
+  Slot Characteristics 1: 0xc
+	SMB_SLCH1_33V (provides 3.3V)
+	SMB_SLCH1_SHARED (opening shared with other slot)
+  Slot Characteristics 2: 0x1
+	SMB_SLCH2_PME (slot supports PME# signal)
+  Segment Group: 0
+  Bus Number: 1
+  Device/Function Number: 1/0
+  Height:  unknown
+
+ID    SIZE TYPE
+34    25   SMB_TYPE_SLOT (type 9) (upgradeable system slot)
+
+  Location Tag: PCIEX1_1
+
+  Reference Designator: PCIEX1_1
+  Slot ID: 0x2
+  Type: 0xa5 (PCI Express)
+  Width: 0x5 (32 bit)
+  Usage: 0x3 (available)
+  Length: 0x3 (short length)
+  Slot Characteristics 1: 0xc
+	SMB_SLCH1_33V (provides 3.3V)
+	SMB_SLCH1_SHARED (opening shared with other slot)
+  Slot Characteristics 2: 0x1
+	SMB_SLCH2_PME (slot supports PME# signal)
+  Segment Group: 0
+  Bus Number: 255
+  Device/Function Number: 28/3
+  Height:  unknown
+
+ID    SIZE TYPE
+35    25   SMB_TYPE_SLOT (type 9) (upgradeable system slot)
+
+  Location Tag: PCIEX1_2
+
+  Reference Designator: PCIEX1_2
+  Slot ID: 0x3
+  Type: 0xa5 (PCI Express)
+  Width: 0x5 (32 bit)
+  Usage: 0x3 (available)
+  Length: 0x3 (short length)
+  Slot Characteristics 1: 0xc
+	SMB_SLCH1_33V (provides 3.3V)
+	SMB_SLCH1_SHARED (opening shared with other slot)
+  Slot Characteristics 2: 0x1
+	SMB_SLCH2_PME (slot supports PME# signal)
+  Segment Group: 0
+  Bus Number: 255
+  Device/Function Number: 28/4
+  Height:  unknown
+
+ID    SIZE TYPE
+36    21   SMB_TYPE_SLOT (type 9) (upgradeable system slot)
+
+  Location Tag: PCI1
+
+  Reference Designator: PCI1
+  Slot ID: 0x4
+  Type: 0x6 (PCI)
+  Width: 0x5 (32 bit)
+  Usage: 0x3 (available)
+  Length: 0x3 (short length)
+  Slot Characteristics 1: 0xc
+	SMB_SLCH1_33V (provides 3.3V)
+	SMB_SLCH1_SHARED (opening shared with other slot)
+  Slot Characteristics 2: 0x1
+	SMB_SLCH2_PME (slot supports PME# signal)
+  Segment Group: 0
+  Bus Number: 4
+  Device/Function Number: 28/6
+  Height:  unknown
+
+ID    SIZE TYPE
+37    22   SMB_TYPE_OBDEVS (type 10) (on-board devices)
+
+  Onboard Ethernet
+
+ID    SIZE TYPE
+38    86   SMB_TYPE_OEMSTR (type 11) (OEM string table)
+
+  F46D04D683EF
+  To Be Filled By O.E.M.
+  To Be Filled By O.E.M.
+  To Be Filled By O.E.M.
+
+ID    SIZE TYPE
+39    27   SMB_TYPE_SYSCONFSTR (type 12) (system configuration string table)
+
+  To Be Filled By O.E.M.
+
+ID    SIZE TYPE
+40    20   SMB_TYPE_BOOT (type 32) (system boot status)
+
+  Boot Status Code: 0x0 (no errors detected)
+  Boot Data (9 bytes):
+
+       0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  0:  00000000 00000000 00                | .........
+
+
+ID    SIZE TYPE
+41    17   SMB_TYPE_MGMTDEV (type 34) (management device)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  220b2900 01040000 0000034c 4d37382d | ".)........LM78-
+  10:  31                                  | 1
+
+ID    SIZE TYPE
+42    27   SMB_TYPE_VPROBE (type 26) (voltage probe)
+
+  Description: LM78A
+  Location: 0
+  Status: 0
+  Maximum Possible Voltage: unknown
+  Minimum Possible Voltage: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+43    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24102b00 01000200 03000400 05000600 | $.+.............
+
+ID    SIZE TYPE
+44    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b2c00 01290029 002a0054 6f204265 | #.,..).).*.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+45    27   SMB_TYPE_TPROBE (type 28) (temperature probe)
+
+  Description: LM78A
+  Location: 0
+  Status: 0
+  Maximum Possible Temperature: unknown
+  Minimum Possible Temperature: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+46    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24102e00 01000200 03000400 05000600 | $...............
+
+ID    SIZE TYPE
+47    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b2f00 0129002c 002d0054 6f204265 | #./..).,.-.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+48    14   SMB_TYPE_COOLDEV (type 27) (cooling device)
+
+  Temperature Probe Handle: 45
+  Device Type: 18
+  Status: 0
+  Cooling Unit Group: 1
+  OEM- or BIOS- defined data: 0x0
+  Nominal Speed: unknown
+
+ID    SIZE TYPE
+49    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24103100 01000200 03000400 05000600 | $.1.............
+
+ID    SIZE TYPE
+50    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b3200 0129002f 00300054 6f204265 | #.2..)./.0.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+51    14   SMB_TYPE_COOLDEV (type 27) (cooling device)
+
+  Temperature Probe Handle: 45
+  Device Type: 18
+  Status: 0
+  Cooling Unit Group: 1
+  OEM- or BIOS- defined data: 0x0
+  Nominal Speed: unknown
+
+ID    SIZE TYPE
+52    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24103400 01000200 03000400 05000600 | $.4.............
+
+ID    SIZE TYPE
+53    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b3500 01290032 00330054 6f204265 | #.5..).2.3.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+54    25   SMB_TYPE_IPROBE (type 29) (current probe)
+
+  Description: ABC
+  Location: 0
+  Status: 0
+  Maximum Possible Current: unknown
+  Minimum Possible Current: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+55    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24103700 00800080 00800080 00800080 | $.7.............
+
+ID    SIZE TYPE
+56    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b3800 01290035 00330054 6f204265 | #.8..).5.3.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+57    182  SMB_TYPE_POWERSUP (type 39) (system power supply)
+
+  Manufacturer: To Be Filled By O.E.M.
+  Product: To Be Filled By O.E.M.
+  Version: To Be Filled By O.E.M.
+  Serial Number: To Be Filled By O.E.M.
+  Asset Tag: To Be Filled By O.E.M.
+  Location Tag: To Be Filled By O.E.M.
+  Part Number: To Be Filled By O.E.M.
+
+  Power Supply Group: 1
+  Maximum Output: unknown
+  Characteristics: 0x0
+  Input Voltage Range Switching: 0
+  Status: 0
+  Type: 0
+  Voltage Probe Handle: 42
+  Cooling Device Handle: 48
+  Current Probe Handle: 54
+
+ID    SIZE TYPE
+58    17   SMB_TYPE_MGMTDEV (type 34) (management device)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  22103a00 01040000 0000034c 4d37382d | ".:........LM78-
+  10:  32                                  | 2
+
+ID    SIZE TYPE
+59    27   SMB_TYPE_VPROBE (type 26) (voltage probe)
+
+  Description: LM78B
+  Location: 0
+  Status: 0
+  Maximum Possible Voltage: unknown
+  Minimum Possible Voltage: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+60    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24103c00 07000800 08000a00 0b000c00 | $.<.............
+
+ID    SIZE TYPE
+61    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b3d00 013a003a 003b0054 6f204265 | #.=..:.:.;.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+62    27   SMB_TYPE_VPROBE (type 26) (voltage probe)
+
+  Description: LM78B
+  Location: 0
+  Status: 0
+  Maximum Possible Voltage: unknown
+  Minimum Possible Voltage: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+63    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24103f00 0d000e00 0f001000 11001200 | $.?.............
+
+ID    SIZE TYPE
+64    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4000 013a003d 003e0054 6f204265 | #.@..:.=.>.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+65    27   SMB_TYPE_TPROBE (type 28) (temperature probe)
+
+  Description: LM78B
+  Location: 0
+  Status: 0
+  Maximum Possible Temperature: unknown
+  Minimum Possible Temperature: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+66    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24104200 01000200 03000400 05000600 | $.B.............
+
+ID    SIZE TYPE
+67    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4300 013a0040 00410054 6f204265 | #.C..:.@.A.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+68    14   SMB_TYPE_COOLDEV (type 27) (cooling device)
+
+  Temperature Probe Handle: 65
+  Device Type: 18
+  Status: 0
+  Cooling Unit Group: 1
+  OEM- or BIOS- defined data: 0x0
+  Nominal Speed: unknown
+
+ID    SIZE TYPE
+69    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24104500 01000200 03000400 05000600 | $.E.............
+
+ID    SIZE TYPE
+70    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4600 013a0043 00440054 6f204265 | #.F..:.C.D.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+71    27   SMB_TYPE_TPROBE (type 28) (temperature probe)
+
+  Description: LM78B
+  Location: 0
+  Status: 0
+  Maximum Possible Temperature: unknown
+  Minimum Possible Temperature: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+72    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24104800 01000200 03000400 05000600 | $.H.............
+
+ID    SIZE TYPE
+73    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4900 013a0046 00470054 6f204265 | #.I..:.F.G.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+74    14   SMB_TYPE_COOLDEV (type 27) (cooling device)
+
+  Temperature Probe Handle: 71
+  Device Type: 18
+  Status: 0
+  Cooling Unit Group: 1
+  OEM- or BIOS- defined data: 0x0
+  Nominal Speed: unknown
+
+ID    SIZE TYPE
+75    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24104b00 01000200 03000400 05000600 | $.K.............
+
+ID    SIZE TYPE
+76    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4c00 013a0049 004a0054 6f204265 | #.L..:.I.J.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+77    25   SMB_TYPE_IPROBE (type 29) (current probe)
+
+  Description: DEF
+  Location: 0
+  Status: 0
+  Maximum Possible Current: unknown
+  Minimum Possible Current: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+78    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24104e00 00800080 00800080 00800080 | $.N.............
+
+ID    SIZE TYPE
+79    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b4f00 013a004c 004a0054 6f204265 | #.O..:.L.J.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+80    25   SMB_TYPE_IPROBE (type 29) (current probe)
+
+  Description: GHI
+  Location: 0
+  Status: 0
+  Maximum Possible Current: unknown
+  Minimum Possible Current: unknown
+  Probe Resolution: unknown
+  Probe Tolerance: unknown
+  Probe Accuracy: unknown
+  OEM- or BIOS- defined value: 0x0
+  Probe Nominal Value: unknown
+
+ID    SIZE TYPE
+81    16   SMB_TYPE_MGMTDEVDATA (type 36) (management device threshold data)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  24105100 00800080 00800080 00800080 | $.Q.............
+
+ID    SIZE TYPE
+82    33   SMB_TYPE_MGMTDEVCP (type 35) (management device component)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  230b5200 013a004f 004a0054 6f204265 | #.R..:.O.J.To Be
+  10:  2046696c 6c656420 4279204f 2e452e4d |  Filled By O.E.M
+  20:  2e                                  | .
+
+ID    SIZE TYPE
+83    182  SMB_TYPE_POWERSUP (type 39) (system power supply)
+
+  Manufacturer: To Be Filled By O.E.M.
+  Product: To Be Filled By O.E.M.
+  Version: To Be Filled By O.E.M.
+  Serial Number: To Be Filled By O.E.M.
+  Asset Tag: To Be Filled By O.E.M.
+  Location Tag: To Be Filled By O.E.M.
+  Part Number: To Be Filled By O.E.M.
+
+  Power Supply Group: 1
+  Maximum Output: unknown
+  Characteristics: 0x0
+  Input Voltage Range Switching: 0
+  Status: 0
+  Type: 0
+  Voltage Probe Handle: 42
+  Cooling Device Handle: 48
+  Current Probe Handle: 54
+
+ID    SIZE TYPE
+84    23   SMB_TYPE_OBDEVEXT (type 41) (on-board device extended info)
+
+  Reference Designator:  Onboard IGD
+  Device Enabled: true
+  Device Type: video
+  Device Type Instance: 1
+  Segment Group Number: 0
+  Bus Number: 0
+  Device/Function Number: 16
+
+ID    SIZE TYPE
+85    23   SMB_TYPE_OBDEVEXT (type 41) (on-board device extended info)
+
+  Reference Designator:  Onboard LAN
+  Device Enabled: true
+  Device Type: Ethernet
+  Device Type Instance: 1
+  Segment Group Number: 0
+  Bus Number: 0
+  Device/Function Number: 200
+
+ID    SIZE TYPE
+86    24   SMB_TYPE_OBDEVEXT (type 41) (on-board device extended info)
+
+  Reference Designator:  Onboard 1394
+  Device Enabled: true
+  Device Type: Other
+  Device Type Instance: 1
+  Segment Group Number: 0
+  Bus Number: 3
+  Device/Function Number: 226
+
+ID    SIZE TYPE
+87    63   SMB_TYPE_OEM_LO+11 (type 139)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  8b365700 001e8c00 0042f346 04043255 | .6W......B.F..2U
+  10:  f800a202 a1004063 4310fe81 03df40b2 | ......@cC.....@.
+  20:  00200073 3c100800 00000000 00000000 | . .s<...........
+  30:  00000000 00015631 33393447 554944   | ......V1394GUID
+
+ID    SIZE TYPE
+89    15   SMB_TYPE_MEMARRAY (type 16) (physical memory array)
+
+  Location: 3 (system board or motherboard)
+  Use: 3 (system memory)
+  ECC: 3 (none)
+  Number of Slots/Sockets: 4
+  Memory Error Data: 91
+  Max Capacity: 34359738368 bytes
+
+ID    SIZE TYPE
+88    93   SMB_TYPE_MEMDEVICE (type 17) (memory device)
+
+  Manufacturer: 8C26
+  Serial Number: 00000367
+  Asset Tag: 9876543210
+  Location Tag: ChannelA-DIMM0
+  Part Number: TIMETEC-UD3-1333  
+
+  Physical Memory Array: 89
+  Memory Error Data: 92
+  Total Width: 64 bits
+  Data Width: 64 bits
+  Size: 8589934592 bytes
+  Form Factor: 9 (DIMM)
+  Set: None
+  Rank: 2 (dual)
+  Memory Type: 24 (DDR3)
+  Flags: 0x80
+	SMB_MDF_SYNC (synchronous)
+  Speed: 1333 MT/s
+  Configured Speed: Unknown
+  Device Locator: ChannelA-DIMM0
+  Bank Locator: BANK 0
+  Minimum Voltage: Unknown
+  Maximum Voltage: Unknown
+  Configured Voltage: Unknown
+
+ID    SIZE TYPE
+91    23   SMB_TYPE_MEMERR32 (type 18) (32-bit memory error information)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  12175b00 03020200 00000000 00008000 | ..[.............
+  10:  00008000 000080                     | .......
+
+ID    SIZE TYPE
+90    19   SMB_TYPE_MEMDEVICEMAP (type 20) (memory device mapped address)
+
+  Memory Device: 88
+  Memory Array Mapped Address: 100
+  Physical Address: 0x0
+  Size: 8589934592 bytes
+  Partition Row Position: 255
+  Interleave Position: 1
+  Interleave Data Depth: 2
+
+ID    SIZE TYPE
+93    88   SMB_TYPE_MEMDEVICE (type 17) (memory device)
+
+  Manufacturer: 8502
+  Serial Number: 00000000
+  Asset Tag: 9876543210
+  Location Tag: ChannelA-DIMM1
+  Part Number: 1600EL Series
+
+  Physical Memory Array: 89
+  Memory Error Data: None
+  Total Width: 64 bits
+  Data Width: 64 bits
+  Size: 4294967296 bytes
+  Form Factor: 9 (DIMM)
+  Set: None
+  Rank: 2 (dual)
+  Memory Type: 24 (DDR3)
+  Flags: 0x80
+	SMB_MDF_SYNC (synchronous)
+  Speed: 1333 MT/s
+  Configured Speed: Unknown
+  Device Locator: ChannelA-DIMM1
+  Bank Locator: BANK 1
+  Minimum Voltage: Unknown
+  Maximum Voltage: Unknown
+  Configured Voltage: Unknown
+
+ID    SIZE TYPE
+92    23   SMB_TYPE_MEMERR32 (type 18) (32-bit memory error information)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  12175c00 03020200 00000000 00008000 | ..\.............
+  10:  00008000 000080                     | .......
+
+ID    SIZE TYPE
+95    19   SMB_TYPE_MEMDEVICEMAP (type 20) (memory device mapped address)
+
+  Memory Device: 93
+  Memory Array Mapped Address: 100
+  Physical Address: 0x400000000
+  Size: 4294967296 bytes
+  Partition Row Position: 255
+  Interleave Position: 1
+  Interleave Data Depth: 2
+
+ID    SIZE TYPE
+94    93   SMB_TYPE_MEMDEVICE (type 17) (memory device)
+
+  Manufacturer: 8C26
+  Serial Number: 00000368
+  Asset Tag: 9876543210
+  Location Tag: ChannelB-DIMM0
+  Part Number: TIMETEC-UD3-1333  
+
+  Physical Memory Array: 89
+  Memory Error Data: 97
+  Total Width: 64 bits
+  Data Width: 64 bits
+  Size: 8589934592 bytes
+  Form Factor: 9 (DIMM)
+  Set: None
+  Rank: 2 (dual)
+  Memory Type: 24 (DDR3)
+  Flags: 0x80
+	SMB_MDF_SYNC (synchronous)
+  Speed: 1333 MT/s
+  Configured Speed: Unknown
+  Device Locator: ChannelB-DIMM0
+  Bank Locator: BANK 2
+  Minimum Voltage: Unknown
+  Maximum Voltage: Unknown
+  Configured Voltage: Unknown
+
+ID    SIZE TYPE
+97    23   SMB_TYPE_MEMERR32 (type 18) (32-bit memory error information)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  12176100 03020200 00000000 00008000 | ..a.............
+  10:  00008000 000080                     | .......
+
+ID    SIZE TYPE
+96    19   SMB_TYPE_MEMDEVICEMAP (type 20) (memory device mapped address)
+
+  Memory Device: 94
+  Memory Array Mapped Address: 100
+  Physical Address: 0x200000000
+  Size: 8589934592 bytes
+  Partition Row Position: 255
+  Interleave Position: 2
+  Interleave Data Depth: 2
+
+ID    SIZE TYPE
+99    88   SMB_TYPE_MEMDEVICE (type 17) (memory device)
+
+  Manufacturer: 8502
+  Serial Number: 00000000
+  Asset Tag: 9876543210
+  Location Tag: ChannelB-DIMM1
+  Part Number: 1600EL Series
+
+  Physical Memory Array: 89
+  Memory Error Data: None
+  Total Width: 64 bits
+  Data Width: 64 bits
+  Size: 4294967296 bytes
+  Form Factor: 9 (DIMM)
+  Set: None
+  Rank: 2 (dual)
+  Memory Type: 24 (DDR3)
+  Flags: 0x80
+	SMB_MDF_SYNC (synchronous)
+  Speed: 1333 MT/s
+  Configured Speed: Unknown
+  Device Locator: ChannelB-DIMM1
+  Bank Locator: BANK 3
+  Minimum Voltage: Unknown
+  Maximum Voltage: Unknown
+  Configured Voltage: Unknown
+
+ID    SIZE TYPE
+98    23   SMB_TYPE_MEMERR32 (type 18) (32-bit memory error information)
+
+        0 1 2 3  4 5 6 7  8 9 a b  c d e f   0123456789abcdef
+  00:  12176200 03020200 00000000 00008000 | ..b.............
+  10:  00008000 000080                     | .......
+
+ID    SIZE TYPE
+101   19   SMB_TYPE_MEMDEVICEMAP (type 20) (memory device mapped address)
+
+  Memory Device: 99
+  Memory Array Mapped Address: 100
+  Physical Address: 0x500000000
+  Size: 4294967296 bytes
+  Partition Row Position: 255
+  Interleave Position: 2
+  Interleave Data Depth: 2
+
+ID    SIZE TYPE
+100   15   SMB_TYPE_MEMARRAYMAP (type 19) (memory array mapped address)
+
+  Physical Memory Array: 89
+  Devices per Row: 4
+  Physical Address: 0x0
+  Size: 25769803776 bytes
+
+ID    SIZE TYPE
+102   45   SMB_TYPE_LANG (type 13) (BIOS language information)
+
+  Current Language: en-
+  Language String Format: 1
+  Number of Installed Languages: 6
+  Installed Languages:
+  en-
+  fr-
+  de-
+  ja-
+  zh-
+  chs
+

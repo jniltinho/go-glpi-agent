@@ -1,0 +1,222 @@
+name: glpi-agent
+base: core20
+summary: GLPI Agent runs inventory and other tasks on the behalf of a GLPI server
+description: |
+  GLPI Agent is an agent intended to run automatic inventory task (and possibly others)
+  on the behalf of its configured GLPI server (https://glpi-project.org/).
+  
+  It starts as a daemon but does nothing by default. You must set its server
+  configuration before expecting an inventory can be submitted to your
+  GLPI server. The following command should be used for that purpose:
+  
+  sudo snap set glpi-agent server=http://your-glpi-server/
+icon: share/html/logo.png
+license: GPL-2.0
+issues: https://github.com/glpi-project/glpi-agent/issues
+source-code: https://github.com/glpi-project/glpi-agent
+website: https://glpi-project.org/
+
+confinement: classic
+
+adopt-info: glpi-agent
+
+architectures:
+ - build-on: amd64
+
+apps:
+  glpi-agent:
+    command: usr/bin/glpi-agent
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  esx:
+    command: usr/bin/glpi-esx
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  inventory:
+    command: usr/bin/glpi-inventory
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  injector:
+    command: usr/bin/glpi-injector
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  netdiscovery:
+    command: usr/bin/glpi-netdiscovery
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  netinventory:
+    command: usr/bin/glpi-netinventory
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  remote:
+    command: usr/bin/glpi-remote
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  wakeonlan:
+    command: usr/bin/glpi-wakeonlan
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+  daemon:
+    command: usr/bin/glpi-agent --listen --no-fork --daemon
+    daemon: simple
+    restart-condition: on-success
+    stop-timeout: 10s
+    environment:
+      LANG: C
+      PATH: $SNAP/sbin:$SNAP/usr/sbin:$SNAP/usr/bin:$PATH
+
+parts:
+  perl:
+    plugin: make
+    source: https://www.cpan.org/src/5.0/perl-5.42.2.tar.gz
+    # checksum from https://www.cpan.org/src/5.0/perl-5.42.2.tar.gz.sha256.txt
+    source-checksum: sha256/9384e8deb75b7b1695e5637971b752281aaecd025a3d5d4734d33c1d0adfee47
+    override-build: |
+      rm -f config.sh Policy.sh
+      unset ARCHOPT
+      case "$(dpkg --print-architecture)" in
+        amd64|arm64|ppc64le|s390x)
+          ARCHOPT="-Duse64bitall"
+          ;;
+      esac
+      # Prepare a relocatable perl build
+      ./Configure -de -Dprefix=/usr/share/glpi-agent -Duserelocatableinc   \
+        -Dman1dir=none -Dman3dir=none -Dusethreads -DNDEBUG -UDEBUGGING    \
+        -Dusemultiplicity -Duse64bitint $ARCHOPT                           \
+        -Aeval:privlib=.../../lib -Aeval:scriptdir=.../../bin              \
+        -Aeval:vendorprefix=.../.. -Aeval:vendorlib=.../../lib
+      make -j4
+      make install.perl DESTDIR="$SNAPCRAFT_PART_INSTALL"
+      export PATH=$SNAPCRAFT_PART_INSTALL/usr/share/glpi-agent/bin:$PATH
+      
+      # Best install required modules with cpanm
+      curl -o cpanm https://raw.githubusercontent.com/miyagawa/cpanminus/master/cpanm
+      chmod +x cpanm
+      while read modules
+      do
+        [ -z "${modules%%#*}" ] && continue
+        ./cpanm --notest -v --no-man-pages $modules
+      done <<-MODULES
+      Module::Install Sub::Identify DateTime Params::Validate UNIVERSAL::require
+      IO::Socket::SSL LWP::UserAgent LWP::Protocol::https HTML::Parser URI::Escape
+      Time::HiRes HTTP::Daemon Proc::Daemon Parallel::ForkManager
+      Compress::Zlib File::Copy::Recursive File::Which
+      Crypt::DES Crypt::Rijndael Digest::HMAC Digest::SHA1
+      Net::IP Net::Ping Net::SNMP Net::NBName Net::CUPS Net::SSH2
+      Thread::Queue Parse::EDID Cpanel::JSON::XS
+      Text::Template XML::LibXML Memoize
+      YAML::Tiny Data::UUID Digest::SHA
+      #Net::PCAP Net::Write::Layer2
+      MODULES
+      # Build and install iec61850 support
+      IEC61850_VERSION=1.6.1
+      curl -L -o $IEC61850_VERSION.tar.gz https://github.com/g-bougard/libiec61850/archive/refs/tags/$IEC61850_VERSION.tar.gz
+      tar xzf $IEC61850_VERSION.tar.gz
+      cd libiec61850-$IEC61850_VERSION
+      make CFLAGS=-fPIC
+      cd iec61850-perl
+      swig -Wall -O -I../src/common/inc -I../src/iec61850/inc -I../src/mms/inc -I../src/goose -perl5 iec61850.i
+      OPTS=`perl -MConfig -e 'print join(" ", @Config{qw(ccflags optimize cccdlflags)}, "-I$Config{archlib}/CORE")'`
+      INSTALLARCHLIB=`perl -MConfig -e 'print $Config{installarchlib}'`
+      SITEARCHLIB=`perl -MConfig -e 'print $Config{installsitearch}'`
+      gcc -c iec61850_wrap.c -I$INSTALLARCHLIB/CORE -I../src/common/inc -I../src/iec61850/inc -I../src/mms/inc -I../hal/inc -I../src/logging -I../src/r_session $OPTS -fmax-errors=5 -Wno-deprecated-declarations
+      mkdir -p $SITEARCHLIB/auto/iec61850
+      gcc -shared iec61850_wrap.o ../build/libiec61850.a -o $SITEARCHLIB/auto/iec61850/iec61850.so
+      cp -vf iec61850.pm $SITEARCHLIB
+    build-packages:
+     - curl
+     - libssl-dev
+     - libcups2-dev
+     - libcupsfilters-dev
+     - libcupsimage2-dev
+     - libxml2-dev
+     - libssh2-1-dev
+     - swig
+    stage-packages:
+     - libcupsimage2
+     - libcupsfilters1
+     - libcups2
+     - libssl1.1
+     - libxml2
+     - libavahi-client3
+     - libavahi-common3
+     - libssh2-1
+    stage:
+      - usr/lib
+      - usr/share/glpi-agent/bin/perl
+      - usr/share/glpi-agent/lib
+      - -usr/share/glpi-agent/lib/pod
+      - -usr/share/glpi-agent/lib/**/*.pod
+      - -usr/share/glpi-agent/lib/**/.meta
+      - -usr/share/glpi-agent/lib/**/.packlist
+
+  glpi-agent:
+    after: [perl]
+    plugin: make
+    source: .
+    build-environment:
+     - VERSION: "${TERM#*:}"
+     - TERM: "${TERM%:*}"
+    override-build: |
+      export PATH=$SNAPCRAFT_STAGE/usr/share/glpi-agent/bin:$PATH
+      if [ -z "$VERSION" ]; then
+        VERSION=$( perl -Ilib -MGLPI::Agent::Version -e 'print $GLPI::Agent::Version::VERSION,"\n"' )
+        if [ -d .git ]; then
+          VERSION="${VERSION%-dev}-git$(git rev-parse --short HEAD)"
+        fi
+      fi
+      snapcraftctl set-version "$VERSION"
+      case "$VERSION" in
+        *-dev|*-git*|*-beta*|*-test*)
+          snapcraftctl set-grade "devel"
+          ;;
+        *)
+          snapcraftctl set-grade "stable"
+          ;;
+      esac
+      perl Makefile.PL PREFIX=/usr SYSCONFDIR=/etc/glpi-agent \
+        LOCALSTATEDIR=/var/snap/glpi-agent/common VERSION="$VERSION" \
+        COMMENTS="Built for snap on $(date -u +'%F %R')"
+      make
+      make install DESTDIR=$SNAPCRAFT_PART_INSTALL SNAPDIR=/snap/glpi-agent/current
+      mkdir -p $SNAPCRAFT_PART_INSTALL/etc/glpi-agent
+      cp -a etc/*.cfg $SNAPCRAFT_PART_INSTALL/etc/glpi-agent
+      # We will use SNAP_DATA folder to support configuration with snap command
+      echo "include /var/snap/glpi-agent/current" >>$SNAPCRAFT_PART_INSTALL/etc/glpi-agent/agent.cfg
+      # HTTP plugins configuration files should include .local file from /var/snap/glpi-agent/current
+      sed -ri -e 's/^include "/include "\/var\/snap\/glpi-agent\/current\//' $SNAPCRAFT_PART_INSTALL/etc/glpi-agent/*-plugin.cfg
+      # SNMP Advanced configuration file should include .local file from /var/snap/glpi-agent/current
+      sed -ri -e 's/^include "/include "\/var\/snap\/glpi-agent\/current\//' $SNAPCRAFT_PART_INSTALL/etc/glpi-agent/snmp-advanced-support.cfg
+      # Script should start with built perl
+      sed -ri -e 's/#!/#!\/snap\/glpi-agent\/current/' $SNAPCRAFT_PART_INSTALL/usr/bin/glpi-*
+    build-packages:
+     - git
+    stage-packages:
+     - pciutils
+     - usbutils
+     - hdparm
+     - try:
+       - dmidecode
+    stage:
+      - usr/bin/glpi-*
+      - usr/bin/lspci
+      - usr/bin/lsusb
+      - sbin/hdparm
+      - usr/sbin/dmidecode
+      - etc/glpi-agent
+      - usr/share/glpi-agent
+      - lib
+      - -lib/hdparm
+      - -lib/systemd
+      - -lib/udev
+      - usr/lib
+      - -usr/lib/perl5
+      - -usr/lib/pm-utils

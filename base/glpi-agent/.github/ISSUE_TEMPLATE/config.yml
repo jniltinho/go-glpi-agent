@@ -1,0 +1,26 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Professional Support
+    url: https://services.glpi-network.com/
+    about: Professional support is available through GLPI Network subscription
+  - name: Community support
+    url: https://github.com/glpi-project/glpi-agent/discussions/new?category=q-a
+    about: You can ask questions and find answers in Discussions pages
+  - name: GLPI-Agent Public FAQ
+    url: https://help.glpi-project.org/faq/glpi/glpi-agent
+    about: Official GLPI-Agent Public FAQ
+  - name: GLPI Agent documentation
+    url: https://glpi-agent.readthedocs.io/en/latest/
+    about: Don't forget to read GLPI Agent online documentation
+  - name: Ideas or feature requests
+    url: https://github.com/glpi-project/glpi-agent/discussions/new?category=ideas
+    about: Suggest an idea or feature request for the project
+  - name: GLPI Community forum
+    url: https://forum.glpi-project.org/
+    about: You can find answers and also ask questions on the forum
+  - name: GLPI Telegram community
+    url: https://t.me/glpien
+    about: GLPI english community Telegram channel
+  - name: GLPI Discord community
+    url: https://discord.gg/5a7G364tm3
+    about: GLPI-Community Discord channel

@@ -1,0 +1,217 @@
+name: GLPI Agent CI
+
+# Perl lib caches are updated at least once a week
+# but you can update last-cache-validation-date to invalidate perl lib caches
+# last-cache-validation-date: 2022-09-21
+
+on:
+  push:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  linux-ubuntu-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install packages
+      run: |
+        sudo apt -y install cpanminus libmodule-install-perl libxml-libxml-perl \
+          libxml-treepp-perl libxml-xpath-perl \
+          libdatetime-perl libparallel-forkmanager-perl libparse-edid-perl \
+          libcpanel-json-xs-perl libossp-uuid-perl libfile-copy-recursive-perl \
+          libtext-template-perl libuniversal-require-perl libnet-ip-perl \
+          libnet-snmp-perl libipc-run-perl libhttp-proxy-perl libio-capture-perl \
+          libhttp-server-simple-perl libhttp-server-simple-authen-perl \
+          libtest-compile-perl libtest-deep-perl libtest-exception-perl \
+          libtest-mockmodule-perl libtest-mockobject-perl libtest-nowarnings-perl \
+          libtest-exception-perl libtest-perl-critic-perl libtest-pod-perl \
+          libextutils-helpers-perl libextutils-installpaths-perl libmodule-build-tiny-perl \
+          libtest-cpan-meta-perl libcrypt-des-perl libdigest-hmac-perl
+    - name: Check environment
+      id: check-version
+      run: |
+        perl --version
+        cpanm --version
+    - name: Install deps
+      run: |
+        cpanm --sudo --installdeps --verbose --notest .
+        cpanm --sudo --verbose --notest Test::Vars Test::Pod::Spelling::CommonMistakes Test::Whitespaces
+    - name: Run make
+      run: |
+        perl Makefile.PL
+        make manifest
+        make
+    - name: Run tests
+      run: |
+        make test
+    - name: Run Author tests
+      run: |
+        make test TEST_AUTHOR=1 TEST_FILES="t/02critic.t t/03var.t t/04pod-syntax.t t/06pod-spelling.t t/06pod-listed-categories.t t/07whitespaces.t t/09cpanmeta.t"
+
+  windows-test:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Update environment
+      run: |
+        echo 'C:\Strawberry\perl\bin'      >> $GITHUB_PATH
+        echo 'C:\Strawberry\perl\site\bin' >> $GITHUB_PATH
+        echo 'C:\Strawberry\c\bin'         >> $GITHUB_PATH
+      shell: bash
+    - name: Check environment
+      id: check-version
+      run: |
+        echo "PATH=%PATH%"
+        perl --version
+        perl -V
+        perl -e "@t = localtime; print 'cache-version='.$^V.'-'.int($t[7]/7)" >>%GITHUB_OUTPUT%
+      shell: cmd
+    - name: Restore perl lib cache
+      uses: actions/cache@v5
+      id: cache
+      with:
+        path: |
+            C:\Strawberry\perl\site\lib
+            C:\Strawberry\perl\site\bin
+        key: windows-test-perl-${{ steps.check-version.outputs.cache-version }}-lib-cache-${{ hashFiles('Makefile.PL', '.github/workflows/glpi-agent-ci.yml') }}
+    - name: Install Module::Install
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: cpan -T Module::Install
+      shell: cmd
+    - name: Install deps
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cpanm --notest --verbose --installdeps .
+      shell: cmd
+    - name: Install other modules
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cpanm --notest --verbose Compress::Zlib Parse::EDID Win32::Unicode::File
+      shell: cmd
+    - name: Prepare Makefile
+      run: perl Makefile.PL
+      shell: cmd
+    - name: Run gmake
+      run: gmake
+      shell: cmd
+    - name: Run tests
+      run: gmake test
+      shell: cmd
+
+  windows-test-using-our-built-perl:
+
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Create folders for cached datas
+      run: |
+        mkdir C:\Strawberry-perl-for-GLPI-Agent_build\restore
+      shell: cmd
+    - name: Restore built perl from packaging cache
+      uses: actions/cache/restore@v5
+      id: built-perl-cache
+      with:
+        path: |
+            C:/Strawberry-perl-for-GLPI-Agent_build/restore
+        key: windows-packaging-perl-cache-x64-${{ hashFiles('contrib\windows\glpi-agent-extlibs-build.pl', 'contrib\windows\glpi-agent-packaging.pl', 'contrib\windows\packaging\*') }}
+    - name: Log warning on cache miss
+      if: steps.built-perl-cache.outputs.cache-hit != 'true'
+      run: |
+        echo '::warning title=[windows-test-using-our-built-perl] Built Perl not available in cache::You should be able to restart this job after packaging workflow run.'
+    - name: Restore required perl libraries cache
+      uses: actions/cache@v5
+      id: perl-site-cache
+      if: steps.built-perl-cache.outputs.cache-hit == 'true'
+      with:
+        path: |
+            C:\Strawberry\perl\site\lib
+            C:\Strawberry\perl\site\bin
+        key: built-perl-windows-test-perl-site-cache-x64-${{ hashFiles('contrib\windows\glpi-agent-extlibs-build.pl', 'contrib\windows\glpi-agent-packaging.pl', 'contrib\windows\packaging\*') }}
+    - name: Update environment
+      if: steps.built-perl-cache.outputs.cache-hit == 'true'
+      run: |
+        echo 'C:\Strawberry\perl\bin'      >> $GITHUB_PATH
+        echo 'C:\Strawberry\perl\site\bin' >> $GITHUB_PATH
+        echo 'C:\Strawberry\c\bin'         >> $GITHUB_PATH
+      shell: bash
+    - name: Install Module::Install
+      if: steps.built-perl-cache.outputs.cache-hit == 'true' && steps.perl-site-cache.outputs.cache-hit != 'true'
+      run: cpan -T Module::Install
+      shell: cmd
+    - name: Prepare Makefile
+      if: steps.built-perl-cache.outputs.cache-hit == 'true'
+      run: perl Makefile.PL
+      shell: cmd
+    - name: Install latest Perl::Dist::Strawberry from github
+      if: steps.built-perl-cache.outputs.cache-hit == 'true' && steps.perl-site-cache.outputs.cache-hit != 'true'
+      run: |
+        cpanm --notest --verbose https://github.com/StrawberryPerl/Perl-Dist-Strawberry.git
+      shell: cmd
+    - name: Run tests script
+      if: steps.built-perl-cache.outputs.cache-hit == 'true'
+      run: perl contrib/windows/glpi-agent-built-perl-tests.pl
+      shell: cmd
+    - name: Upload windows built artifacts
+      if: success() || failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: Built-Perl-Windows-Test-Debug
+        path: C:\Strawberry-perl-for-GLPI-Agent_build\output
+
+  macos-test:
+
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: Update environment
+      run: |
+        PERL_PREFIX=$(perl -MConfig -e 'print $Config{prefix}')
+        echo "$PERL_PREFIX/bin" >> $GITHUB_PATH
+    - name: Check environment
+      id: check-version
+      run: |
+        echo "PATH=$PATH"
+        perl --version
+        perl -V
+        # Compute perl-version for current week to regen perl lib cache at least each week
+        perl -e '@t = localtime; print "cache-version=".$^V."-".int(1+$t[7]/7)."\n"' >>$GITHUB_OUTPUT
+    - name: Install libxml2 via brew
+      run: brew install libxml2
+    - name: Update environment to find latest libxml2
+      run: |
+        echo "$(brew --prefix)/opt/libxml2/bin" >> $GITHUB_PATH
+    - name: Restore perl lib cache
+      id: cache
+      uses: actions/cache@v5
+      with:
+        path: |
+            /opt/homebrew/Cellar/perl/*/lib/perl5/site_perl
+            /opt/homebrew/Cellar/perl/*/bin
+        key: macos-test-perl-${{ steps.check-version.outputs.cache-version }}-lib-cache-${{ hashFiles('Makefile.PL', '.github/workflows/glpi-agent-ci.yml') }}
+    - name: Install Module::Install
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cpan -T Module::Install
+    - name: Install cpanminus
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cpan -T App::cpanminus
+    - name: Install deps
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: |
+        cpanm --sudo --installdeps --verbose --notest .
+        cpanm --sudo --verbose --notest Parse::EDID Crypt::DES Digest::HMAC
+    - name: Prepare Makefile
+      run: perl Makefile.PL
+    - name: Run make
+      run: make
+    - name: Run tests
+      run: make test

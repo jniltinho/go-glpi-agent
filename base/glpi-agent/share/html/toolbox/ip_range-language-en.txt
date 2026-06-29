@@ -1,0 +1,18 @@
+# This file is not read but should reference any string that could be translated
+
+IP range name:
+
+Add IP range:
+Add new IP range:
+Edit &laquo;&nbsp;%s&nbsp;&raquo; ip range:
+IP range start:
+IP range end:
+Associated credentials:
+Add credential:
+Remove credential:
+
+SNMP version:
+Community:
+Username:
+
+No IP range defined:

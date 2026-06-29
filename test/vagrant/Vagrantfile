@@ -1,0 +1,36 @@
+# Vagrantfile para validar o go-fusioninventory-agent em Rocky Linux 9 e
+# Debian 12. Funciona com VirtualBox ou libvirt/KVM.
+#
+# Pré-requisito no host (faça antes de `vagrant up`):
+#   cd ../..              # raiz do projeto Go
+#   make build-all        # gera dist/fusioninventory-agent
+#
+# Subir as duas VMs:   vagrant up
+# Só uma:              vagrant up rocky9   |   vagrant up debian12
+# Rodar validação:     vagrant provision   (ou já roda no up)
+# Destruir:            vagrant destroy -f
+
+Vagrant.configure("2") do |config|
+  # diretório dist/ do projeto Go é montado em /opt/gfi dentro da VM
+  config.vm.synced_folder "../../dist", "/opt/gfi", disabled: false
+
+  # recursos modestos; ajuste se quiser
+  %w[virtualbox libvirt].each do |p|
+    config.vm.provider p do |v|
+      v.memory = 1024
+      v.cpus = 2
+    end
+  end
+
+  config.vm.define "rocky9" do |node|
+    node.vm.box = "generic/rocky9"
+    node.vm.hostname = "rocky9-gfi-test"
+    node.vm.provision "shell", path: "provision.sh", args: ["rocky"]
+  end
+
+  config.vm.define "debian12" do |node|
+    node.vm.box = "generic/debian12"
+    node.vm.hostname = "debian12-gfi-test"
+    node.vm.provision "shell", path: "provision.sh", args: ["debian"]
+  end
+end

@@ -1,0 +1,38 @@
+
+# GLPI Agent Contribs
+
+## Included contribs
+
+ * [Unix](contrib/unix):
+   * legacy Redhat init scripts
+   * systemd sample service file
+   * install-deb.sh by @J-C-P, script to simplify installation on debian/ubuntu, see [README](contrib/unix/install-deb-README.md)
+ * [Windows](contrib/windows):
+   * [glpi-agent-deployment.vbs](contrib/windows/glpi-agent-deployment.vbs):
+     GLPI Agent deployment helper script
+   * ADML & ADMX templates to help setup GLPI Agent through GPO
+ * [netdisco_2_glpi.sh](contrib/netdisco/netdisco_2_glpi.sh) by Stoatwblr
+   This script makes fusioninventory-compatible xml from netdisco data.
+   Stoatwblr says even if it is ugly and slow, it works ;-)
+
+## Other contribs
+
+ * Windows:
+   * [GLPI-Agent Monitor](https://github.com/glpi-project/glpi-agentmonitor):
+     Little tool developed by @redddcyclone which provides a systray icon to monitor glpi-agent service status
+     and permits to request glpi-agent to run its tasks.
+
+## Submit your contribs
+
+ * Clone [GLPI-Agent github repository](https://github.com/glpi-project/glpi-agent)
+ * Create a dedicated branch to develop and test your contrib
+ * On your development branch, you can update this CONTRIB.md file to reference properly your contrib
+ * Make a PR so we only include your new contrib reference
+
+## AI-assisted contributions
+
+AI tools are welcome when used by someone who understands the change, so compose yourself the PR description to show your understand the problem. Anyway disclose used tool in the PR description.
+
+Commits must be authored under your own name and email — not by an AI agent or LLM provider account. PRs containing commits owned by an AI service will be returned for re-authoring.
+
+Contributions that reference functions or APIs that do not exist in the codebase will be closed as hallucinations. Repeat offenders will be banned.

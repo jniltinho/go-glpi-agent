@@ -1,0 +1,21 @@
+
+[1m TeamViewer                          [0m 15.65.4  (DEB) 
+
+[1m TeamViewer ID:                      [0m  552
+ 552XXXXXX 
+
+[1m teamviewerd status                  [0m ● teamviewerd.service - TeamViewer remote control daemon
+     Loaded: loaded (/etc/systemd/system/teamviewerd.service; enabled; preset: enabled)
+     Active: active (running) since Wed 2025-05-07 10:41:57 CEST; 1min 14s ago
+    Process: 617 ExecStart=/opt/teamviewer/tv_bin/teamviewerd -d (code=exited, status=0/SUCCESS)
+   Main PID: 655 (teamviewerd)
+      Tasks: 15 (limit: 2283)
+     Memory: 19.9M
+        CPU: 224ms
+     CGroup: /system.slice/teamviewerd.service
+             └─655 /opt/teamviewer/tv_bin/teamviewerd -d
+
+May 07 10:41:56 Debian-Base systemd[1]: Starting teamviewerd.service - TeamViewer remote control daemon...
+May 07 10:41:57 Debian-Base systemd[1]: teamviewerd.service: Can't open PID file /run/teamviewerd.pid (yet?) after start: No such file or directory
+May 07 10:41:57 Debian-Base systemd[1]: Started teamviewerd.service - TeamViewer remote control daemon. 
+

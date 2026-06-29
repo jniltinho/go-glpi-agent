@@ -1,0 +1,2 @@
+# GLPI::Agent is not installed system-wide, PERL5LIB should be set
+PERL5LIB=/usr/share/glpi-agent/lib

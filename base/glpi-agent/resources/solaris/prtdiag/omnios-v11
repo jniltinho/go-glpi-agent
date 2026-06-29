@@ -1,0 +1,29 @@
+System Configuration: System manufacturer System Product Name
+BIOS Configuration: American Megatrends Inc. 3703 07/16/2013
+
+==== Processor Sockets ====================================
+
+Version                          Location Tag
+-------------------------------- --------------------------
+Intel(R) Core(TM) i7-2600K CPU @ 3.40GHz LGA1155
+
+==== Memory Device Sockets ================================
+
+Type        Status Set Device Locator      Bank Locator
+----------- ------ --- ------------------- ----------------
+DDR3        in use 0   ChannelA-DIMM0      BANK 0
+DDR3        in use 0   ChannelA-DIMM1      BANK 1
+DDR3        in use 0   ChannelB-DIMM0      BANK 2
+DDR3        in use 0   ChannelB-DIMM1      BANK 3
+
+==== On-Board Devices =====================================
+Onboard Ethernet
+
+==== Upgradeable Slots ====================================
+
+ID  Status    Type             Description
+--- --------- ---------------- ----------------------------
+1   in use    PCI Express      PCIEX16_1
+2   available PCI Express      PCIEX1_1
+3   available PCI Express      PCIEX1_2
+4   available PCI              PCI1

@@ -1,0 +1,3 @@
+var/lib/fusioninventory-agent
+etc/fusioninventory
+etc/fusioninventory/conf.d

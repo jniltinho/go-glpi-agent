@@ -1,0 +1,130 @@
+--- munkipkg.orig	2023-11-02 15:01:22.396891562 +0100
++++ munkipkg	2023-11-03 16:19:06.698095251 +0100
+@@ -63,6 +63,8 @@
+ 
+ BUILD_INFO_FILE = "build-info"
+ REQUIREMENTS_PLIST = "product-requirements.plist"
++DISTRIBUTION_XML = "Distribution.xml"
++DISTRIBUTION_RESOURCES = "Resources"
+ BOM_TEXT_FILE = "Bom.txt"
+ 
+ STAPLE_TIMEOUT = 300
+@@ -648,12 +650,25 @@
+         build_info['project_dir'], REQUIREMENTS_PLIST)
+     if os.path.exists(requirements_plist):
+         cmd.extend(['--product', requirements_plist])
++    # if there is a PRE-INSTALL DISTRIBUTION XML, use it
++    distribution_xml = os.path.join(
++        build_info['project_dir'], DISTRIBUTION_XML)
++    if os.path.exists(distribution_xml):
++        cmd.extend(['--distribution', distribution_xml])
++    # if there is a PRE-INSTALL DISTRIBUTION RESOURCES, use it
++    resources = os.path.join(
++        build_info['project_dir'], DISTRIBUTION_RESOURCES)
++    if os.path.exists(resources):
++        cmd.extend(['--resources', resources])
+     # if build_info contains a product id use that for product id, otherwise
+     # use package identifier
+     product_id = build_info.get('product id', build_info['identifier'])
+     cmd.extend(['--identifier', product_id, '--version', str(build_info['version'])])
+     # add the input and output package paths
+-    cmd.extend(['--package', pkginputname, distoutputname])
++    if os.path.exists(distribution_xml):
++        cmd.extend(['--package-path', build_info['build_dir'], distoutputname])
++    else:
++        cmd.extend(['--package', pkginputname, distoutputname])
+ 
+     retcode = subprocess.call(cmd)
+     if retcode:
+@@ -685,11 +700,15 @@
+     '''Add --password or --apiKey + --apiIssuer options to the command'''
+     if (
+         'apple_id' in build_info['notarization_info'] and
++        'team_id' in build_info['notarization_info'] and
+         'password' in build_info['notarization_info']
+     ):
+         cmd.extend(
+-            '--apple-id', build_info['notarization_info']['apple_id'],
+-            '--password', build_info['notarization_info']['password']
++            [
++                '--apple-id', build_info['notarization_info']['apple_id'],
++                '--team-id', build_info['notarization_info']['team_id'],
++                '--password', build_info['notarization_info']['password']
++            ]
+         )
+     elif (
+           'keychain_profile' in build_info['notarization_info']
+@@ -702,7 +721,7 @@
+         )
+     else:
+         raise MunkiPkgError(
+-            "apple_id + password or keychain_profile"
++            "apple_id + team_id + password or keychain_profile"
+             "must be specified in notarization_info."
+         )
+ 
+@@ -722,28 +741,24 @@
+     add_authentication_options(cmd, build_info)
+ 
+     retcode, proc_stdout, proc_stderr = run_subprocess(cmd)
++    if retcode:
++        print("notarytool: " + proc_stderr, file=sys.stderr)
++        raise MunkiPkgError("Notarization upload failed.")
++
+     if proc_stdout.startswith('Generated JWT'):
+         proc_stdout = proc_stdout.split('\n',1)[1]
+     try:
+         output = readPlistFromString(proc_stdout.encode("UTF-8"))
+     except ExpatError:
+-        print(proc_stderr, file=sys.stderr)
+-        raise MunkiPkgError("Notarization upload failed. Unable to run xcrun altool")
++        print("notarytool: " + proc_stderr, file=sys.stderr)
++        raise MunkiPkgError("Notarization upload failed.")
+ 
+-    if retcode:
+-        for product_error in output.get('product-errors', []):
+-            print(
+-                "altool: FAILURE " + product_error.get('message', 'UNKNOWN ERROR'),
+-                file=sys.stderr
+-            )
+-        raise MunkiPkgError("Notarization failed")
+-    
+     try:
+         request_id = output['id']
+         display("id " + request_id, options.quiet, "notarytool")
+         display(output['message'], options.quiet, "notarytool")
+     except KeyError:
+-        raise MunkiPkgError("Unexpected output from altool")
++        raise MunkiPkgError("Unexpected output from notarytool")
+ 
+     return request_id
+ 
+@@ -760,8 +775,12 @@
+         'plist',
+     ]
+     add_authentication_options(cmd, build_info)
+-    
++
+     retcode, proc_stdout, proc_stderr = run_subprocess(cmd)
++    if retcode:
++        print("notarytool: " + proc_stderr, file=sys.stderr)
++        raise MunkiPkgError("Notarization check failed.")
++
+     if proc_stdout.startswith('Generated JWT'):
+         proc_stdout = proc_stdout.split('\n',1)[1]
+ 
+@@ -769,10 +788,10 @@
+         output = readPlistFromString(proc_stdout.encode("UTF-8"))
+     except ExpatError:
+         print(proc_stderr, file=sys.stderr)
+-        raise MunkiPkgError("Notarization check failed. Unable to run xcrun notarytool")
+-    if retcode or 'message' not in output:
+-        print("altool: " + output.get('success-message', 'Unexpected response'))
+-        print("altool: DEBUG output follows")
++        raise MunkiPkgError("Notarization check failed.")
++    if 'message' not in output:
++        print("notarytool: " + output.get('success-message', 'Unexpected response'))
++        print("notarytool: DEBUG output follows")
+         print(output)
+         state['status'] = 'Unknown'
+     else:

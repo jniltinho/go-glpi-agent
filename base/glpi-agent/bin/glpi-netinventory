@@ -1,0 +1,391 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use UNIVERSAL::require;
+use English qw(-no_match_vars);
+use Getopt::Long;
+
+use GLPI::Agent::Task::NetInventory;
+use GLPI::Agent::Task::NetInventory::Job;
+use GLPI::Agent::Tools;
+use GLPI::Agent::Config;
+use GLPI::Agent::Logger;
+use GLPI::Agent::Version;
+
+my %types = (
+    1 => 'COMPUTER',
+    2 => 'NETWORKING',
+    3 => 'PRINTER',
+    4 => 'STORAGE',
+    5 => 'POWER',
+    6 => 'PHONE',
+    7 => 'VIDEO',
+);
+
+my $options = {
+    debug => 0,
+    threads => 1
+};
+
+unless (GetOptions(
+    $options,
+    'type=s',
+    'host=s@',
+    'file=s@',
+    'community=s',
+    'credentials=s',
+    'port=s@',
+    'protocol=s@',
+    'threads=i',
+    'timeout=i',
+    'retries=i',
+    'backend-collect-timeout=s',
+    'glpi-version=s',
+    'v1',
+    'v2c',
+    'control',
+    'debug+',
+    'help',
+    'version',
+)) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0);
+}
+
+if ($options->{version}) {
+    my $PROVIDER = $GLPI::Agent::Version::PROVIDER;
+    map { print $_."\n" }
+        "NetInventory task $GLPI::Agent::Task::NetInventory::VERSION",
+        "based on $PROVIDER Agent v$GLPI::Agent::Version::VERSION",
+        @{$GLPI::Agent::Version::COMMENTS}
+        ;
+    exit 0;
+}
+
+if ($options->{help}) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0, -exitstatus => 0);
+}
+
+unless ($options->{host} or $options->{file}) {
+    Pod::Usage->use();
+    pod2usage(
+        -message => "no host nor file given, aborting\n", -verbose => 0
+    );
+}
+
+# Split host, port and protocol options on comma
+foreach my $opt (qw(host port protocol)) {
+    $options->{$opt} = [ map { split(/\s*,\s*/, $_) } @{$options->{$opt} || []} ];
+}
+
+# Add hosts if --host option is not listing as much host as --file option is providing snmpwalk files
+while ($options->{file} && @{$options->{file}} > @{$options->{host}}) {
+    push @{$options->{host}}, $options->{host}[0] || '127.0.0.1';
+}
+
+# Add as ports as set hosts, setting 0 will force to select the default SNMP port
+while ($options->{host} && @{$options->{host}} > @{$options->{port}}) {
+    push @{$options->{port}}, $options->{port}[0] || 0;
+}
+
+# Add as protocols as set hosts, setting '' will force to select the default SNMP protocol
+while ($options->{host} && @{$options->{host}} > @{$options->{protocol}}) {
+    push @{$options->{protocol}}, $options->{protocol}[0] || '';
+}
+
+# Reset retries as snmp-retries in options
+$options->{'snmp-retries'} = delete $options->{'retries'}
+    if exists($options->{'retries'});
+
+my $id = 0;
+my @devices;
+
+if ($options->{file}) {
+    push @devices, {
+        ID           => $id++,
+        FILE         => $_,
+        IP           => shift @{$options->{host}},
+        AUTHSNMP_ID  => 1
+    } foreach @{$options->{file}};
+} else {
+    push @devices, {
+        ID           => $id++,
+        IP           => $_,
+        PORT         => shift @{$options->{port}},
+        PROTOCOL     => shift @{$options->{protocol}},
+        AUTHSNMP_ID  => 1
+    } foreach @{$options->{host}};
+}
+
+my $credentials = { ID => 1 };
+
+if ($options->{type}) {
+    unless (any { $options->{type} eq $_ } values %types) {
+        Pod::Usage->use();
+        pod2usage(
+            -message => "invalid type '$options->{type}', aborting\n",
+            -verbose => 0
+        );
+    }
+    map { $_->{TYPE} = $options->{type} } @devices;
+}
+
+if ($options->{v1} || $options->{v2c}) {
+    $credentials->{VERSION} = $options->{v2c} ? '2c' : '1';
+    warn "SNMP v1 and SNMP v2c requested at the same time, will only use SNMP v2c\n"
+        if $options->{v1} && $options->{v2c};
+}
+
+if ($options->{community}) {
+    $credentials->{COMMUNITY} = $options->{community};
+} elsif (defined $options->{credentials}) {
+    my $specification = $options->{credentials};
+    while (!empty($specification)) {
+        my ($key, $remaining) = $specification =~ /^(\w+):(.*)$/;
+        # Handle wrong key definition skipping to next option
+        if (empty($key)) {
+            my ($wrong) = $specification =~ /^([^,]+)/;
+            print STDERR "Skipping malformed credentials definition: $wrong\n"
+                unless empty($wrong);
+            $specification =~ s/^[^,]+//;
+            $specification =~ s/^,+//;
+            next;
+        }
+        if (empty($remaining)) {
+            $credentials->{uc($key)} = "";
+            last;
+        }
+        # Use remaining string as value unless it contains another definition
+        # It also means value can contain comma or semi-colon while this can't
+        # be understood as a new credentials value definition
+        # Here .*? means it is greedy for $value other than .* for $next
+        my ($value, $next) = $remaining =~ /^(.*?)(,\w+:.*)$/;
+        if (empty($next)) {
+            $value = $remaining;
+            undef $specification;
+        } else {
+            $specification = $next;
+            $specification =~ s/^,//;
+        }
+        $credentials->{uc($key)} = $value;
+    }
+    die "Invalid credentials definition\n"
+        unless $credentials->{VERSION} && ($credentials->{COMMUNITY} || $credentials->{USERNAME});
+} else {
+    $credentials->{COMMUNITY} = 'public';
+}
+
+if ($OSNAME eq 'MSWin32' && $options->{threads} > 1) {
+    GLPI::Agent::Tools::Win32->require();
+    GLPI::Agent::Tools::Win32::start_Win32_OLE_Worker();
+}
+
+my $inventory = GLPI::Agent::Task::NetInventory->new(
+    %setup,
+    target => GLPI::Agent::Target::Local->new(
+        path       => defined($options->{save}) ? $options->{save} : '-',
+        basevardir => $setup{vardir}
+    ),
+    config => GLPI::Agent::Config->new(options => $options),
+    logger => GLPI::Agent::Logger->new(config => $options)
+);
+
+$inventory->{jobs} = [
+    GLPI::Agent::Task::NetInventory::Job->new(
+        params => {
+            PID           => 1,
+            THREADS_QUERY => $options->{threads},
+            TIMEOUT       => $options->{timeout},
+        },
+        devices     => \@devices,
+        credentials => [ $credentials ],
+        showcontrol => $options->{control}
+    )
+];
+
+$inventory->run();
+
+__END__
+
+=head1 NAME
+
+glpi-netinventory - Standalone network inventory
+
+=head1 SYNOPSIS
+
+glpi-netinventory [options] [--host <host>|--file <file>]
+
+  Options:
+    --host <HOST>          target host
+    --port <PORT[,PORT2]>  SNMP port (161)
+    --protocol <PROT[,P2]> SNMP protocol/domain (udp/ipv4)
+    --file <FILE>          snmpwalk output file
+    --community <STRING>   community string (public)
+    --credentials <STRING> SNMP credentials (version:1,community:public)
+    --timeout <TIME>       SNMP timeout, in seconds (15)
+    --retries              SNMP requets maximum retries (0)
+    --backend-collect-timeout <TIME>
+                           base expiration timeout, in seconds (180)
+    --glpi-version VERSION set targeted glpi version to enable supported features
+    --type <TYPE>          force device type
+    --threads <COUNT>      number of inventory threads (1)
+    --control              output control messages
+    --debug                debug output
+    -h --help              print this message and exit
+    --version              print the task version and exit
+
+=head1 DESCRIPTION
+
+F<glpi-netinventory> can be used to run a network inventory task without
+a GLPI server.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--host> I<HOST>
+
+Run an online inventory against given host. Multiple usage allowed, for
+multiple hosts.
+
+=item B<--port> I<PORT[,PORT2]>
+
+List of ports to try, defaults to: 161
+
+Set it to 161,16100 to first try on default port and then on 16100.
+
+=item B<--protocol> I<PROTOCOL[,PROTOCOL2]>
+
+List of protocols to try, defaults to: udp/ipv4
+
+Possible values are: udp/ipv4,udp/ipv6,tcp/ipv4,tcp/ipv6
+
+=item B<--file> I<FILE>
+
+Run an offline inventory against snmpwalk output, stored in given file.
+Multiple usage allowed, for multiple files.
+
+=item B<--communty> I<STRING>
+
+Use given string as SNMP community (assume SNMPv1)
+
+=item B<--v1>
+
+Use SNMP v1. This is the default.
+
+=item B<--v2c>
+
+Use SNMP v2c.
+
+=item B<--credentials> I<STRING>
+
+Use given string as SNMP credentials specification. This specification is a
+comma-separated list of key:value authentication parameters, such as:
+
+=over
+
+=item * version:2c,community:public
+
+=item * version:3,username:admin,authpassword:s3cr3t,privpassword:s3cr3t
+
+=item * etc.
+
+=back
+
+Supported keys are:
+
+=over
+
+=item * version with value set to 1, 2c or 3
+
+=back
+
+In the case version is set to 1 or 2c:
+
+=over
+
+=item * community
+
+=back
+
+In the case version is set to 3:
+
+=over
+
+=item * username (required)
+
+=item * authpassword
+
+=item * authprotocol with value set to md5 (the default if not set) or sha
+
+=item * privpassword (required if authpassword is set)
+
+=item * privprotocol with value set to des (the default if not set), aes or 3des
+
+=back
+
+=item B<--timeout> I<TIME>
+
+Set SNMP timeout, in seconds.
+
+=item B<--retries> I<NUMBER>
+
+Set maximum number of retries a SNMP request can be sent again after no response.
+
+=item B<--backend-collect-timeout> I<TIME>
+
+Set base expiration timeout, in seconds. It is used to set one device scan:
+180 by default, means 900 (5x180) by device.
+
+=item B<--type> I<TYPE>
+
+Force device type, instead of relying on automatic identification. Currently
+allowed types:
+
+=over
+
+=item * COMPUTER
+
+=item * NETWORKING
+
+=item * PRINTER
+
+=item * STORAGE
+
+=item * POWER
+
+=item * PHONE
+
+=back
+
+=item B<--threads> I<count>
+
+Use given number of inventory threads.
+
+=item B<--control>
+
+Output server-agent control messages, in addition to inventory result itself.
+
+=item B<--debug>
+
+Turn the debug mode on. Multiple usage allowed, for additional verbosity.
+
+=back
+
+=head1 EXAMPLES
+
+Run an inventory against a network device, using SNMP version 2c authentication:
+
+    $> glpi-netinventory --host 192.168.0.1 --credentials version:2c,community:public
+
+Run an inventory against a network device, using SNMP version 3 authentication
+and forcing its type:
+
+    $> glpi-netinventory --host my.device --type NETWORKING \
+    --credentials version:3,username:admin,authpassword:s3cr3t,privpassword:s3cr3t

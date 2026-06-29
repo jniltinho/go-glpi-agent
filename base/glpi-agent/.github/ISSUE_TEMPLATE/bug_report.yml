@@ -1,0 +1,131 @@
+name: Bug Report
+description: File a bug report
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report!
+        
+        Before continuing, make sure your problem is not already covered by this [FAQ](https://faq.teclib.com/02_FAQ/Agent/).
+  - type: dropdown
+    id: documentation
+    attributes:
+      label: Bug reporting acknowledgment
+      description: I read the [bug reporting](https://glpi-agent.readthedocs.io/en/latest/bug-reporting.html) page in [online documentation](https://glpi-agent.readthedocs.io/en/latest/) before submitting.
+      options:
+        - Yes, I read it
+        - Not applicable
+      multiple: true
+    validations:
+      required: true
+  - type: dropdown
+    id: professional-support
+    attributes:
+      label: Professional support
+      description: I know I can also request a [professional support](https://services.glpi-network.com/) to resolv the bug.
+      options:
+        - Yes, I know
+        - I still have but want a public following to keep the community aware
+        - I'm a GLPI partner
+        - I would like to be contacted
+        - Still not applicable
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: To reproduce
+      description: "Steps to reproduce the behavior:"
+      placeholder: |
+        1.
+        2.
+        3.
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      description: On what operating system GLPI agent is experimenting this issue ?
+      options:
+        - Windows
+        - Linux
+        - MacOSX
+        - Other (Details in additional context below)
+      multiple: true
+    validations:
+      required: true
+  - type: dropdown
+    id: version
+    attributes:
+      label: GLPI Agent version
+      description: What GLPI agent version is triggering this issue ?
+      options:
+        - v1.18
+        - v1.17
+        - v1.16
+        - Nightly build (git version in additional context below)
+        - Other (Details in additional context below)
+      multiple: true
+    validations:
+      required: true
+  - type: dropdown
+    id: glpi-version
+    attributes:
+      label: GLPI version
+      description: What is your GLPI version on server-side ?
+      options:
+        - 11.0.7
+        - 11.0.6
+        - 11.0.5
+        - 11.0.x (Details in additional context below)
+        - 10.0.24
+        - 10.0.23
+        - 10.0.22
+        - 10.0.x (Details in additional context below)
+        - Other (Details in additional context below)
+        - development release (Details in additional context below)
+        - Not applicable
+      multiple: true
+    validations:
+      required: true
+  - type: dropdown
+    id: plugin-version
+    attributes:
+      label: GLPIInventory plugin or other plugin version
+      description: What is your GLPIInventory or FusionInventory for GLPI plugin version on server-side ?
+      options:
+        - GLPI Inventory v1.6.7
+        - GLPI Inventory v1.6.6
+        - GLPI Inventory v1.5.7
+        - GLPI Inventory v1.5.6
+        - GLPI Inventory v1.x.x (Details in additional context below)
+        - FusionInventory for GLPI (Details in additional context below)
+        - Other (Details in additional context below)
+        - Not applicable
+      multiple: true
+    validations:
+      required: false
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      placeholder: Add any other context about the problem here.
+    validations:
+      required: false

@@ -1,0 +1,7 @@
+The physical processor has 4 cores and 8 virtual processors (0-7)
+  The core has 2 virtual processors (0 4)
+  The core has 2 virtual processors (1 5)
+  The core has 2 virtual processors (2 6)
+  The core has 2 virtual processors (3 7)
+    x86 (GenuineIntel 206A7 family 6 model 42 step 7 clock 3411 MHz)
+      Intel(r) Core(tm) i7-2600K CPU @ 3.40GHz

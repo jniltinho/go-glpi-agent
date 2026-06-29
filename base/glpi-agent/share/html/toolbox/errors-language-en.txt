@@ -1,0 +1,113 @@
+# This file is not read but should reference any string that could be translated
+
+ERROR:
+
+New IP range:
+Rename IP range:
+No ip range provided name:
+An entry still exists with that name:
+Start ip is mandatory:
+Wrong start ip format:
+End ip is mandatory:
+Wrong end ip format:
+Can't create entry without name:
+IP range credential adding:
+Invalid credential:
+Not existing credential:
+No credential selected:
+Deleting IP range:
+No credentials:
+IP range credential removing:
+IP range update:
+
+No IP range selected:
+No such IP range:
+A network scan is still running for an IP on that range:
+A network scan is still running for that IP range:
+No such credentials:
+Missing version on credentials:
+Missing username on credentials:
+Missing password on credentials:
+A local inventory is still running:
+Unsupported IP range:
+Can't delete used IP range:
+
+New credential:
+SNMP version is mandatory:
+Wrong SNMP version:
+Community is mandatory with version:
+Username is mandatory with SNMP v3:
+Credential update:
+Rename credential:
+Delete credential:
+No credential selected:
+Can't delete used credential:
+
+No archiving software available:
+Deleting results:
+No result selected:
+Can't remove file:
+
+Can't prepare archive:
+
+New MIBSupport alias:
+Update MIBSupport alias:
+Wrong alias format:
+No OID provided:
+Can't match to a full numeric OID:
+Can't update entry without alias name:
+Deleting MIBSupport entries:
+No entry selected:
+New MIBSupport rule:
+Wrong rule name format:
+Rule type is missing:
+No value provided:
+Update MIBSupport rule:
+Update MIBSupport ruleset:
+No rule selected:
+Not existing rule:
+New MIBSupport sysobjectid:
+Update MIBSupport sysobjectid:
+New MIBSupport match:
+Update MIBSupport match:
+Update ruleset:
+Remove ruleset:
+
+Unsupported remote inventory type:
+Username is mandatory for remote inventory types:
+Password is mandatory for this remote inventory type:
+
+Invalid SNMP port:
+Invalid SSH port:
+Invalid WINRM port:
+Invalid SNMP protocol:
+Port definition ignored:
+Unsupported mode for SSH removeinventory:
+Unsupported mode for WINRM removeinventory:
+
+Task has no type:
+Task has not a supported type:
+New task:
+Update task:
+Unsupported task type:
+Can't delete enabled task:
+Rename task:
+No such task:
+Unsupported target:
+Start task:
+
+New scheduling:
+Scheduling update:
+Rename scheduling:
+No such scheduling:
+Delete scheduling:
+No scheduling selected:
+Scheduling type is mandatory:
+Unsupported scheduling type:
+Can't delete used scheduling:
+Unsupported delay time:
+Unsupported delay time unit:
+Minimum delay time is one minute:
+Unsupported week day:
+Invalid timeslot start time:
+Invalid timeslot duration:

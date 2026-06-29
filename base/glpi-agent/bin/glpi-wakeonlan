@@ -1,0 +1,86 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use English qw(-no_match_vars);
+use Getopt::Long;
+use Pod::Usage;
+
+use GLPI::Agent::Task::WakeOnLan;
+use GLPI::Agent::Logger;
+use GLPI::Agent::Tools::Network;
+use GLPI::Agent::Version;
+
+my $options = {
+    debug => 0,
+};
+
+GetOptions(
+    $options,
+    'mac=s',
+    'methods=s',
+    'debug+',
+    'help',
+    'version',
+) or pod2usage(-verbose => 0);
+
+if ($options->{version}) {
+    my $PROVIDER = $GLPI::Agent::Version::PROVIDER;
+    map { print $_."\n" }
+        "WakeOnLan task $GLPI::Agent::Task::WakeOnLan::VERSION",
+        "based on $PROVIDER Agent v$GLPI::Agent::Version::VERSION",
+        @{$GLPI::Agent::Version::COMMENTS}
+        ;
+    exit 0;
+}
+pod2usage(-verbose => 0, -exitval => 0) if $options->{help};
+pod2usage(
+    -message => "no mac address given, aborting\n", -verbose => 0
+) unless $options->{mac};
+pod2usage(
+    -message => "invalid mac address given, aborting\n", -verbose => 0
+) if $options->{mac} !~ /^$mac_address_pattern$/;
+
+my $task = GLPI::Agent::Task::WakeOnLan->new(
+    target => {},
+    logger => GLPI::Agent::Logger->new(config => $options)
+);
+
+$task->{options} = {
+    NAME => 'WAKEONLAN',
+    PARAM => [
+        {
+            MAC           => $options->{mac},
+        }
+    ],
+};
+
+my %params = $options->{methods} ?
+    (methods => [ split(/,/, $options->{methods}) ]) : ();
+$task->run(%params);
+
+__END__
+
+=head1 NAME
+
+glpi-wakeonlan - Standalone wake-on-lan
+
+=head1 SYNOPSIS
+
+glpi-wakeonlan [options]
+
+  Options:
+    --mac=MAC         target mac address
+    --methods=METHODS comma-separated list of methods to use (ethernet, udp)
+    --debug           debug output (execution traces)
+    -h --help         print this message and exit
+    --version         print the task version and exit
+
+=head1 DESCRIPTION
+
+F<glpi-wakeonlan> can be used to run a wakeonlan task without a GLPI
+server.

@@ -1,0 +1,199 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Compress::Zlib;
+use English qw(-no_match_vars);
+use Fcntl qw(:flock);
+use Getopt::Long;
+use LWP::UserAgent;
+use Pod::Usage;
+use XML::TreePP;
+
+my $options = {
+    useragent => 'FusionInventory-Injector'
+};
+
+my @failedFiles;
+
+GetOptions(
+    $options,
+    'help|h',
+    'directory|d=s',
+    'recursive|R',
+    'file|f=s',
+    'no-ssl-check',
+    'url|u=s',
+    'useragent=s',
+    'remove|r',
+    'verbose|v',
+    'stdin',
+    'xml-ua|x',
+    'no-compression|C',
+);
+
+$OUTPUT_AUTOFLUSH = 1;
+pod2usage(-verbose => 0, -exitstatus => 0) if $options->{help};
+
+if ($options->{stdin}) {
+    loadstdin();
+} elsif ($options->{file}) {
+    loadfile($options->{file});
+} elsif ($options->{directory}) {
+    loaddirectory($options->{directory});
+} else {
+    pod2usage();
+}
+if (@failedFiles) {
+    warn "These elements were not sent:\n";
+    map { warn "$_\n" } @failedFiles;
+    exit(1);
+}
+
+exit(0);
+
+sub loadfile {
+    my ($file) = @_;
+
+    die "file $file does not exist\n" unless -f $file;
+    die "file $file is not readable\n" unless -r $file;
+
+    print "Loading $file..." if $options->{verbose};
+
+    open (my $handle, '<', $file) or die "can't open file $file: $ERRNO\n";
+    ## no critic (ProhibitBitwise)
+    flock ($handle, LOCK_EX | LOCK_NB) or die "can't lock file $file: $ERRNO\n";
+    local $RS;
+    my $content = <$handle>;
+    close $handle or die "Can't close file $file: $ERRNO\n";
+
+    my $success = sendContent($content);
+    if ($success && $options->{remove}) {
+        unlink $file or warn "Can't remove $file: $ERRNO\n";
+    }
+
+    push @failedFiles, $file unless $success;
+}
+
+sub loaddirectory {
+    my ($directory) = @_;
+
+    die "directory $directory does not exist\n" unless -d $directory;
+    die "directory $directory is not readable\n" unless -r $directory;
+
+    opendir (my $handle, $directory)
+        or die "can't open directory $directory: $ERRNO\n";
+    foreach my $file (sort readdir($handle)) {
+        next if $file =~ /^..?$/ ;
+        if (-d "$directory/$file") {
+            loaddirectory("$directory/$file") if ($options->{recursive});
+        } else {
+            loadfile("$directory/$file") if $file =~ /\.(?:ocs|xml)$/;
+        }
+    }
+    closedir $handle;
+}
+
+sub loadstdin {
+    my $content;
+    undef $RS;
+    $content = <STDIN>;
+    push @failedFiles, 'STDIN DATA' unless sendContent($content);
+}
+
+sub sendContent {
+    my $content = shift;
+    my $useragent = $options->{useragent};
+
+    if (uncompress($content)) {
+        $content = uncompress($content);
+    }
+
+    if ($options->{"xml-ua"}) {
+        my $tpp = XML::TreePP->new();
+        my $tree = $tpp->parse( $content );
+        $useragent = $tree->{REQUEST}->{CONTENT}->{VERSIONCLIENT}
+            if $tree && $tree->{REQUEST} && $tree->{REQUEST}->{CONTENT} &&
+                $tree->{REQUEST}->{CONTENT}->{VERSIONCLIENT};
+    }
+
+    my $ua = LWP::UserAgent->new(
+        agent => $useragent,
+        parse_head => 0, # No need to parse HTML
+        keep_alive => 1,
+        requests_redirectable => ['POST', 'GET', 'HEAD']
+    );
+    my $request = HTTP::Request->new( POST => $options->{url} );
+
+    my $info = "";
+    if ($options->{"no-ssl-check"}) {
+        my $url = $request->uri();
+        if ($url->scheme() eq 'https') {
+            if ($ua->can('ssl_opts')) {
+                $ua->ssl_opts(verify_hostname => 0, SSL_verify_mode => 0);
+                $info = " (ssl check disabled)";
+            } else {
+                $info = " (unsupported ssl options)";
+            }
+        }
+    }
+
+    $request->header(
+        'Pragma' => 'no-cache',
+        'Content-type', $options->{"no-compression"} ? 'Application/xml' : 'Application/x-compress'
+    );
+    $request->content($options->{"no-compression"} ? $content : compress($content));
+    my $res = $ua->request($request);
+
+    my $error;
+    eval {
+        $content = $res->content;
+        $content = uncompress($content) if $res->header('Content-type') =~ /x-compress-zlib/;
+        my $tpp = XML::TreePP->new();
+        my $tree = $tpp->parse($content);
+        $error = $tree->{REPLY}->{ERROR}
+            if ref($tree->{REPLY}) eq 'HASH' && exists($tree->{REPLY}->{ERROR});
+    };
+
+    if ($options->{verbose}) {
+        print $error           ? "ERROR: $error" :
+            $res->is_success() ? "OK"            :
+                                 "ERROR: ".$res->status_line(), "$info\n";
+    }
+
+    return $res->is_success() && ! $error ;
+}
+
+__END__
+
+=head1 NAME
+
+fusioninventory-injector - A tool to push inventory in an OCS Inventory or compatible server.
+
+=head1 SYNOPSIS
+
+fusioninventory-injector [options] [--file <file>|--directory <directory>|--stdin|--useragent <user-agent>]
+
+  Options:
+    -h --help      this menu
+    -d --directory load every .ocs files from a directory
+    -R --recursive recursively load .ocs files from <directory>
+    -f --file      load a specific file
+    -u --url       server URL
+    -r --remove    remove succesfuly injected files
+    -v --verbose   verbose mode
+    --stdin        read data from STDIN
+    --useragent    set used HTTP User-Agent for POST
+    -x --xml-ua    use Client version found in XML as User-Agent for POST
+    --no-ssl-check do not check server SSL certificate
+    -C --no-compression don't compress sent XML inventories
+
+  Examples:
+    fusioninventory-injector -v -f /tmp/toto-2010-09-10-11-42-22.ocs --url https://login:pw@example/plugins/fusioninventory/
+    fusioninventory-injector -v -R -d /srv/ftp/fusion --url https://login:pw@example/plugins/fusioninventory/
+
+=head1 DESCRIPTION
+
+This tool can be used to test your server, do benchmark or push inventory from
+off-line machine.

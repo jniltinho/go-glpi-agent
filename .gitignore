@@ -1,0 +1,29 @@
+# --- Go (projeto na raiz) ---
+/fusioninventory-agent
+/dist/
+*.out
+coverage.txt
+*.swp
+*.swo
+*~
+
+# --- Perl (projetos de referência em base/) ---
+base/**/inc/
+base/**/MANIFEST
+base/**/MANIFEST.bak
+base/**/META.yml
+base/**/Makefile
+base/**/run-postinst
+base/**/FusionInventory-Agent*
+base/**/blib
+base/**/pm_to_blib
+base/**/fusioninventory-esx
+base/**/lib/FusionInventory/VMware
+base/**/MYMETA.json
+base/**/MYMETA.yml
+base/**/var/
+base/**/resources/ssl/*.log
+base/**/SIGNATURE
+base/**/debian/*.install
+base/**/etc/*.local
+base/**/etc/*.pem

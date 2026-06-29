@@ -1,0 +1,913 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+use lib $setup{libdir};
+
+use UNIVERSAL::require;
+use English qw(-no_match_vars);
+use Getopt::Long;
+
+use GLPI::Agent;
+use GLPI::Agent::Event;
+
+Getopt::Long::Configure( "no_ignorecase" );
+
+my $options = {};
+
+unless (GetOptions(
+    $options,
+    'assetname-support=i',
+    'additional-content=s',
+    'backend-collect-timeout=s',
+    'ca-cert-dir=s',
+    'ca-cert-file=s',
+    'conf-file=s',
+    'conf-reload-interval=i',
+    'config=s',
+    'color',
+    'credentials=s@',
+    'daemon|d',
+    'no-fork',
+    'debug+',
+    'delaytime=s',
+    'esx-itemtype=s',
+    'force|f',
+    'full',
+    'full-inventory-postpone=i',
+    'glpi-version=s',
+    'help|h',
+    'html',
+    'itemtype=s',
+    'json',
+    'lazy',
+    'list-tasks',
+    'setup',
+    'local|l=s',
+    'logger=s',
+    'logfacility=s',
+    'logfile=s',
+    'logfile-maxsize=i',
+    'no-category=s',
+    'no-httpd',
+    'no-ssl-check',
+    'no-compression|C',
+    'no-task=s',
+    'no-p2p',
+    'oauth-client-id=s',
+    'oauth-client-secret=s',
+    'partial=s',
+    'password|p=s',
+    'pidfile:s',
+    'proxy|P=s',
+    'httpd-ip=s',
+    'httpd-port=s',
+    'httpd-trust=s',
+    'list-categories',
+    'listen',
+    'remote=s',
+    'remote-workers=i',
+    'required-category=s',
+    'set-forcerun',
+    'scan-homedirs',
+    'scan-profiles',
+    'server|s=s',
+    'ssl-fingerprint=s',
+    'ssl-keystore=s',
+    'tag|t=s',
+    'tasks=s',
+    'timeout=i',
+    'user|u=s',
+    'vardir=s',
+    'version',
+    'wait|w=s',
+    "ssl-cert-file=s",
+    "ssl-key-file=s",
+    # Platform specific option
+    'no-win32-ole-workaround'
+)) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0);
+}
+
+if ($options->{help}) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0, -exitstatus => 0);
+}
+
+if ($options->{version}) {
+    map { print $_."\n" } $GLPI::Agent::VERSION_STRING,
+        @{$GLPI::Agent::COMMENTS};
+    exit 0;
+}
+
+if ($options->{setup}) {
+    my $agent = GLPI::Agent->new(%setup);
+    $options->{debug} = 0;
+    $agent->init(options => $options);
+    $setup{vardir} = $agent->{vardir};
+    my ($length) = sort { $b <=> $a } map { length($_) } keys %setup;
+    foreach my $key (sort keys %setup) {
+        print sprintf("%-${length}s: %s\n", $key, $setup{$key});
+    }
+    exit 0;
+}
+
+if ($options->{'conf-file'}) {
+    if ($options->{config}) {
+        if ($options->{config} ne 'file') {
+            print STDERR
+                "don't use --conf-file with $options->{config} backend";
+            exit 1;
+        }
+    } else {
+        $options->{config} = 'file';
+    }
+}
+
+if ($options->{daemon}) {
+    GLPI::Agent::Daemon->require();
+    if ($EVAL_ERROR) {
+        print STDERR "Can't load GLPI::Agent::Daemon library:\n";
+        print STDERR $EVAL_ERROR;
+        exit 1;
+    }
+}
+
+if ($options->{full}) {
+    # Disable full inventory postpone if requested
+    $options->{'full-inventory-postpone'} = 0;
+}
+
+die "given '$options->{vardir}' vardir folder doesn't exist\n"
+    if $options->{vardir} && ! -d $options->{vardir};
+
+my $agent = $options->{daemon} ?
+    GLPI::Agent::Daemon->new(%setup)
+    :
+    GLPI::Agent->new(%setup);
+
+if ($options->{'list-tasks'}) {
+    $options->{logger} = "Stderr";
+    $agent->init(options => $options);
+
+    my $tasks = $agent->getAvailableTasks();
+    print "\nAvailable tasks : \n";
+    foreach my $task (keys(%{$tasks})) {
+        print "- $task (v$tasks->{$task})\n";
+    }
+
+    foreach my $target ($agent->getTargets()) {
+        print "\ntarget $target->{id}: ", $target->getType();
+        print " ", $target->getName() if $target->isType('local') || $target->isType('server');
+        print "\n";
+        my @planned = $target->plannedTasks();
+        if (@planned) {
+            print "Planned tasks: ",join(",",@planned),"\n";
+        } else {
+            print "No planned task for $target->{id}\n";
+        }
+    }
+    print "\n";
+
+    exit 0;
+}
+
+if ($options->{"list-categories"}) {
+    GLPI::Agent::Task::Inventory->require();
+    die $EVAL_ERROR if $EVAL_ERROR;
+    my $inventory = GLPI::Agent::Task::Inventory->new(
+        config       => $agent->{config},
+        datadir      => $agent->{datadir},
+        logger       => $agent->{logger},
+        target       => "none",
+        deviceid     => $agent->{deviceid},
+    );
+    print "Supported categories:\n";
+    foreach my $category (sort $inventory->getCategories()) {
+        print " - $category\n";
+    }
+    exit 0;
+}
+
+if ($options->{wait}) {
+    my $time = int rand($options->{wait});
+    sleep $time;
+}
+
+if ($options->{'set-forcerun'}) {
+    $agent->setForceRun();
+    exit 0;
+}
+
+# partial option implies json one
+if ($options->{partial}) {
+    die "--partial option not compatible with --daemon\n"
+        if $options->{daemon};
+    $agent->{event} = GLPI::Agent::Event->new(
+        name        => "partial inventory",
+        task        => "inventory",
+        partial     => 1,
+        category    => $options->{partial},
+    );
+}
+
+if ($options->{credentials}) {
+    die "--credentials option not compatible with --daemon\n"
+        if $options->{daemon};
+    $agent->{credentials} = $options->{credentials};
+}
+
+eval {
+    if ($OSNAME eq 'MSWin32' && ! $options->{'no-win32-ole-workaround'}) {
+        # From here we may need to avoid crashes due to not thread-safe Win32::OLE
+        GLPI::Agent::Tools::Win32->require();
+        GLPI::Agent::Tools::Win32::start_Win32_OLE_Worker();
+    }
+
+    $agent->init(options => $options);
+
+    if ($OSNAME eq 'MSWin32' && ! $options->{'no-win32-ole-workaround'}) {
+        # Then start logger worker after agent config has been loaded on MSWin32
+        GLPI::Agent::Tools::Win32::setupWorkerLogger(config => $agent->{config});
+    }
+
+    $agent->run();
+};
+
+if ($EVAL_ERROR) {
+    print STDERR "Execution failure:.\n";
+    print STDERR $EVAL_ERROR;
+    exit 1;
+}
+
+exit(0);
+
+__END__
+
+=head1 NAME
+
+glpi-agent - GLPI perl agent For Linux/UNIX, Windows and MacOSX
+
+=head1 SYNOPSIS
+
+glpi-agent [options] [--server server|--local path]
+
+  Target definition options:
+    -s --server=URI                send tasks result to a server
+    -l --local=PATH                write tasks results locally
+
+  Target scheduling options:
+    --delaytime=LIMIT              maximum delay before first target,
+                                     in seconds (3600). It also defines the
+                                     maximum delay on network error. Delay on
+                                     network error starts from 60, is doubled at
+                                     each new failed attempt until reaching max
+    --lazy                         do not contact the target before
+                                   next scheduled time
+    --set-forcerun                 set persistent state 'forcerun' option so a run
+                                   will be started immediately during a start or init
+
+  Task selection options:
+    --list-tasks                   list available tasks and exit
+    --no-task=TASK[,TASK]...       do not run given task
+    --tasks=TASK1[,TASK]...[,...]  run given tasks in given order
+
+  Inventory task specific options:
+    --no-category=CATEGORY         do not list given category items
+    --list-categories              list supported categories
+    --scan-homedirs                scan user home directories (false)
+    --scan-profiles                scan user profiles (false)
+    --html                         save the inventory as HTML (false)
+    --json                         save the inventory as JSON (false)
+    -f --force                     always send data to server (false)
+    --backend-collect-timeout=TIME timeout for inventory modules execution (180)
+    --additional-content=FILE      additional inventory content file
+    --assetname-support=1|2        [unix/linux only] set the asset name depending on the given value:
+                                    - 1 (the default), the short hostname is used as asset name
+                                    - 2, the as-is hostname (can be fqdn) is used as asset name
+                                   this feature is not supported on MacOS or Windows
+    --partial=CATEGORY             make a partial inventory of given category
+                                     items, this option implies --json
+    --credentials                  set credentials to support database inventory
+    --full-inventory-postpone=NUM  set number of possible full inventory postpone (14)
+    --full                         force inventory task to generate a full inventory
+    --required-category=CATEGORY   list of category required even when postponing full inventory
+    --itemtype=TYPE                set asset type for target supporting genericity like GLPI 11+
+                                   Remark: This option is also used by RemoteInventory task
+
+  ESX task specific options:
+    --esx-itemtype=TYPE            set ESX asset type for target supporting genericity like GLPI 11+
+
+  RemoteInventory task specific options:
+    --remote=REMOTE[,REMOTE]...    specify a list of remotes to process in place
+                                   of remotes managed via glpi-remote command
+    --remote-workers=COUNT         maximum number of workers for remoteinventory task
+
+  Package deployment task specific options:
+    --no-p2p                       do not use peer to peer to download
+                                     files (false)
+
+  Network options:
+    -P --proxy=PROXY               proxy address
+    -u --user=USER                 user name for server authentication
+    -p --password=PASSWORD         password for server authentication
+    --ca-cert-dir=DIRECTORY        CA certificates directory
+    --ca-cert-file=FILE            CA certificates file
+    --no-ssl-check                 do not check server SSL certificate
+                                     (false)
+    --ssl-fingerprint=FINGERPRINT  Trust server certificate if its SSL fingerprint
+                                     matches the given one
+    -C --no-compression            do not compress communication with server
+                                     (false)
+    --timeout=TIME                 connection timeout, in seconds (180)
+
+    --ssl-cert-file=FILE           ssl client certificate file
+    --ssl-key-file=FILE            ssl client private key file
+                                   (asumed included in cert file if missing)
+
+  Web interface options:
+    --no-httpd                     disable embedded web server (false)
+    --httpd-ip=IP                  network interface to listen to (all)
+    --httpd-port=PORT              network port to listen to (62354)
+    --httpd-trust=IP               trust requests without authentication
+                                     token (false)
+    --listen                       enable listener target if no local or
+                                   server target is defined
+
+  Server authentication:
+    --oauth-client-id=ID           oauth client id to request oauth access token
+    --oauth-client-secret=SECRET   oauth client secret to request oauth access token
+
+  Logging options:
+    --logger=BACKEND               logger backend (stderr)
+    --logfile=FILE                 log file
+    --logfile-maxsize=SIZE         maximum size of the log file in MB (0)
+    --logfacility=FACILITY         syslog facility (LOG_USER)
+    --color                        use color in the console (false)
+
+  Configuration options:
+    --config=BACKEND                   configuration backend
+    --conf-file=FILE                   configuration file
+    --conf-reload-interval=<SECONDS>   number of seconds between two
+                                         configuration reloadings
+
+  Execution mode options:
+    -w --wait=LIMIT                maximum delay before execution,
+                                     in seconds
+    -d --daemon                    run the agent as a daemon (false)
+    --no-fork                      don't fork in background (false)
+    -t --tag=TAG                   add given tag to inventory results
+    --debug                        debug mode (false)
+    --setup                        print the agent setup directories
+                                     and exit
+    --vardir=PATH                  use specified path as storage folder for agent
+                                     persistent datas
+
+    --glpi-version=<VERSION>       set targeted glpi version to enable supported features
+    --version                      print the version and exit
+    --no-win32-ole-workaround      [win32 only] disable win32 work-around
+                                     used to better handle Win32::OLE apis.
+                                     !!! Use it at your own risk as you may
+                                     experiment perl crash under win32 !!!
+
+=head1 DESCRIPTION
+
+The F<glpi-agent> agent is a generic multi-platform agent. It can
+perform a large array of management tasks, such as local inventory, software
+deployment or network discovery. It can be used either standalone, or in
+combination with a compatible server acting as a centralized control point.
+
+=head1 OPTIONS
+
+Most of the options are available in a I<short> form and a I<long> form.  For
+example, the two lines below are all equivalent:
+
+    % glpi-agent -s localhost
+    % glpi-agent --server localhost
+
+=head2 Target definition options
+
+=over
+
+=item B<-s>, B<--server>=I<URI>
+
+Send the results of tasks execution to given server.
+
+If I<URI> doesn't start with http:// or https://, the agent assume the
+parameter is a hostname and rewrite it as:
+
+    % --server=http://my-glpi-server/
+
+In general, GLPI server URL have this format:
+
+    http://my-glpi-server/
+
+and FusionInventory for GLPI this one:
+
+    http://my-glpi-server/plugins/fusioninventory
+
+Multiple values can be specified, using comma as a separator.
+
+=item B<-l>, B<--local>=I<PATH>
+
+Write the results of tasks execution locally.
+
+Exact behaviour according to given path:
+
+=over
+
+=item *
+
+if I<PATH> is a directory, a file will be created therein
+
+=item *
+
+if I<PATH> is a file, it will be used directly
+
+=item *
+
+if I<PATH> is '-', STDOUT will be used
+
+=back
+
+Multiple values can be specified, using comma as a separator.
+
+=back
+
+=head2 Target scheduling options
+
+=over
+
+=item B<--delaytime>=I<LIMIT>
+
+Set an initial delay before the first target, whose value is computed randomly
+between LIMIT / 2 and LIMIT seconds. This setting is ignored for server targets
+after the initial contact, in favor of server-specified parameter
+(PROLOG_FREQ).
+
+=item B<--lazy>
+
+Do not contact the target before next scheduled time.
+
+This option is only available when the agent is not run as a server.
+
+=back
+
+=head2 Task selection options
+
+=over
+
+=item B<--list-tasks>
+
+List all available tasks, tasks planned for execution and exit
+
+=item B<--no-task>=I<TASK>
+
+Do not run given task.
+
+Multiple values can be specified, using comma as a separator. See option
+I<--list-tasks> for the list of available tasks.
+
+=item B<--tasks>=I<TASK>
+
+Run given tasks in given order.
+
+Multiple tasks can be specified, using comma as a separator.
+A task can be specified several times. if '...' is given as last element,
+all other available tasks are executed.
+
+See option I<--list-tasks> for the list of available tasks.
+
+Examples :
+
+=over
+
+=item * B<--tasks=inventory,deploy,inventory>
+
+First task executed is 'inventory', second task is 'deploy', third and last
+task is 'inventory'.
+
+=item * B< --tasks=inventory,deploy,...>
+
+First executed task is 'inventory', second task is 'deploy' and then all
+other available tasks are executed.
+
+=back
+
+=back
+
+=head2 Inventory task specific options
+
+=over
+
+=item B<--no-category>=I<CATEGORY>
+
+Do not list given category items in inventory.
+
+Multiple values can be specified, using comma as a separator. The available
+categories are:
+
+=over 4
+
+=item * accesslog
+
+=item * antivirus
+
+=item * battery
+
+=item * bios
+
+=item * controller
+
+=item * cpu
+
+=item * database
+
+=item * drive
+
+=item * environment
+
+=item * firewall
+
+=item * hardware
+
+=item * input
+
+=item * licenseinfo
+
+=item * local_group
+
+=item * local_user
+
+=item * lvm
+
+=item * memory
+
+=item * modem
+
+=item * monitor
+
+=item * network
+
+=item * os
+
+=item * port
+
+=item * printer
+
+=item * process
+
+=item * provider
+
+=item * psu
+
+=item * registry
+
+=item * remote_mgmt
+
+=item * rudder
+
+=item * slot
+
+=item * software
+
+=item * sound
+
+=item * storage
+
+=item * usb
+
+=item * user
+
+=item * video
+
+=item * virtualmachine
+
+=back
+
+=item B<--list-categories>
+
+List all supported categories by scanning all available inventory modules
+
+=item B<--credentials>=I<CREDENTIALS>
+
+Setup credentials for database inventory
+
+CREDENTIALS should be a list of "key:value" separated by commas like in:
+For example: --credentials="type:login_password,login:root,password:********,use:postgresql,params_id:0"
+
+=item B<--full-inventory-postpone>=I<NUM>
+
+Set the number of time the agent can decide to generate a partial inventory with only
+changed category before generating a full inventory.
+
+=item B<--full>
+
+Force inventory task to generate a full inventory even if B<full-inventory-postpone> option
+is set. Indeed this is equivalent to set B<--full-inventory-postpone=0>.
+
+=item B<--required-category>=I<CATEGORY>
+
+Force inventory task to always include given category if B<full-inventory-postpone> option
+is set and the current inventory task run involves to generate a partial inventory.
+
+Multiple values can be specified, using comma as a separator. List of categories is the same than the one for I<--no-category> option,
+but I<bios> and I<harware> categories are always implied and can be omitted as they are still required for normal inventory import.
+
+=item B<--itemtype>=I<TYPE>
+
+Allow to set JSON inventory itemtype to I<TYPE>. This feature requires a target supporting genericity, like GLPI 11+.
+
+When expected asset itemtype in GLPI 11+ is B<Server>, I<itemtype> option value must be set to B<Glpi\CustomAsset\ServerAsset>.
+
+B<Note:> The suffix B<Asset> must always be added at the end of the class name to avoid conflicts with PHP reserved keywords.
+
+=item B<--scan-homedirs>
+
+Allow the agent to scan home directories for virtual machines.
+
+=item B<--scan-profiles>
+
+Allow the agent to scan user profiles for software.
+
+=item B<--html|--json>
+
+Save the inventory as HTML or JSON.
+
+This is only used for local inventories.
+
+=item B<-f>, B<--force>
+
+Send an inventory to the server, even if this last one doesn't ask for it.
+
+=item B<--backend-collect-timeout>=I<TIME>
+
+Timeout for inventory modules execution.
+
+=item B<--additional-content>=I<FILE>
+
+Additional inventory content file.
+
+This file should be an XML file, using same syntax as the one produced by the
+agent.
+
+=back
+
+=head2 ESX task specific options
+
+=over
+
+=item B<--esx-itemtype>=I<TYPE>
+
+Allow to set ESX JSON inventory itemtype to I<TYPE>. This feature requires a target supporting genericity, like GLPI 11+.
+
+When expected ESX asset itemtype in GLPI 11+ is B<Esx>, I<esx-itemtype> option value must be set to B<Glpi\CustomAsset\EsxAsset>.
+
+=back
+
+=head2 Package deployment task specific options
+
+=over
+
+=item B<--no-p2p>
+
+Do not use peer to peer to download files.
+
+=back
+
+=head2 Server target specific options
+
+=over
+
+=item B<-P>, B<--proxy>=I<PROXY>
+
+Use I<PROXY> as HTTP proxy.
+
+By default, the agent uses HTTP_PROXY environment variable unless option value is defined to B<none>.
+
+=item B<-u> I<USER>, B<--user>=I<USER>
+
+Use I<USER> for server authentication.
+
+=item B<-p>, B<--password>=I<PASSWORD>
+
+Use I<PASSWORD> for server authentication.
+
+=item B<--ca-cert-dir>=I<DIRECTORY>
+
+CA certificates directory.
+
+=item B<--ca-cert-file>=I<FILE>
+
+CA certificates file.
+
+=item B<--no-ssl-check>
+
+Do not check server SSL certificate.
+
+=item B<--timeout>=I<TIME>
+
+Timeout for server connections.
+
+=item B<--ssl-cert-file>=I<FILE>
+
+SSL client certificate filename.
+
+=item B<--ssl-key-file>=I<FILE>
+
+SSL client private key filename.
+If missing, assumed is included in cert file
+
+=back
+
+=head2 Web interface options
+
+=over
+
+=item B<--no-httpd>
+
+Disable the embedded web server.
+
+=item B<--httpd-ip>=I<IP>
+
+The network interface to use for the embedded web server (all).
+
+=item B<--httpd-port>=I<PORT>
+
+The network port to use for the embedded web server (62354).
+
+=item B<--httpd-trust>=I<IP>
+
+Trust requests from given addresses without authentication token (false).
+
+For example: "192.168.0.0/24", "192.168.168.0.5" or an IP range like
+"20.34.101.207 - 201.3.9.99". Hostnames are also accepted. See L<Net::IP>
+documentation to get more example.
+
+Multiple values can be specified, using comma as a separator.
+
+=item B<--listen>
+
+This option should be used if no local or server target is defined and
+the agent still needs to answer http requests. B<--no-httpd> should not be set
+and B<--httpd-trust> should be set to enable trusted remote clients.
+
+=back
+
+=head2 Server authentication
+
+=over
+
+=item B<--oauth-client-id>=I<ID>
+
+The OAuth client id required to authenticate against GLPI >= 11.
+
+=item B<--oauth-client-secret>=I<SECRET>
+
+The OAuth client secret required to authenticate against GLPI >= 11.
+
+=back
+
+=head2 Logging options
+
+=over
+
+=item B<--logger>=I<BACKEND>
+
+Logger backend to use.
+
+Multiple values can be specified, using comma as a separator. The available
+backends are:
+
+=over 4
+
+=item
+
+stderr: log messages directly in the console.
+
+=item
+
+file: log messages in a file.
+
+=item
+
+syslog: log messages through the local syslog server.
+
+=back
+
+Multiple values can be specified, using comma as a separator.
+
+=item B<--logfile>=I<FILE>
+
+Log message in I<FILE> (implies File logger backend).
+
+=item B<--logfile-maxsize>=I<SIZE>
+
+Max logfile size in MB, default is unlimited. When the max size is reached, the
+file is truncated. This is only useful if there is no log rotation mechanism on
+the system.
+
+=item B<--logfacility>=I<FACILITY>
+
+Syslog facility to use (default LOG_USER).
+
+=item B<--color>
+
+Display color on the terminal, when the Stderr backend is used.
+
+This options is ignored on Windows.
+
+=back
+
+=head2 Configuration options
+
+=over
+
+
+=item B<--config>=I<BACKEND>
+
+Configuration backend to use.
+
+The available backends are:
+
+=over 4
+
+=item
+
+file: read configuration from a file (default anywhere else as Windows).
+
+=item
+
+registry: read configuration from the registry (default on Windows).
+
+=item
+
+none: don't read any configuration.
+
+=back
+
+=item B<--conf-file>=I<FILE>
+
+Use I<FILE> as configuration file (implies file configuration backend).
+
+=item B<--conf-reload-interval>=I<SECONDS>
+
+SECONDS is the number of seconds between two configuration reloadings.
+Default value is 0, which means that configuration is never reloaded.
+Minimum value is 60. If given value is less than this minimum, it is set to
+this minimum. If given value is less than 0, it is set to 0.
+
+=back
+
+=head2 Execution mode options
+
+=over
+
+=item B<-w> I<LIMIT>, B<--wait>=I<LIMIT>
+
+Wait a random delay whose value is computed randomly between 0 and LIMIT
+seconds, before execution. This is useful when execution is triggered from some
+kind of system scheduling on multiple clients, to spread the server load.
+
+=item B<-d>, B<--daemon>
+
+Run the agent as a daemon.
+
+=item B<--no-fork>
+
+Don't fork in background.
+
+This is only useful when running as a daemon.
+
+=item B<--pidfile>[=I<FILE>]
+
+Store pid in I<FILE> or in default PID file.
+
+This is only useful when running as a daemon and still not managed with a system
+service manager like systemd.
+
+=item B<--tag>=I<TAG>
+
+Add the given tag to every inventory results.
+
+=item B<--debug>
+
+Turn the debug mode on. You can use the parameter up to 3 times in a row
+to increase the verbosity (e.g: B<--debug --debug>).
+
+Level 3 turns on the debug mode of some external libraries like L<Net::SSLeay>.
+These messages will only be be printed on STDERR.
+
+=item B<--setup>
+
+Print the agent setup directories and exit.
+
+=item B<--version>
+
+Print the version and exit.
+
+=back

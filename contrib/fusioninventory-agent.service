@@ -1,0 +1,14 @@
+[Unit]
+Description=Go FusionInventory Agent
+Documentation=https://github.com/fusioninventory/fusioninventory-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/fusioninventory-agent --conf-file /etc/fusioninventory/agent.cfg
+# roda como root para acessar dmidecode, /sys/class/dmi e seriais de disco
+User=root
+
+[Install]
+WantedBy=multi-user.target

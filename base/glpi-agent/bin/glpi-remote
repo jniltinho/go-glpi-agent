@@ -1,0 +1,894 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use UNIVERSAL::require;
+use English qw(-no_match_vars);
+
+use LWP::UserAgent;
+use Pod::Usage;
+use Getopt::Long;
+use Digest::SHA;
+use Time::HiRes qw(gettimeofday);
+use File::Which;
+use File::Find;
+
+use GLPI::Agent::Config;
+use GLPI::Agent::Logger;
+use GLPI::Agent::Storage;
+use GLPI::Agent::XML;
+use GLPI::Agent::Task::RemoteInventory::Remote;
+
+our $VERSION = "1.0";
+
+Getopt::Long::Configure( "no_ignorecase" );
+Getopt::Long::Configure( "pass_through" );
+
+my $logger;
+
+my $options = {
+    useragent   => "GLPI-Remote/$VERSION",
+    timeout     => 10,
+};
+
+GetOptions(
+    $options,
+    'help|h',
+    'useragent|U=s',
+    'verbose|v',
+    'debug+',
+    'inventory|i',
+    'target=s',
+    'port|p=s',
+    'timeout|t=i',
+    'threads|T=i',
+    'user|u=s',
+    'password|P=s',
+    'show-passwords|X',
+    'credentials|c=s',
+    'baseurl|b=s',
+    'token|K=s',
+    'directory|d=s',
+    'id|I=s',
+    'no-compression',
+    'add|A',
+    'ssh',
+    'ssl',
+    'ca-cert-file=s',
+    'ca-cert-dir=s',
+    'ssl-cert-file=s',
+    'ssl-key-file=s',
+    'ssl-fingerprint=s',
+    'stricthostkeychecking=s',
+    'no-ssl-check|S',
+    'no-check|C',
+    'no-header|H',
+    'vardir=s',
+) or pod2usage(-verbose => 0);
+
+pod2usage(-verbose => 0, -exitstatus => 0) if $options->{help};
+
+if ($options->{vardir}) {
+    die "Wrong vardir option: $!\n" unless -d $options->{vardir};
+    $setup{vardir} = $options->{vardir};
+} else {
+    $options->{vardir} = $setup{vardir};
+}
+
+my ($cmd, @params) = @ARGV;
+if ($cmd) {
+    if ($options->{debug}) {
+        warn "Current vardir: $setup{vardir}\n";
+    }
+
+    die "Var directory is missing\n" unless -d $setup{vardir};
+
+    my %cmds = (
+        agent   => \&agent,
+        list    => \&list,
+        help    => \&help,
+        add     => \&add,
+        del     => \&delete,
+        delete  => \&delete,
+        scan    => \&todo,
+    );
+
+    die "Unsupported '$cmd' command\n" unless exists($cmds{$cmd});
+
+    $logger = GLPI::Agent::Logger->new(config => $options);
+
+    &{$cmds{$cmd}}(@params);
+
+    exit(0);
+}
+
+pod2usage(-verbose => 0, -exitstatus => 0);
+
+exit(0);
+
+my %deviceid;
+my %targets;
+my %storages;
+
+sub help {
+    my @params = @_;
+    pod2usage(-verbose => 0, -exitstatus => 0);
+}
+
+sub todo {
+    die "TODO: command '$cmd' still not supported\n";
+}
+
+sub list {
+    my ($sub) = @_;
+
+    my ($lenid, $lenurl) = (0, 0);
+    if ($sub) {
+        die "Unsupported '$sub' list subcommand\n" unless $sub eq "targets";
+        my @targets = get_targets();
+        my ($lentype, $lentime) = (0, 0);
+        map { my $l = length($_); $lentype = $l if $l > $lentype } "type", map { $_->{type} } @targets;
+        map { my $l = length($_); $lenid   = $l if $l > $lenid   } "id", map { $_->{id} } @targets;
+        map { my $l = length($_); $lenurl  = $l if $l > $lenurl  } "url/path", map { $_->{url} // $_->{path} // '' } @targets;
+        map { my $l = length($_); $lentime = $l if $l > $lentime } "maxdelay", map { $_->{maxDelay} // 0 } @targets;
+
+        my $string = "%-".$lenid."s  %-".$lentype."s  %-".$lenurl."s  %-".$lentime."s  %s\n";
+        print sprintf( $string, "id", "type", "url/path", "maxdelay", "Next run date")
+            unless $options->{'no-header'};
+
+        foreach my $target (@targets) {
+            print sprintf( $string,
+                $target->{id}, $target->{type}, $target->{url} || $target->{path} // '',
+                $target->{maxDelay}, scalar(localtime($target->{nextRunDate}//0))
+            );
+        }
+    } else {
+        my @remotes = get_remotes();
+        my $lentg = 0;
+        map { my $l = length($_); $lenid  = $l if $l > $lenid  } "deviceid", map { $_->deviceid } map { $_->{remote} } @remotes;
+        map { my $l = length($_); $lenurl = $l if $l > $lenurl } "url", map { $_->url } map { $_->{remote} } @remotes;
+        map { my $l = length($_); $lentg  = $l if $l > $lentg  } "target", map { $_->{id} } map { $_->{target} } @remotes;
+        my $lenindex = length(scalar(@remotes));
+        $lenindex = length("index") if length("index") > $lenindex;
+
+        my $string = "%".$lenindex."s  %-".$lenid."s  %-".$lenurl."s  %-".$lentg."s  %s\n";
+        print sprintf( $string, "index", "deviceid", "url", "target", "Next run date")
+            unless $options->{'no-header'};
+
+        my $index = 1;
+        foreach my $current (@remotes) {
+            my $remote = $current->{remote};
+            print sprintf( $string,
+                $index++, $remote->deviceid, $remote->safe_url,
+                $current->{target}->{id},
+                $remote->expiration ? scalar(localtime($remote->expiration)) : "on next agent run"
+            );
+        }
+    }
+}
+
+sub add {
+    my @urls = @_;
+
+    # Look at targets and collect target storages
+    my @targets = get_targets();
+
+    # Try to preselect server if no target option is specified
+    unless ($options->{target} || $options->{server} || $options->{local}) {
+        my @servers = grep { $_->{type} eq 'server' } @targets;
+        warn "Can't select a default server target\n" unless @servers == 1;
+        $options->{target} = $servers[0]->{id} if @servers == 1;
+    }
+
+    my @storages;
+    if ($options->{target}) {
+        my $target = $options->{target};
+        die "No such '$target' target available to handle remotes\n" unless $targets{$target};
+        my $storage = $targets{$target}->{storage};
+        if ($storage) {
+            push @storages, $storage;
+            $storages{$storage} = $target;
+        }
+    }
+    if ($options->{server} || $options->{local}) {
+        my $config = GLPI::Agent::Config->new(
+            options => $options,
+        );
+        my $targets = $config->getTargets();
+        foreach my $target (@{$targets}) {
+            next unless $target->isType('local') || $target->isType('server');
+            my $storage = $target->getStorage();
+            next unless $storage;
+            push @storages, $storage;
+            $storages{$storage} = $target->{id};
+        }
+    }
+    unless (@storages) {
+        my $targets = join(", ", sort keys(%targets));
+        die "No target specified to store remotes, choose one in $targets\n" ;
+    }
+
+    my $umask = umask 0007;
+    foreach my $url (@urls) {
+        my $remote = GLPI::Agent::Task::RemoteInventory::Remote->new(
+            url     => $url,
+            config  => $options,
+            logger  => $logger,
+        );
+        $remote->supported()
+            or next;
+
+        $remote->prepare();
+
+        # Eventually add StrictHostKeyChecking ssh options
+        $remote->options(["StrictHostKeyChecking=".$options->{'stricthostkeychecking'}])
+            if $options->{'stricthostkeychecking'} && $remote->protocol() eq 'ssh';
+
+        my $checkerror;
+        $checkerror = $remote->checking_error() unless $options->{'no-check'};
+        if ($checkerror) {
+            my $safe_url = $remote->safe_url();
+            warn "'$safe_url' check failure: $checkerror\n";
+            next;
+        }
+
+        my $id = $remote->deviceid();
+        foreach my $storage (@storages) {
+            my $remotes = $storage->restore( name => 'remotes' ) // {};
+            my $match;
+            if ($remotes->{$id}) {
+                my $targetid = $storages{$storage} // '';
+                warn "Updating $id remote".($targetid ? " for $targetid" : "")."\n";
+                $match = $id;
+            } elsif ($remote->protocol() eq 'winrm') {
+                foreach my $otherid (sort keys(%{$remotes})) {
+                    my $other = GLPI::Agent::Task::RemoteInventory::Remote->new(
+                        url     => $remotes->{$otherid}->{url},
+                    );
+                    next unless $other->protocol() eq 'winrm';
+                    next unless $other->winrm_url() eq $remote->winrm_url();
+                    $match = $otherid;
+                    warn "Updating $match remote for $storages{$storage}\n";
+                    last;
+                }
+            }
+            $remote->deviceid(deviceid => $match) if $match;
+            $remotes->{$match||$id} = $remote->dump();
+            $storage->save( name => 'remotes', data => $remotes );
+            if ($match) {
+                print "Updated $match remote agent for $storages{$storage}\n";
+            } else {
+                print "Added $id remote agent to $storages{$storage}\n";
+            }
+        }
+    }
+    umask $umask;
+}
+
+sub delete {
+    die "No index or deviceid provided to delete command\n" unless @_;
+    my @remotes = get_remotes();
+    foreach my $rm (@_) {
+        my $current;
+        if ($rm =~ /^\d+$/ && $rm <= @remotes) {
+            $current = [ $remotes[$rm-1] ];
+        } elsif ($deviceid{$rm}) {
+            $current = $deviceid{$rm};
+        } else {
+            warn "No such remote: $rm\n";
+            next;
+        }
+        foreach my $list (@{$current}) {
+            my $storage = $list->{storage};
+            my $remotes = $storage->restore( name => 'remotes' ) // {};
+            my $id = $list->{remote}->deviceid();
+            ($id) = grep { $remotes->{$_}->{deviceid} eq $id } keys(%{$remotes})
+                unless $remotes->{$id};
+            my $deleted = delete $remotes->{$id}
+                or warn "No such deviceid found: $id\n";
+            if (keys(%{$remotes})) {
+                $storage->save( name => 'remotes', data => $remotes );
+            } else {
+                $storage->remove( name => 'remotes' );
+            }
+            print "$id remote agent deleted from $list->{target}->{id}\n" if $deleted;
+        }
+    }
+}
+
+sub get_remotes {
+    my @remotes;
+
+    my @targets = get_targets();
+
+    foreach my $target (@targets) {
+        my $id = $target->{id};
+        my $current = $targets{$id}
+            or next;
+
+        my $storage = $current->{storage};
+
+        # Load remotes from storage
+        my $remotes = $storage->restore( name => 'remotes' ) // {};
+        foreach my $id (sort keys(%{$remotes})) {
+            my $dump = $remotes->{$id};
+            next unless ref($dump) eq 'HASH';
+            my $remote = GLPI::Agent::Task::RemoteInventory::Remote->new(
+                dump    => $dump,
+                config  => $options,
+                logger  => $logger,
+            );
+            $remote->supported()
+                or next;
+            my $current = {
+                remote  => $remote,
+                storage => $storage,
+                target  => $target,
+            };
+            push @remotes, $current;
+
+            # Also index by deviceid when deleting
+            if ($cmd =~ /^del(?:ete)?$/) {
+                push @{$deviceid{$id}}, $current;
+            }
+        }
+    }
+
+    return @remotes;
+}
+
+sub get_targets {
+    my @targets;
+
+    File::Find::find(
+        {
+            wanted => sub {
+                return unless $File::Find::name =~ m/\/target\.dump$/;
+                return if -d $File::Find::name;
+
+                my $storage = GLPI::Agent::Storage->new(
+                    directory   => $File::Find::dir,
+                    logger      => $logger,
+                    read_only   => 1,
+                );
+
+                # Check target from storage
+                my $target = $storage->restore( name => 'target' ) // {};
+
+                return unless $target->{type} && $target->{id};
+                push @targets, $target;
+
+                # Also keep storage refs when adding a remote to a local or server target
+                if ($target->{type} =~ /^local|server$/ ) {
+                    my $current = {
+                        target  => $target,
+                        storage => $storage,
+                    };
+                    my $id = $target->{id};
+                    # Update id number in the case the id is still used
+                    if ($targets{$id}) {
+                        my ($base, $num) = $id =~ /^(\w+)(\d+)$/;
+                        while ($targets{$id}) {
+                            $id = $base . (++$num);
+                        }
+                        $target->{id} = $id;
+                    }
+                    $targets{$id} = $current;
+                }
+            },
+            no_chdir => 1
+        },
+        $setup{vardir}
+    );
+
+    return @targets;
+}
+
+sub agent {
+    my @hosts = @_;
+
+    pod2usage(
+        -message => "\nGive a least one host to get inventory from as parameter\n",
+        -verbose => 0,
+        -exitstatus => 1
+    ) unless @hosts;
+
+    pod2usage(
+        -message => "\nNo token as shared secret defined\n",
+        -verbose => 0,
+        -exitstatus => 1
+    ) unless $options->{token};
+
+    pod2usage(
+        -message => "\nWhen asking inventory to more than one host, you must use the --directory parameter\n",
+        -verbose => 0,
+        -exitstatus => 1
+    ) if !$options->{directory} && @hosts>1;
+
+    pod2usage(
+        -message => "\nDirectory not found: $options->{directory}\n",
+        -verbose => 0,
+        -exitstatus => 1
+    ) if ($options->{directory} && ! -d $options->{directory});
+
+    my $ua = LWP::UserAgent->new(
+        agent                 => $options->{useragent},
+        timeout               => $options->{timeout} || 180,
+        parse_head            => 0, # No need to parse HTML
+        keep_alive            => 1,
+    );
+
+    if ($options->{ssl}) {
+        $ua->ssl_opts(SSL_ca_file => $options->{'ca-cert-file'})
+            if $options->{'ca-cert-file'};
+        $ua->ssl_opts(verify_hostname => 0, SSL_verify_mode => 0)
+            if $options->{ssl} && $options->{'no-ssl-check'};
+    }
+
+    $options->{verbose} = 1 if $options->{debug};
+
+    my $id = $options->{id} || _id();
+
+    warn "Using $id as request id\n"
+        if $options->{verbose};
+
+    foreach my $host (@hosts) {
+        my $url = ( $options->{ssl} ? "https://" : "http://" ). $host;
+        $url .= $options->{port} ? ":".$options->{port} : ":62354";
+        $url .= $options->{baseurl} ? $options->{baseurl} : "/inventory";
+
+        warn "$host: Trying $url\n"
+            if $options->{verbose};
+
+        my $req = HTTP::Request->new(GET => $url.'/session');
+        $req->header( 'X-Request-ID' => $id );
+        $req->protocol( 'HTTP/1.1' );
+
+        if ($options->{debug}) {
+            warn "--->\n";
+            warn "Request: ".$req->as_string();
+        }
+
+        my $session = $ua->request($req);
+
+        if ($options->{debug}) {
+            warn "<---\n";
+            warn "Response: ".$session->as_string();
+        }
+
+        if (!$session->is_success()) {
+            warn "$host: No session (".$session->status_line().")\n";
+            next;
+        }
+
+        my $nonce = $session->header('X-Auth-Nonce')
+            or die "No nonce\n";
+
+        my $sha = Digest::SHA->new(256);
+        $sha->add($nonce.'++'.$options->{token});
+
+        my $payload = $sha->b64digest;
+
+        # Update request to get inventory
+        $req->uri($url.'/get');
+        $req->header( 'X-Auth-Payload' => $payload );
+
+        # Set Accept header
+        my $accept = 'application/xml';
+        if (!$options->{'no-compression'}) {
+            $accept .= ', application/x-compress-zlib'
+                if Compress::Zlib->require();
+            my $zcat = scalar(which('zcat'));
+            $accept .= ', application/x-compress-gzip'
+                if -x $zcat;
+        }
+        $req->header('Accept' => $accept);
+
+        if ($options->{debug}) {
+            warn "--->\n";
+            warn "Request: ".$req->as_string();
+        }
+
+        my $xml = $ua->request($req);
+
+        if ($options->{debug}) {
+            warn "<---\n";
+            warn "Response: ".$xml->status_line()."\n".$xml->headers->as_string()."\n";
+        }
+
+        if (!$xml->is_success()) {
+            warn "$host: Inventory request: ".$xml->status_line()."\n";
+            next;
+        }
+
+        my $content = $xml->content();
+
+        # check compression mode
+        if ($xml->header('Content-Type') eq 'application/x-compress-zlib') {
+            # RFC 1950
+            warn "$host: Using Compress::Zlib for decompression\n"
+                if $options->{debug};
+            $content = Compress::Zlib::uncompress($content);
+        } elsif ($xml->header('Content-Type') eq 'application/x-compress-gzip') {
+            # RFC 1952
+            warn "$host: Using gzip for decompression\n"
+                if $options->{debug};
+
+            File::Temp->require();
+            my $fd = File::Temp->new();
+            print $fd $content;
+            close $fd;
+
+            my $OUT;
+            unless(open $OUT, '-|', 'zcat ' . $fd->filename()) {
+                warn "$host: Failed to uncompress response, skipping\n";
+                next;
+            }
+            local $INPUT_RECORD_SEPARATOR; # Set input to "slurp" mode.
+            $content = <$OUT>;
+            close($OUT);
+        }
+
+        my $deviceid;
+        $xml = GLPI::Agent::XML->new(string => $content);
+        my $tree = $xml->dump_as_hash();
+        if ($tree && $tree->{REQUEST} && $tree->{REQUEST}->{DEVICEID}) {
+            $deviceid = $tree->{REQUEST}->{DEVICEID};
+        } else {
+            warn "$host: No deviceid found in returned inventory output, skipping\n";
+            next;
+        }
+
+        warn "$host: Got remote inventory from $deviceid\n"
+            if $options->{verbose};
+
+        if ($options->{directory}) {
+            my $filename = $options->{directory}."/$deviceid.xml";
+            open my $FILE, ">", $filename
+                or die "$host: Can't open $filename: $!\n";
+            print $FILE $content;
+            close($FILE);
+            warn "$host: Written inventory in $filename\n"
+                if $options->{verbose};
+        } else {
+            print $content;
+        }
+    }
+}
+
+# Compute a simple and as-possible safe id
+sub _id {
+    my $sha = Digest::SHA->new(1);
+    $sha->add(gettimeofday());
+    $sha->add(gettimeofday());
+    my $digest = $sha->hexdigest;
+    return substr($digest, 0, 8);
+}
+
+__END__
+
+=head1 NAME
+
+glpi-remote - A tool to scan, manage and initialize virtual remote agents
+
+=head1 SYNOPSIS
+
+glpi-remote [options] [--server server|--local path] [command] [command options]
+
+  Options:
+    -h --help           this menu
+    -t --timeout <SECS> requests timeout in seconds (defaults to 10)
+    -p --port <LIST>    remote ports list to scan (defaults to '22,5985,5986')
+    --ssh               connect using SSH
+    --ssl               connect using SSL (winrm or with agent sub-command)
+    --no-ssl-check      do not check agent SSL certificate (winrm or agent sub-command)
+    --stricthostkeychecking <yes|no|off|accept-new|ask> (defaults to 'accept-new')
+                        use given option when checking hostkey during ssh remote add
+    --ca-cert-dir <PATH> CA certificates directory
+    --ca-cert-file <FILE> CA certificates file (winrm or for agent sub-command)
+    --ssl-fingerprint <FINGERPRINT>
+                        Trust server certificate if its SSL fingerprint matches the given one
+    --ssl-cert-file <FILE> Client certificate file (winrm)
+    --ssl-key-file <FILE>  Client private key file (asumed included in cert file if missing)
+    -u --user           authentication user
+    -P --password       authentication password
+    -X --show-passwords (list command) show password as they are masked by default
+    -c --credentials    credentials list for scan
+    -v --verbose        verbose mode
+    --debug             debug mode
+    -C --no-check       don't check given remote is alive when adding
+    -i --inventory      don't register remotes, but run inventory on found remotes
+    -T --threads <NUM>  number of threads while scanning (defaults to 1)
+    -A --add            add scanned remotes to target so they always be inventoried
+                        by RemoteInventory task
+    -U --useragent      set used HTTP User-Agent for requests
+    --vardir <PATH>     use specified path as storage folder for agent persistent datas
+
+  Target definition options:
+    -s --server=<URI>   agent will send tasks result to that server
+    -l --local=<PATH>   agent will write tasks results locally
+    --target=<TARGETID> use target identified by its id (see list targets command)
+
+  Remote GLPI agent having inventory server plugin enabled options:
+    -b --baseurl <PATH> remote base url if not /inventory
+    -K --token <TOKEN>  token as shared secret
+    -I --id <ID>        request id to identify requests in agent log
+    --no-compression    ask to not compress sent XML inventories
+
+  Sub-commands
+    list [targets]      list known remotes or targets
+    add <url>+          add remote with given URL list
+    del[ete] <index|deviceid>+
+                        delete remote with given list index or given deviceid or
+                        current known one when alone or all remotes while using
+                        __ALL__ as id
+    scan <first> [last] [TODO] scan given ip range for remote access or just <first> and
+                        register it/them as remote agent
+    agent [hosts]       remotely claim an inventory to given remote hosts with a
+                        GLPI agent having inventory server plugin enabled
+                        (see https://glpi-agent.rtfd.io/inventory-server-plugin.html)
+
+  Supported environment variables:
+    USERNAME
+    PASSWORD
+    PORT
+    CA_CERT_PATH
+    CA_CERT_FILE
+    SSL_CERT_FILE
+    CREDENTIALS
+
+  Examples:
+    glpi-remote list
+    glpi-remote list targets
+    glpi-remote add ssh://admin:pass@192.168.43.237
+    glpi-remote add ssh://admin:pass@192.168.43.237 --stricthostkeychecking=no
+    glpi-remote add ssh://admin:pass@192.168.43.238 --no-check
+    glpi-remote add winrm://admin:pass@192.168.48.250 --no-check --target server0
+    glpi-remote delete 1
+    glpi-remote scan 192.168.43.1 192.168.43.254
+    glpi-remote scan 10.0.0.1 10.0.10.254 --inventory -s https://myglpi/
+    glpi-remote scan 10.0.0.1 10.0.10.254 --inventory -l /var/tmp/remotes
+    glpi-remote scan --inventory
+    glpi-remote scan 192.168.48.99 | glpi-injector --url https://myglpi/
+
+  Examples for agent command:
+    glpi-remote -K strong-shared-secret agent 192.168.43.236
+    glpi-remote -v -K strong-shared-secret agent 192.168.43.237 | \
+        glpi-injector -url https://myglpi/
+    glpi-remote -K strong-shared-secret -d /var/remote agent 192.168.43.236 192.168.43.237
+
+=head1 DESCRIPTION
+
+The F<glpi-remote> tool is used to manage virtual agents known locally by F<glpi-agent>.
+A virtual agent is used to make remote inventories and is essentially defined by
+a remote access. A remote access can be defined by ssh authorization for unix/linux
+platforms or WinRM authorizations for a WinRM enabled platform like win32.
+
+=head1 OPTIONS
+
+Most of the options are available in a I<short> form and a I<long> form.  For
+example, the two lines below are all equivalent:
+
+    % glpi-agent -s localhost
+    % glpi-agent --server localhost
+
+=head2 Target definition options
+
+=over
+
+=item B<-s>, B<--server>=I<URI>
+
+Send the results of tasks execution to given server.
+
+Multiple values can be specified, using comma as a separator.
+
+=item B<-l>, B<--local>=I<PATH>
+
+Write the results of tasks execution locally.
+
+=item B<--target>=I<TARGETID>
+
+Use the given TARGETID to look for the expected target for result submission.
+
+For example, B<server0> is the first server target setup in agent configuration.
+
+=back
+
+B<Remark:>
+
+=over
+
+=item *
+
+target option is generaly mandatory while adding remote or scanning for remotes
+
+=item *
+
+if one server and only one is still setup in the agent it will be selected as default target
+
+=item *
+
+when scanning and making inventory, uses any target option or each inventory will be sent to standard output
+
+=back
+
+=head2 General options
+
+=over
+
+=item B<-t>, B<--timeout>=I<SECS>
+
+Set the timeout for network requests (defaults to 10 seconds).
+
+=item B<-p>, B<--port>=I<LIST>
+
+A list of ports used when making a scan and to discover remote computers. The defaults is to
+scan the standard ssh port and winrm ports: I<22,5985,5986>.
+
+=item B<--ssh>
+
+Use ssh protocol for connection.
+
+=item B<--ssl>
+
+Use SSL protocol for connecting with WinRM protocol or to a remote agent with inventory server
+plugin enabled.
+
+=item B<--ca-cert-dir>=I<DIRECTORY>
+
+CA certificates directory.
+
+=item B<--ca-cert-file>=I<FILE>
+
+CA certificates file.
+
+=item B<--ssl-cert-file>=I<FILE>
+
+SSL certificate file for authentication
+
+=item B<--ssl-key-file>=I<FILE>
+
+SSL client private key filename.
+If missing, assumed is included in cert file
+
+=item B<--no-ssl-check>
+
+Do not check server SSL certificate.
+
+=item B<-u> I<USER>, B<--user>=I<USER>
+
+Use I<USER> for remote authentication.
+
+=item B<-P>, B<--password>=I<PASSWORD>
+
+Use I<PASSWORD> for remote authentication.
+
+=item B<-X>, B<show-passwords>
+
+By default, B<list> sub-command won't show remotes passwords. This option asks to unmask
+them during remotes listing.
+
+=item B<-c>, B<--credentials>=I<LIST>
+
+List of credentials to try during a scan.
+
+=item B<-v>, B<--verbose>
+
+Enable verbose mode.
+
+=item B<--debug>
+
+Turn the debug mode on. You can use the parameter up to 2 times in a row
+to increase the verbosity (e.g: B<--debug --debug>).
+
+=item B<-C>, B<--no-check>
+
+Don't check remote is alive while adding it.
+
+=item B<-i>, B<--inventory>
+
+Don't register remotes as they are discovered but just run the inventory task on them.
+
+=item B<-T>, B<--threads>=I<NUM>
+
+Setup number of threads while doing a scan. By default, the agent only uses one thread.
+
+=item B<-A>, B<--add>
+
+Add discovered remotes to local remotes list.
+
+=item B<-U>, B<--useragent>=I<USER-AGENT>
+
+Define HTTP user agent for request (mostly if required for winrm).
+
+=back
+
+=head2 I<agent> sub-command options
+
+=over
+
+=item B<-b>, B<--baseurl>=I<PATH>
+
+Remote base url if the default I</inventory> has been changed in the remote plugin configuration.
+
+=item B<-K>, B<--token>=I<TOKEN>
+
+Shared secret required to request an inventory to the remote plugin.
+
+=item B<-I>, <--id>=I<ID>
+
+Request-ID to identify the request in the agent log.
+
+=item B<--no-compression>
+
+Ask to skip requested inventory compression.
+
+=back
+
+=head2 Sub-commands
+
+=over
+
+=item * B<list> [B<targets>]
+
+list known remotes or list targets
+
+=item * B<add> I<url>+
+
+add remote with given URL list
+
+=item * B<del[ete]> I<index|deviceid>+
+
+Delete remote with given:
+
+=over
+
+=item * list index
+
+=item * given deviceid
+
+=item * current and only one known when no index is given
+
+=item * all known remotes while using the B<__ALL__> magic word as index
+
+=back
+
+=item * B<scan> I<first> [I<last>]
+
+B<TODO:> I<This sub-command is still not implemented>.
+
+Scan given ip range for remote access or just I<first> and register it/them as remote agent
+
+=item * B<agent> [I<hosts>]
+
+Remotely claim an inventory to given remote hosts with a GLPI agent having inventory server plugin enabled.
+
+See online documentation for details: https://glpi-agent.rtfd.io/inventory-server-plugin.html
+
+=back
+
+=head2 Environment variables
+
+For security reasons, you can set few environment variables to store sensible datas.
+
+=over
+
+=item * B<USERNAME> to setup connection user
+
+=item * B<PASSWORD> to setup connection password
+
+=item * B<PORT> to setup connection port
+
+=item * B<CA_CERT_PATH>
+
+=item * B<CA_CERT_FILE> to setup the SSL CA certificate file
+
+=item * B<SSL_CERT_FILE> to setup the SSL client certificate file
+
+=item * B<CREDENTIALS> to setup a list of credentials
+
+=back

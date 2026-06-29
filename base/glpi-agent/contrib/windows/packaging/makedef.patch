@@ -1,0 +1,19 @@
+--- makedef.pl.orig
++++ makedef.pl
+@@ -465,6 +465,16 @@
+     ++$skip{PL_main_thread};
+ }
+ 
++if ($define{NO_LOCALE})
++{
++    ++$skip{$_} foreach qw(
++        Perl_set_numeric_standard
++        Perl_set_numeric_underlying
++        Perl_strxfrm
++        Perl_warn_problematic_locale
++    );
++}
++
+ unless ($define{USE_POSIX_2008_LOCALE})
+ {
+     ++$skip{$_} foreach qw(

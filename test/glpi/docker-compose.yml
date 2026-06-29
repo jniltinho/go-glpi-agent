@@ -1,0 +1,44 @@
+# GLPI 10 + MariaDB para testes de inventário do go-fusioninventory-agent.
+# Imagem oficial glpi/glpi (auto-instala/atualiza no primeiro start).
+# Endpoint de inventário nativo (GLPI 10): /front/inventory.php
+#
+# Uso:
+#   cp .env.example .env   # ajuste as senhas se quiser
+#   docker compose up -d
+#   # acesse http://localhost:8080  (login inicial: glpi / glpi)
+#
+# Pós-instalação (uma vez), pela UI:
+#   Configurar > Geral > Inventário > "Habilitar inventário" = Sim
+#   (o endpoint passa a aceitar POST em /front/inventory.php)
+
+name: glpi-test
+
+services:
+  glpi:
+    image: glpi/glpi:10.0
+    restart: unless-stopped
+    depends_on:
+      - db
+    env_file: .env
+    ports:
+      - "8080:80"
+    volumes:
+      - glpi_data:/var/glpi
+
+  db:
+    image: mariadb:10.11
+    restart: unless-stopped
+    environment:
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: ${GLPI_DB_NAME}
+      MARIADB_USER: ${GLPI_DB_USER}
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  glpi_data:
+  db_data:

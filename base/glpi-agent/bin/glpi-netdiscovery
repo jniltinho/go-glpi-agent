@@ -1,0 +1,389 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use lib './lib';
+use setup;
+
+use UNIVERSAL::require;
+use English qw(-no_match_vars);
+use Getopt::Long;
+
+use GLPI::Agent::Target::Local;
+use GLPI::Agent::Task::NetDiscovery;
+use GLPI::Agent::Task::NetDiscovery::Job;
+use GLPI::Agent::Tools;
+use GLPI::Agent::Config;
+use GLPI::Agent::Logger;
+use GLPI::Agent::Version;
+
+our $options = {
+    debug   => 0,
+    threads => 1
+};
+
+unless (GetOptions(
+    $options,
+    'file=s',
+    'first|host=s',
+    'last=s',
+    'community=s@',
+    'credentials=s@',
+    'entity=s',
+    'port=s@',
+    'protocol=s@',
+    'threads=i',
+    'timeout=i',
+    'retries=i',
+    'backend-collect-timeout=s',
+    'glpi-version=s',
+    'v1',
+    'v2c',
+    'control',
+    'debug+',
+    'help',
+    'inventory|i',
+    'save|s=s',
+    'version'
+)) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0);
+}
+
+if ($options->{version}) {
+    my $PROVIDER = $GLPI::Agent::Version::PROVIDER;
+    map { print $_."\n" }
+        "NetDiscovery task $GLPI::Agent::Task::NetDiscovery::VERSION",
+        "based on $PROVIDER Agent v$GLPI::Agent::Version::VERSION",
+        @{$GLPI::Agent::Version::COMMENTS}
+        ;
+    exit 0;
+}
+
+if ($options->{help}) {
+    Pod::Usage->use();
+    pod2usage(-verbose => 0, -exitval => 0);
+}
+
+# Set a default ipadress if none is given while using file option
+$options->{first} = '1.1.1.1'
+    if $options->{file} && ! $options->{first};
+
+unless ($options->{first}) {
+    Pod::Usage->use();
+    pod2usage(
+        -message => "\nno first or host address, aborting\n", -verbose => 0
+    );
+}
+
+$options->{last} = $options->{first}
+    if !$options->{last} || $options->{file};
+
+if ($options->{save} && ! -d $options->{save}) {
+    Pod::Usage->use();
+    pod2usage(
+        -message => "\nsave folder must exist, aborting\n", -verbose => 0
+    );
+}
+
+if ($OSNAME eq 'MSWin32' && $options->{threads} > 1) {
+    GLPI::Agent::Tools::Win32->require();
+    GLPI::Agent::Tools::Win32::start_Win32_OLE_Worker();
+}
+
+# Reset retries as snmp-retries in options
+$options->{'snmp-retries'} = delete $options->{'retries'}
+    if exists($options->{'retries'});
+
+my $discovery = GLPI::Agent::Task::NetDiscovery->new(
+    %setup,
+    target => GLPI::Agent::Target::Local->new(
+        path       => defined($options->{save}) ? $options->{save} : '-',
+        basevardir => $setup{vardir}
+    ),
+    config => GLPI::Agent::Config->new(options => $options),
+    logger => GLPI::Agent::Logger->new(config => $options)
+);
+
+my $credentials_id = 1;
+our @credentials;
+if ($options->{community}) {
+    foreach my $community (@{$options->{community}}) {
+        push @credentials, {
+            ID        => $credentials_id++,
+            VERSION   => '1',
+            COMMUNITY => $community
+        } unless $options->{v2c} && !$options->{v1};
+        push @credentials, {
+            ID        => $credentials_id++,
+            VERSION   => '2c',
+            COMMUNITY => $community
+        } if $options->{v2c};
+    }
+} elsif ($options->{credentials}) {
+    foreach my $specification (@{$options->{credentials}}) {
+        my $credential = { ID => $credentials_id++ };
+        while (!empty($specification)) {
+            my ($key, $remaining) = $specification =~ /^(\w+):(.*)$/;
+            # Handle wrong key definition skipping to next option
+            if (empty($key)) {
+                my ($wrong) = $specification =~ /^([^,]+)/;
+                print STDERR "Skipping malformed credentials definition: $wrong\n"
+                    unless empty($wrong);
+                $specification =~ s/^[^,]+//;
+                $specification =~ s/^,+//;
+                next;
+            }
+            if (empty($remaining)) {
+                $credential->{uc($key)} = "";
+                last;
+            }
+            # Use remaining string as value unless it contains another definition
+            # It also means value can contain comma or semi-colon while this can't
+            # be understood as a new credentials value definition
+            # Here .*? means it is greedy for $value other than .* for $next
+            my ($value, $next) = $remaining =~ /^(.*?)(,\w+:.*)$/;
+            if (empty($next)) {
+                $value = $remaining;
+                undef $specification;
+            } else {
+                $specification = $next;
+                $specification =~ s/^,//;
+            }
+            $credential->{uc($key)} = $value;
+        }
+        push @credentials, $credential
+            if keys(%{$credential}) > 1;
+    }
+    die "No valid credentials defined\n"
+        unless @credentials && grep { $_->{VERSION} && ($_->{COMMUNITY} || $_->{USERNAME}) } @credentials;
+} else {
+    push @credentials, {
+        ID        => $credentials_id++,
+        VERSION   => '1',
+        COMMUNITY => 'public'
+    } unless $options->{v2c} && !$options->{v1};
+    push @credentials, {
+        ID        => $credentials_id++,
+        VERSION   => '2c',
+        COMMUNITY => 'public'
+    } if $options->{v2c};
+}
+
+$discovery->{jobs} = [
+    GLPI::Agent::Task::NetDiscovery::Job->new(
+        logger => $discovery->{logger},
+        params => {
+            PID               => 1,
+            THREADS_DISCOVERY => $options->{threads},
+            TIMEOUT           => $options->{timeout},
+        },
+        ranges => [
+            {
+                ID       => 1,
+                IPSTART  => $options->{first},
+                IPEND    => $options->{last},
+                PORT     => $options->{port},
+                PROTOCOL => $options->{protocol},
+                ENTITY   => $options->{entity},
+            }
+        ],
+        file        => $options->{file},
+        credentials => \@credentials,
+        netscan     => $options->{inventory},
+        showcontrol => $options->{control}
+    )
+];
+
+if ($options->{save} && $options->{debug}) {
+    print STDERR
+        "netdiscovery XMLs will be saved in: $options->{save}/netdiscovery\n";
+    print STDERR
+        "netinventory XMLs will be saved in: $options->{save}/netinventory\n"
+        if $options->{inventory};
+    print STDERR "====\n";
+}
+
+$discovery->run();
+
+__END__
+
+=head1 NAME
+
+glpi-netdiscovery - Standalone network discovery
+
+=head1 SYNOPSIS
+
+glpi-netdiscovery [options] --first <address> --last <address>
+
+  Options:
+    --host <ADDRESS>       Host IP address to scan or IP range first address
+    --first <ADDRESS>      IP range first address
+    --last <ADDRESS>       IP range last address
+    --port <PORT[,PORT2]>  SNMP port (161)
+    --protocol <PROT[,P2]> SNMP protocol/domain (udp/ipv4)
+    --community <STRING>   SNMP community string (public)
+    --v1                   select SNMP version 1 (the default)
+    --v2c                  select SNMP version 2c (1 by default)
+    --credentials <STRING> SNMP credentials (version:1,community:public)
+    --timeout <TIME>       SNMP timeout, in seconds (1)
+    --retries              SNMP requets maximum retries (0)
+    --backend-collect-timeout <TIME>
+                           base expiration timeout, in seconds (180)
+    --entity <ENTITY>      GLPI entity
+    --threads <COUNT>      number of discovery threads (1)
+    --glpi-version VERSION set targeted glpi version to enable supported features
+    --control              output control messages
+    --file <FILE>          snmpwalk input file
+    -i --inventory         chain with netinventory task for discovered devices
+    -s --save <FOLDER>     base folder where to save discovery and inventory xmls
+                            - netdiscovery xmls will go in <FOLDER>/netdiscovery
+                            - netinventory xmls will go in <FOLDER>/netinventory
+    --debug                debug output
+    -h --help              print this message and exit
+    --version              print the task version and exit
+
+=head1 DESCRIPTION
+
+F<glpi-netdiscovery> can be used to run a network discovery task without a
+GLPI server.
+
+=head1 OPTIONS
+
+=over
+
+=item B<--first|--host> I<ADDRESS>
+
+Set the first IP address of the network range to scan.
+
+=item B<--last> I<ADDRESS>
+
+Set the last IP address of the network range to scan.
+
+If not set, it is set with the value of the --first or --host option.
+
+=item B<--port> I<PORT[,PORT2]>
+
+List of ports to try, defaults to: 161
+
+Set it to 161,16100 to first try on default port and then on 16100.
+
+=item B<--protocol> I<PROTOCOL[,PROTOCOL2]>
+
+List of protocols to try, defaults to: udp/ipv4
+
+Possible values are: udp/ipv4,udp/ipv6,tcp/ipv4,tcp/ipv6
+
+=item B<--file> I<FILE>
+
+Run an offline discovery against snmpwalk output, stored in the given file.
+
+If no host or first ip is provided, ip is set to emulate 1.1.1.1 ip scan.
+
+=item B<--community> I<STRING>
+
+Use given string as SNMP community (assume SNMPv1). This option can be used multiple
+times to try different communities.
+
+=item B<--v1>
+
+Use SNMP v1. This is the default, but you can use the option to try SNMP v1 & SNMP v2c.
+
+=item B<--v2c>
+
+Use SNMP v2c. Can be used in combination with --v1 to try the 2 versions.
+
+=item B<--credentials> I<STRING>
+
+Use given string as SNMP credentials specification. This specification is a
+comma-separated list of key:value authentication parameters, such as:
+
+=over
+
+=item * version:2c,community:public
+
+=item * version:3,username:admin,authpassword:s3cr3t,privpassword:s3cr3t
+
+=item * etc.
+
+=back
+
+Supported keys are:
+
+=over
+
+=item * version with value set to 1, 2c or 3
+
+=back
+
+In the case version is set to 1 or 2c:
+
+=over
+
+=item * community
+
+=back
+
+In the case version is set to 3:
+
+=over
+
+=item * username (required)
+
+=item * authpassword
+
+=item * authprotocol with value set to md5 (the default if not set) or sha
+
+=item * privpassword (required if authpassword is set)
+
+=item * privprotocol with value set to des (the default if not set), aes or 3des
+
+=back
+
+=item B<--timeout> I<TIME>
+
+Set SNMP timeout, in seconds.
+
+=item B<--retries> I<NUMBER>
+
+Set maximum number of retries a SNMP request can be sent again after no response.
+
+=item B<--backend-collect-timeout> I<TIME>
+
+Set base expiration timeout, in seconds. Global task expiration will depend on
+the number of ips.
+
+=item B<--entity> I<ENTITY>
+
+Set GLPI entity.
+
+=item B<--threads> I<COUNT>
+
+Use given number of inventory threads.
+
+=item B<--control>
+
+Output server-agent control messages, in addition to inventory result itself.
+
+=item B<--debug>
+
+Turn the debug mode on. Multiple usage allowed, for additional verbosity.
+
+=back
+
+=head1 EXAMPLES
+
+Run a discovery against a network range, using SNMP version 1:
+
+    $> glpi-netdiscovery --first 192.168.0.1 --last 192.168.0.254 --community public
+
+Run a discovery against a network range, using multiple SNMP credentials:
+
+    $> glpi-netdiscovery --first 192.168.0.1 --last 192.168.0.254 \
+    --credentials version:2c,community:public \
+    --credentials version:3,username:admin,authpassword:s3cr3t,privpassword:s3cr3t
+
+Emulate discovery using a snmpwalk file:
+
+    $> glpi-netdiscovery --file device.walk

@@ -1,0 +1,85 @@
+# This file is not read but should reference any string that could be translated
+
+Home:
+GLPI Agent:
+ToolBox GLPI Agent plugin:
+Inventory:
+Results:
+Raw YAML:
+Raw YAML edition:
+Configuration:
+IP range:
+IP Ranges:
+Credentials:
+Scheduling:
+Tag:
+DeviceID:
+AgentID:
+Inventory tasks:
+Agent home:
+
+Edit:
+Update:
+Delete:
+Rename:
+Revert selection:
+
+Anonymous:
+
+yes:
+no:
+
+From %d to %d of %s:
+
+Display (number of items):
+no limit:
+empty list:
+
+Add:
+Name:
+Description:
+Cancel:
+Go back to list:
+
+Reset:
+Reverse selection:
+
+Type:
+Disable:
+Enable:
+First ip:
+Last ip:
+
+Delay:
+delay:
+timeslot:
+Timeslot:
+Timeslots:
+second:
+seconds:
+minute:
+minutes:
+hour:
+hours:
+day:
+days:
+week:
+weeks:
+start:
+duration:
+Duration:
+all:
+mon:
+tue:
+wed:
+thu:
+fri:
+sat:
+sun:
+monday:
+tuesday:
+wednesday:
+thursday:
+friday:
+saturday:
+sunday:

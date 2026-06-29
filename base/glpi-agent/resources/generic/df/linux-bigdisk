@@ -1,0 +1,12 @@
+Filesystem                     Type     1024-blocks        Used   Available Capacity Mounted on
+udev                           devtmpfs     4041672           0     4041672       0% /dev
+tmpfs                          tmpfs         813132       17264      795868       3% /run
+/dev/mapper/archiwum--vg-root  ext4     70413016480 52665844320 14810705368      79% /
+tmpfs                          tmpfs        4065656           0     4065656       0% /dev/shm
+tmpfs                          tmpfs           5120           0        5120       0% /run/lock
+/dev/sda2                      ext2          466026      114546      326495      26% /boot
+/dev/mapper/vg_monthly-monthly xfs      96634673152 19479375512 77155297640      21% /home/services/monthly
+tmpfs                          tmpfs         813128           0      813128       0% /run/user/1261
+tmpfs                          tmpfs         813128           0      813128       0% /run/user/4931
+tmpfs                          tmpfs         813128           0      813128       0% /run/user/3870
+tmpfs                          tmpfs         813128           0      813128       0% /run/user/4376

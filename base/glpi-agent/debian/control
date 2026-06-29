@@ -1,0 +1,167 @@
+Source: glpi-agent
+Section: net
+Testsuite: autopkgtest-pkg-perl
+Priority: optional
+Maintainer: Guillaume Bougard <gbougard@teclib.com>
+Uploaders: Guillaume Bougard <gbougard@teclib.com>
+Build-Depends: debhelper-compat (= 13)
+Build-Depends-Indep:
+ libclone-perl <!nocheck>,
+ libdigest-sha-perl <!nocheck>,
+ libfile-copy-recursive-perl <!nocheck>,
+ libfile-which-perl <!nocheck>,
+ libhttp-cookies-perl <!nocheck>,
+ libhttp-daemon-perl <!nocheck>,
+ libhttp-proxy-perl <!nocheck>,
+ libhttp-server-simple-perl <!nocheck>,
+ libhttp-server-simple-authen-perl <!nocheck>,
+ libio-capture-perl <!nocheck>,
+ libipc-run-perl <!nocheck>,
+ libcpanel-json-xs-perl <!nocheck>,
+ libjson-pp-perl <!nocheck>,
+ libmodule-install-perl,
+ libnet-ip-perl <!nocheck>,
+ libnet-snmp-perl <!nocheck>,
+ libio-socket-ssl-perl <!nocheck>,
+ libparse-edid-perl <!nocheck>,
+ libproc-daemon-perl <!nocheck>,
+ libparallel-forkmanager-perl <!nocheck>,
+ libtest-compile-perl <!nocheck>,
+ libtest-deep-perl <!nocheck>,
+ libtest-nowarnings-perl <!nocheck>,
+ libtest-exception-perl <!nocheck>,
+ libtest-mockmodule-perl <!nocheck>,
+ libtest-mockobject-perl <!nocheck>,
+ libtext-template-perl <!nocheck>,
+ libuniversal-require-perl <!nocheck>,
+ liburi-perl <!nocheck>,
+ libwww-perl <!nocheck>,
+ libxml-libxml-perl <!nocheck>,
+ libyaml-perl <!nocheck>,
+ libossp-uuid-perl <!nocheck>,
+ libdatetime-perl <!nocheck>,
+ swig,
+ perl,
+ ucf
+Standards-Version: 4.5.1
+Vcs-Git: https://github.com/glpi-project/glpi-agent.git
+Homepage: https://glpi-project.org/
+Vcs-Browser: https://github.com/glpi-project/glpi-agent
+Rules-Requires-Root: binary-targets
+
+Package: glpi-agent
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${perl:Depends},
+ ucf,
+ libnet-cups-perl,
+ libnet-ip-perl,
+ libnet-ssh2-perl,
+ libwww-perl,
+ libparse-edid-perl,
+ libproc-daemon-perl,
+ libparallel-forkmanager-perl,
+ libuniversal-require-perl,
+ libfile-which-perl,
+ libxml-libxml-perl,
+ libyaml-perl,
+ libtext-template-perl,
+ libcpanel-json-xs-perl,
+ libjson-pp-perl,
+ pciutils,
+ usbutils,
+ libhttp-daemon-perl,
+ libyaml-tiny-perl,
+ libossp-uuid-perl,
+ libdatetime-perl
+Suggests: smartmontools, read-edid
+Recommends: libio-socket-ssl-perl, dmidecode, hdparm, fdisk | util-linux (<< 2.29.2-3~), net-tools
+Description: hardware and software inventory tool (client)
+ GLPI Agent is an application designed to help a network
+ or system administrator to keep track of the hardware and software
+ configurations of devices.
+ This agent can collect information about from:
+  - the local machine (Inventory)
+  - the network using SNMP
+  - an VMware ESX or vCenter server
+ The agent can be driven from different asset management software
+ including GLPI, Rudder, Uranos, OCSInventory.
+ .
+ The agent can also be used to install new software and configuration
+ changes.
+
+Package: glpi-agent-task-esx
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${perl:Depends},
+ glpi-agent (>= ${binary:Version}),
+ libhttp-cookies-perl,
+ libjson-pp-perl
+Description: ESX and ESXi inventory for GLPI Agent
+ Do remote inventory of your ESX, ESXi, vCenter server using the SOAP interface.
+ You can import the generated .xml files in:
+  - GLPI
+  - ocsinventory
+  - Uranos
+ This module can also be controlled from GLPI using a FusionInventory compatible
+ plugin.
+
+Package: glpi-agent-task-deploy
+Architecture: all
+Depends:
+ ${misc:Depends},
+ glpi-agent (>= ${binary:Version}),
+ libjson-pp-perl,
+ liburi-perl,
+ libfile-copy-recursive-perl,
+ libdigest-sha-perl,
+ libparallel-forkmanager-perl
+Description: software and file deployment support for GLPI
+ With this module, GLPI can accept software deployment
+ request from an GLPI server with a FusionInventory compatible plugin.
+ This module uses SSL certificate to authentificate the server.
+ .
+ If the P2P option is turned on, the agent will looks for peer in its
+ network to reduce the bandwidth usage with the primary server.
+
+Package: glpi-agent-task-collect
+Architecture: all
+Depends:
+ ${misc:Depends},
+ glpi-agent (>= ${binary:Version}),
+Description: collect task support for GLPI
+ With this module, GLPI can collect desired datas, essentially
+ files under Linux.
+ .
+ The plugin can depend on a FusionInventory compatible plugin on server side.
+
+Package: glpi-agent-task-network
+Architecture: all
+Depends:
+ ${misc:Depends},
+ ${perl:Depends},
+ ucf,
+ glpi-agent (>= ${binary:Version}),
+ libcrypt-des-perl,
+ libdigest-hmac-perl,
+ libnet-ip-perl,
+ libnet-snmp-perl,
+ libnet-nbname-perl,
+ libparallel-forkmanager-perl
+Description: network device discovery for GLPI Agent
+ This module scans your networks to quickly identify its hosts with SNMP,
+ Echo Ping, TimeStamp ping, arp table lookup and NetBIOS request:
+  - networking devices discovery within an IP range
+  - identify unknown MAC addresses
+
+Package: libiec61850-glpi-agent
+Architecture: any
+Depends:
+ ${shlibs:Depends},
+ ${perl:Depends},
+ glpi-agent-task-network (>= ${binary:Version})
+Description: IEC61850 protocol perl library support for GLPI Agent
+ This package is required to discover and inventory devices supporting
+ iec61850 protocol with glpi-agent network tasks.

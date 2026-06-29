@@ -1,0 +1,68 @@
+# This file is not read but should reference any string that could be translated
+
+#Create a new inventory task:
+Local inventory:
+Run local inventory for this computer:
+Network scan:
+Choose IP range:
+Options:
+Threads:
+Connection timeout:
+Run network scan:
+Inventory tag:
+Use a tag:
+None:
+New tag:
+New tag will be automatically selected:
+Add new tag:
+tag:
+netdiscovery task not installed:
+netinventory task not installed:
+netdiscovery and netinventory tasks not installed:
+Agent folder:
+Configured folder:
+Target:
+
+Created inventories:
+Should match devices with SNMP support count:
+Show task progress:
+Hide task progress:
+Show task report:
+Hide task report:
+Show &laquo;&nbsp;%s&nbsp;&raquo; task log:
+Scanned IPs:
+Devices with SNMP support:
+IPs without SNMP response:
+IPs without PING response:
+Scanned IPs for this IP range:
+IPs for which we found a device supporting SNMP with provided credentials:
+These IPs are responding to ping or are found in ARP table:
+But we didn't find any device supporting SNMP with provided credentials:
+IPs not responding to ping and not seen in ARP table:
+Verbosity:
+Completed:
+Abort:
+Aborted:
+%s network scan:
+Freeze log output:
+Failure:
+
+Only for remote inventory and ESX tasks:
+Add new inventory task:
+Edit &laquo;&nbsp;%s&nbsp;&raquo; inventory task:
+Create inventory task:
+Run task:
+Task name:
+Configuration:
+Scheduling:
+Last run date:
+Next run date:
+Add ip range:
+Remove ip range:
+Disabled task:
+Timeout:
+Associated ip range:
+
+Scheduling type:
+
+No inventory task defined:

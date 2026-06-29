@@ -1,0 +1,17 @@
+Set in Progress         : Set Complete
+IP Address Source       : Static Address
+IP Address              : 12.34.123.111
+Subnet Mask             : 255.255.255.0
+MAC Address             : d0:ef:c1:00:de:ad
+SNMP Community String   : TopSecret#$
+IP Header               : TTL=0x40 Flags=0x40 Precedence=0x00 TOS=0x10
+Default Gateway IP      : 12.34.123.254
+802.1q VLAN ID          : Disabled
+RMCP+ Cipher Suites     : 0,1,2,3,17
+Cipher Suite Priv Max   : XuuaXXXXXXXXXXX
+                        :     X=Cipher Suite Unused
+                        :     c=CALLBACK
+                        :     u=USER
+                        :     o=OPERATOR
+                        :     a=ADMIN
+                        :     O=OEM
