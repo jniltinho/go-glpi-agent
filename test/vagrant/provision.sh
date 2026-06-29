@@ -73,13 +73,14 @@ echo "==> Go agent: enviando ao GLPI ($GLPI_URL)..."
 # montado em /opt/gfi). Roda local e também envia ao GLPI para comparação web.
 REF_OUT=""
 if [[ -x "$APP" ]]; then
-  echo "==> Instalando glpi-agent (referência) via AppImage..."
-  APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --silent >/dev/null 2>&1 || true
+  # o instalador exige um target (--local/--server); --runnow roda o inventário
+  # logo após instalar, gravando o XML de referência em $OUTDIR/glpi.
+  echo "==> Instalando glpi-agent (referência) + inventário local via AppImage..."
+  APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --runnow --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
   if command -v glpi-agent >/dev/null 2>&1; then
-    echo "==> glpi-agent: inventário local + envio ao GLPI..."
-    glpi-agent --local "$OUTDIR/glpi" >/dev/null 2>&1 || true
-    glpi-agent --server "$GLPI_URL" >/dev/null 2>&1 || true
-    REF_OUT=$(ls "$OUTDIR"/glpi/* 2>/dev/null | head -1 || true)
+    echo "==> glpi-agent: enviando ao GLPI..."
+    glpi-agent --server="$GLPI_URL" >/dev/null 2>&1 || true
+    REF_OUT=$(ls "$OUTDIR"/glpi/*.xml "$OUTDIR"/glpi/*.json 2>/dev/null | head -1 || true)
   else
     echo "   (glpi-agent não ficou disponível após instalar)"
   fi

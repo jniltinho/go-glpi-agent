@@ -1,61 +1,56 @@
 ---
 name: create-release
-description: Cut a versioned release of this Go project on Gitea — bump the CHANGELOG, tag, push (the Gitea Actions workflow builds and publishes the release), then enrich the release notes via the Gitea API. Use when the user asks to "create a release", "release vX", "fechar a release", or "publicar a versão".
+description: Cut a versioned release of this Go project on GitHub — bump the CHANGELOG, build artifacts, tag, push, and publish the release with assets via the GitHub CLI (gh). Use when the user asks to "create a release", "release vX", "fechar a release", or "publicar a versão".
 license: MIT
-compatibility: Requires git + curl. Release artifacts are built by the Gitea Actions workflow (.gitea/workflows/release.yml). No GitHub CLI.
+compatibility: Requires git + gh (GitHub CLI, authenticated). Optional: nfpm for .deb/.rpm artifacts. The version comes from the git tag.
 ---
 
-# Releasing this Go project (Gitea)
+# Releasing this Go project (GitHub)
 
-This project lives on a **self-hosted Gitea** (`git2.criarenet.com`), not GitHub —
-so there is **no `gh` CLI**. A release is: bump the `CHANGELOG.md`, commit, tag, push.
-The **Gitea Actions** workflow (`.gitea/workflows/release.yml`) builds the frontend +
-binaries and **creates the release with the packages** on tag push. Then you enrich the
-auto-generated notes via the **Gitea API**.
+This project lives on **GitHub** (`github.com/jniltinho/go-fusioninventory-agent`).
+A release is: bump `CHANGELOG.md`, build the artifacts, commit, tag, push, then
+publish with **`gh release create`** (creating the release and uploading the assets
+in one step). No Gitea, no hand-rolled API calls.
 
-> ⚠️ The version comes from the **git tag** (`Makefile`: `git describe --tags` → ldflags
-> into `buildinfo.Version`). There is **no version constant in code** to bump — the tag *is*
-> the version.
+> ⚠️ The version comes from the **git tag** (`Makefile`: `git describe --tags` →
+> ldflags into `internal/version.Version`). There is **no version constant in code**
+> to bump — the tag *is* the version.
 
 ---
 
 ## Project facts
 
 ```bash
-REMOTE=$(git remote get-url origin)          # ssh://git@git2.criarenet.com:2224/suporte/painel-antispam.git
-GITEA="https://git2.criarenet.com"           # web + API base
-OWNER="suporte"; REPO="painel-antispam"     # from the remote path
-LAST=$(git describe --tags --abbrev=0)        # e.g. v0.23.0
+REMOTE=$(git remote get-url origin)           # git@github.com:jniltinho/go-fusioninventory-agent.git
+OWNER="jniltinho"; REPO="go-fusioninventory-agent"
+LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 echo "Last tag: $LAST"
+gh auth status                                # must be authenticated for releases
 ```
 
 ### Versioning
 
 Series `0.x` (pre-1.0), tags always prefixed with `v`:
 
-- **Feature** (new user-visible capability) → bump **minor**: `v0.23.0` → `v0.24.0`
-- **Fix / docs / infra only** → bump **patch**: `v0.23.0` → `v0.23.1`
+- **Feature** (new user-visible capability) → bump **minor**: `v0.1.0` → `v0.2.0`
+- **Fix / docs / infra only** → bump **patch**: `v0.1.0` → `v0.1.1`
 
 ```bash
-# minor bump helper
 IFS=. read MAJ MIN PAT <<< "${LAST#v}"
-NEXT="v${MAJ}.$((MIN+1)).0"     # feature → minor
+NEXT="v${MAJ}.$((MIN+1)).0"     # feature → minor   (patch: v${MAJ}.${MIN}.$((PAT+1)))
 echo "Next: $NEXT"
 ```
 
-### Gitea API token
+### Auth
 
-The API steps (poll CI, edit notes) need a token. **Never hardcode it** in files or
-commits — pass it via env. Get one in Gitea → *Settings → Applications → Generate Token*
-(scope: repo). The user provides it for the session:
+Releases use the **GitHub CLI**, not a raw token. Authenticate once per machine:
 
 ```bash
-export GITEA_TOKEN="<token>"     # the user types this, e.g. via `! export GITEA_TOKEN=...`
-API="$GITEA/api/v1"
+gh auth status || gh auth login        # the user runs `gh auth login` (e.g. via `! gh auth login`)
 ```
 
-> If the user pasted a token in chat, remind them to **rotate it** afterward (it lands in
-> the transcript).
+> If a `GH_TOKEN`/`GITHUB_TOKEN` env var is used instead, never hardcode it in files
+> or commits, and remind the user to rotate a token pasted in chat.
 
 ---
 
@@ -64,7 +59,7 @@ API="$GITEA/api/v1"
 ### 1. Prerequisites
 
 ```bash
-git fetch origin
+git fetch origin --tags
 git checkout main
 git pull --ff-only
 git status        # clean working tree (besides the release changes you'll stage)
@@ -79,153 +74,166 @@ git log "$LAST"..HEAD --stat    # more detail
 
 ### 3. Update `CHANGELOG.md`
 
-Repo-root `CHANGELOG.md`, **Keep a Changelog** format in **pt-BR**, with a top
-`## [Não lançado]` placeholder. Insert a new section **above** the previous version,
-moving the relevant items out of `[Não lançado]`:
+Repo-root `CHANGELOG.md`, **Keep a Changelog** format, with a top `## [Unreleased]`
+placeholder. Insert a new section **above** the previous version, moving the relevant
+items out of `[Unreleased]`. (Create `CHANGELOG.md` on the first release.)
 
 ```markdown
-## [Não lançado]
+## [Unreleased]
 
 —
 
-## [0.24.0] — YYYY-MM-DD
+## [0.2.0] — YYYY-MM-DD
 
-**Resumo de 1–2 linhas.**
+**One- or two-line summary.**
 
-### Adicionado
+### Added
 - ...
-### Alterado
+### Changed
 - ...
-### Corrigido
+### Fixed
 - ...
-### Segurança
+### Security
 - ...
-### Removido
+### Removed
 - ...
 ```
 
 Omit empty sections. Update README/docs only if user-facing and the user agrees.
 
-### 4. Verify, then commit + tag
+### 4. Verify green, then build the artifacts
 
 ```bash
 # build + tests must be green before tagging
-(cd frontend && npm run build)   # vue-tsc
 go vet ./... && go build ./... && go test ./...
-cd ..
 
-# stage ONLY the release changes — never skills/dist/screenshots/secrets
-git add -A
-git diff --cached --name-only | grep -iE '\.agent/skills|\.claude/skills|skills-lock|web/dist|screencast|\.swp' \
-  && echo "⚠ remove junk from stage" || echo "stage OK"
+# build the release artifacts into dist/
+make build-all                       # dist/fusioninventory-agent (static linux/amd64)
+make package-deb package-rpm 2>/dev/null || echo "(skip .deb/.rpm — nfpm not installed)"
 
-git commit -m "feat(painel): <resumo> — $NEXT"   # or fix:/docs: per the change
-git tag -a "$NEXT" -m "Release $NEXT — <resumo>"
+# versioned tarball + checksums
+tar -czf "dist/fusioninventory-agent_${NEXT}_linux_amd64.tar.gz" -C dist fusioninventory-agent
+( cd dist && sha256sum fusioninventory-agent_${NEXT}_linux_amd64.tar.gz *.deb *.rpm 2>/dev/null > checksums.txt )
+ls -la dist/
 ```
 
-End commit messages with the project's co-author trailer if used elsewhere.
+### 5. Commit + tag
 
-### 5. Push main + tag (triggers the Gitea CI)
+```bash
+# stage ONLY the release changes — never skills/dist/VM-state/secrets
+git add CHANGELOG.md   # plus any agreed doc/code changes
+git status --short
+
+git commit -m "release: $NEXT — <summary>"   # or feat:/fix: per the change
+git tag -a "$NEXT" -m "Release $NEXT — <summary>"
+```
+
+End commit messages with the project's `Co-Authored-By` trailer if used elsewhere.
+
+### 6. Push main + tag
 
 ```bash
 git push origin main
-git push origin "$NEXT"     # tag push → .gitea/workflows/release.yml runs
+git push origin "$NEXT"
 ```
 
-The workflow builds `make frontend` + binaries and **creates the Gitea release** with
-assets: `antispam-painel_<ver>_linux_amd64.tar.gz`, `..._windows_amd64.zip`, `checksums.txt`.
+### 7. Publish the release with assets (`gh`)
 
-### 6. Wait for the CI (Gitea Actions API)
-
-The release object only appears **after** the workflow finishes (runs ~1–2 min). Poll:
-
-```bash
-for i in $(seq 1 18); do
-  st=$(curl -s -k -H "Authorization: token $GITEA_TOKEN" \
-        "$API/repos/$OWNER/$REPO/actions/tasks?limit=5" \
-       | python3 -c "import sys,json;
-wr=json.load(sys.stdin).get('workflow_runs',[])
-print(next((r['status'] for r in wr if r.get('head_branch')=='$NEXT'),'?'))")
-  echo "[$i] $NEXT = $st"; [ "$st" != "running" ] && [ -n "$st" ] && break; sleep 15
-done
-```
-
-### 7. Verify the release + assets
+`gh release create` creates the release **and** uploads the assets in one call.
+Use a notes file mirroring the CHANGELOG entry (or `--generate-notes` for an
+auto-generated diff of merged PRs/commits).
 
 ```bash
-curl -s -k -H "Authorization: token $GITEA_TOKEN" \
-  "$API/repos/$OWNER/$REPO/releases/tags/$NEXT" \
-  | python3 -c "import sys,json; r=json.load(sys.stdin);
-print('id', r['id'], '| draft', r['draft'], '| assets', [a['name'] for a in r['assets']])"
-```
+cat > /tmp/notes.md <<EOF
+# $NEXT — <title>
 
-### 8. Enrich the release notes (Gitea API)
-
-The CI writes minimal notes. Replace with structured markdown (mirror the CHANGELOG
-entry). Get the release `id` from step 7, then `PATCH`:
-
-```bash
-RID=$(curl -s -k -H "Authorization: token $GITEA_TOKEN" \
-  "$API/repos/$OWNER/$REPO/releases/tags/$NEXT" \
-  | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
-
-cat > /tmp/notes.md <<'EOF'
-# vX.Y.Z — <título>
-
-## ✨ Adicionado
+## ✨ Added
 - ...
-## 🔧 Alterado
+## 🔧 Changed
 - ...
-## 🐛 Corrigido
+## 🐛 Fixed
 - ...
 
-**Pacotes:** linux/amd64 (.tar.gz), windows/amd64 (.zip), checksums.txt.
+**Artifacts:** linux/amd64 (.tar.gz)$( ls dist/*.deb >/dev/null 2>&1 && echo ', .deb, .rpm' ), checksums.txt.
 
-**Changelog:** https://git2.criarenet.com/suporte/painel-antispam/compare/PREV...NEXT
+**Changelog:** https://github.com/$OWNER/$REPO/compare/$LAST...$NEXT
 EOF
 
-python3 -c "import json;print(json.dumps({'name':'vX.Y.Z — <título>','body':open('/tmp/notes.md').read()}))" > /tmp/patch.json
-curl -s -k -X PATCH -H "Authorization: token $GITEA_TOKEN" -H "Content-Type: application/json" \
-  --data @/tmp/patch.json "$API/repos/$OWNER/$REPO/releases/$RID" \
-  | python3 -c "import sys,json;r=json.load(sys.stdin);print('ok:',r['name'],'|',r['html_url'])"
+gh release create "$NEXT" \
+  --title "$NEXT — <title>" \
+  --notes-file /tmp/notes.md \
+  dist/fusioninventory-agent_${NEXT}_linux_amd64.tar.gz \
+  dist/checksums.txt \
+  $(ls dist/*.deb dist/*.rpm 2>/dev/null)
+```
+
+> Prefer this CLI path. If the repo has a release workflow (see below), pushing the
+> tag triggers it instead — in that case skip `gh release create` and only enrich the
+> notes with `gh release edit "$NEXT" --notes-file /tmp/notes.md`.
+
+### 8. Verify
+
+```bash
+gh release view "$NEXT" --json tagName,assets,url \
+  -q '"\(.tagName) | \(.url)\nassets: \([.assets[].name] | join(", "))"'
 ```
 
 ### 9. (Optional) OpenSpec
 
-If the release closes an OpenSpec change, run `/opsx:archive <change>` to sync the main
-specs and archive it, then commit + push that separately.
+If the release closes an OpenSpec change, run `/opsx:archive <change>` to sync the
+main specs and archive it, then commit + push that separately.
 
 ---
 
 ## Quick reference
 
 ```bash
-LAST=$(git describe --tags --abbrev=0); IFS=. read MA MI PA <<<"${LAST#v}"; NEXT="v${MA}.$((MI+1)).0"
-# 1) edit CHANGELOG.md  2) build+test green
-git add -A && git commit -m "feat: ... — $NEXT"
+LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0); IFS=. read MA MI PA <<<"${LAST#v}"; NEXT="v${MA}.$((MI+1)).0"
+# 1) edit CHANGELOG.md   2) go vet/build/test green   3) make build-all + packages + tarball + checksums
+git add CHANGELOG.md && git commit -m "release: $NEXT — ..."
 git tag -a "$NEXT" -m "Release $NEXT" && git push origin main && git push origin "$NEXT"
-# 3) poll CI (step 6)  4) get RID (step 8)  5) PATCH notes (step 8)
+gh release create "$NEXT" --title "$NEXT — ..." --notes-file /tmp/notes.md dist/*.tar.gz dist/checksums.txt $(ls dist/*.deb dist/*.rpm 2>/dev/null)
 ```
 
 ---
 
-## CI workflow (`.gitea/workflows/release.yml`)
+## Optional CI workflow (`.github/workflows/release.yml`)
 
-| Artefato | Status |
-|---|---|
-| `linux/amd64` (.tar.gz) | ✅ |
-| `windows/amd64` (.zip) | ✅ |
-| `checksums.txt` | ✅ |
-| Release criado no tag push | ✅ |
-| Notas automáticas | ⚠️ mínimas — enriquecidas via API (passo 8) |
+If you prefer CI to build and publish on tag push, a minimal workflow is:
+
+```yaml
+name: release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.26' }
+      - run: make build-all
+      - run: tar -czf dist/fusioninventory-agent_${GITHUB_REF_NAME}_linux_amd64.tar.gz -C dist fusioninventory-agent
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/fusioninventory-agent_*_linux_amd64.tar.gz
+          generate_release_notes: true
+```
+
+With this in place, the tag push creates the release automatically; the skill then
+only enriches the notes (`gh release edit "$NEXT" --notes-file ...`).
 
 ## Guardrails
 
-- **Never** push a tag before build + tests are green.
-- **Never** stage `.claude/skills`, `.agent/skills`, `skills-lock.json`, `web/dist`,
-  `docs/screencast-validar/`, or `.swp` files into a release commit.
-- **Never** hardcode the Gitea token; use `$GITEA_TOKEN` and remind the user to rotate a
+- **Never** push a tag before `go vet`, `go build`, and `go test` are green.
+- **Never** stage `.agents/skills`, `.claude/skills`, `dist/`, Vagrant VM state
+  (`test/vagrant/.vagrant/`), `test/glpi/.env`, or local settings into a release commit.
+- **Never** hardcode a GitHub token; use `gh auth` and remind the user to rotate a
   pasted token.
 - The tag is the version — no code constant to bump.
-- Reuse an existing tag only by deleting it first (risky if already pulled); prefer a new
-  patch version instead.
+- Reuse an existing tag only by deleting it first (risky if already pulled); prefer a
+  new patch version instead.
+```
