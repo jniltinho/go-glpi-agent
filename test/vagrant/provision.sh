@@ -42,11 +42,17 @@ install_suse() {
     echo "   (agente Perl indisponível no repo — segue só com o Go)"
 }
 
+install_arch() {
+  pacman -Sy --noconfirm --needed dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1 || true
+  # glpi-agent é instalado via AppImage (referência), igual às demais distros
+}
+
 case "$FAMILY" in
   debian) install_debian ;;
   rhel)   install_rhel ;;
   suse)   install_suse ;;
-  *) echo "família desconhecida: $FAMILY (use debian|rhel|suse)"; exit 1 ;;
+  arch)   install_arch ;;
+  *) echo "família desconhecida: $FAMILY (use debian|rhel|suse|arch)"; exit 1 ;;
 esac
 
 if [[ ! -x "$BIN" ]]; then
@@ -77,9 +83,13 @@ if [[ -x "$APP" ]]; then
   # logo após instalar, gravando o XML de referência em $OUTDIR/glpi.
   echo "==> Instalando glpi-agent (referência) + inventário local via AppImage..."
   APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --runnow --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
-  if command -v glpi-agent >/dev/null 2>&1; then
-    echo "==> glpi-agent: enviando ao GLPI..."
-    glpi-agent --server="$GLPI_URL" >/dev/null 2>&1 || true
+  # o instalador grava em /usr/local/bin, que pode não estar no PATH do
+  # provisioner (RHEL/SUSE) — use o caminho absoluto.
+  GA=$(command -v glpi-agent || echo /usr/local/bin/glpi-agent)
+  if [[ -x "$GA" ]]; then
+    echo "==> glpi-agent: inventário local + envio ao GLPI..."
+    "$GA" --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
+    "$GA" --server="$GLPI_URL" >/dev/null 2>&1 || true
     REF_OUT=$(ls "$OUTDIR"/glpi/*.xml "$OUTDIR"/glpi/*.json 2>/dev/null | head -1 || true)
   else
     echo "   (glpi-agent não ficou disponível após instalar)"
