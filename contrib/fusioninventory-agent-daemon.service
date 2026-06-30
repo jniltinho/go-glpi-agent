@@ -1,0 +1,18 @@
+[Unit]
+Description=Go FusionInventory Agent (daemon)
+Documentation=https://github.com/jniltinho/go-fusioninventory-agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Long-running alternative to the oneshot+timer: `daemon` runs periodic cycles
+# itself (interval from `delaytime` in agent.cfg). Use EITHER this OR the
+# .timer, not both.
+Type=simple
+ExecStart=/usr/bin/fusioninventory-agent daemon --conf-file /etc/fusioninventory/agent.cfg
+Restart=on-failure
+RestartSec=30
+User=root
+
+[Install]
+WantedBy=multi-user.target

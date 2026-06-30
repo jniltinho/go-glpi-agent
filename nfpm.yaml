@@ -21,6 +21,11 @@ contents:
     dst: /lib/systemd/system/fusioninventory-agent.service
   - src: ./contrib/fusioninventory-agent.timer
     dst: /lib/systemd/system/fusioninventory-agent.timer
+  - src: ./contrib/fusioninventory-agent-daemon.service
+    dst: /lib/systemd/system/fusioninventory-agent-daemon.service
+  - src: ./contrib/agent.cfg
+    dst: /etc/fusioninventory/agent.cfg
+    type: "config|noreplace" # keep user edits across upgrades
 
 overrides:
   deb:

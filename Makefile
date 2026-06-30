@@ -41,6 +41,8 @@ install: build
 	install -D -m 0755 $(BINARY) $(DESTDIR)$(PREFIX)/bin/$(BINARY)
 	install -D -m 0644 contrib/$(BINARY).service $(DESTDIR)/lib/systemd/system/$(BINARY).service
 	install -D -m 0644 contrib/$(BINARY).timer $(DESTDIR)/lib/systemd/system/$(BINARY).timer
+	install -D -m 0644 contrib/$(BINARY)-daemon.service $(DESTDIR)/lib/systemd/system/$(BINARY)-daemon.service
+	install -D -m 0644 contrib/agent.cfg $(DESTDIR)/etc/fusioninventory/agent.cfg
 
 # requer nfpm (https://nfpm.goreleaser.com); usa nfpm.yaml na raiz
 package-deb: build-all

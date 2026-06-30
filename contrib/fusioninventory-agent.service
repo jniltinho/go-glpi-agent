@@ -1,13 +1,15 @@
 [Unit]
-Description=Go FusionInventory Agent
-Documentation=https://github.com/fusioninventory/fusioninventory-agent
+Description=Go FusionInventory Agent (inventory run)
+Documentation=https://github.com/jniltinho/go-fusioninventory-agent
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/fusioninventory-agent --conf-file /etc/fusioninventory/agent.cfg
-# roda como root para acessar dmidecode, /sys/class/dmi e seriais de disco
+# `run` does a single inventory cycle (server or local, per agent.cfg).
+# Scheduling is handled by the companion .timer.
+ExecStart=/usr/bin/fusioninventory-agent run --conf-file /etc/fusioninventory/agent.cfg
+# runs as root to read dmidecode, /sys/class/dmi and disk serials
 User=root
 
 [Install]
