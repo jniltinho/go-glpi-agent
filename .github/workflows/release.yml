@@ -43,11 +43,23 @@ jobs:
           ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz > checksums.txt )
           ls -la dist/
 
+      - name: Build release notes from CHANGELOG
+        run: |
+          awk -v hdr="## [$VERSION]" '
+            index($0, hdr) == 1 { f = 1; next }
+            /^## \[/ && f { exit }
+            f { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "Release $GITHUB_REF_NAME. See CHANGELOG.md." > notes.md
+          fi
+          cat notes.md
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
-            --generate-notes \
+            --notes-file notes.md \
             dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/checksums.txt

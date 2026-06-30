@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 —
 
+## [0.1.1] — 2026-06-30
+
+### Changed
+- CI: bump GitHub Actions to Node 24 (`actions/checkout@v5`, `actions/setup-go@v6`)
+  and publish releases with the native `gh` CLI, removing the last Node 20 action
+  and an external dependency.
+- Release notes are now written from `CHANGELOG.md` (`--notes-file`) instead of
+  being auto-generated from commits.
+
 ## [0.1.0] — 2026-06-29
 
 First release: a Go reimplementation of the FusionInventory/GLPI inventory agent
