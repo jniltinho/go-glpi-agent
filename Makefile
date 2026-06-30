@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all build-windows package-windows build-freebsd package-freebsd build-macos-amd64 build-macos-arm64 build-macos package-macos test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
+.PHONY: all build build-all build-windows package-windows package-msi build-freebsd package-freebsd build-macos-amd64 build-macos-arm64 build-macos package-macos test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
 
 all: build
 
@@ -45,6 +45,20 @@ package-windows: build-windows
 	cp contrib/windows/install.ps1 dist/windows/
 	cp contrib/windows/uninstall.ps1 dist/windows/
 	cd dist/windows && zip -q -r ../$(BINARY)_$(VERSION)_windows_amd64.zip .
+
+# empacota um .msi (WiX/wixl) para deploy via GPO/Intune/SCCM. REQUER wixl
+# (msitools): `apt-get install wixl`. O .exe é buildado e estanciado em dist/msi.
+# O ProductVersion do MSI precisa ser numérico (x.y[.z]); extraímos o prefixo
+# numérico de VERSION (ex.: "1.2.3-5-gabc" -> "1.2.3", "ci-abc" -> "0.0.0").
+package-msi: build-windows
+	mkdir -p dist/msi
+	cp dist/$(BINARY).exe dist/msi/$(BINARY).exe
+	cp contrib/windows/msi/agent.cfg dist/msi/agent.cfg
+	MSI_VERSION=$$(printf '%s' "$(VERSION)" | grep -oE '[0-9]+(\.[0-9]+){1,2}' | head -1); \
+	[ -n "$$MSI_VERSION" ] || MSI_VERSION=0.0.0; \
+	echo "MSI ProductVersion: $$MSI_VERSION (from VERSION=$(VERSION))"; \
+	wixl -a x64 -D SourceDir=dist/msi -D Version=$$MSI_VERSION \
+		-o dist/$(BINARY)_$(VERSION)_x64.msi contrib/windows/msi/$(BINARY).wxs
 
 # build estático para freebsd/amd64 (cross-compila a partir do Linux)
 build-freebsd:

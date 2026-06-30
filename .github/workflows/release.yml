@@ -38,6 +38,12 @@ jobs:
       - name: Build Windows zip
         run: make package-windows VERSION="$VERSION"   # dist/go-glpi-agent_<version>_windows_amd64.zip
 
+      - name: Install wixl (msitools) for the MSI
+        run: sudo apt-get update && sudo apt-get install -y wixl msitools
+
+      - name: Build Windows MSI
+        run: make package-msi VERSION="$VERSION"        # dist/go-glpi-agent_<version>_x64.msi
+
       - name: Build FreeBSD tarball
         run: make package-freebsd VERSION="$VERSION"   # dist/go-glpi-agent_<version>_freebsd_amd64.tar.gz
 
@@ -46,7 +52,7 @@ jobs:
           export PATH="$PATH:$(go env GOPATH)/bin"
           make packages   # .deb + .rpm + arch .pkg.tar.zst
           tar -czf "dist/go-glpi-agent_${VERSION}_linux_amd64.tar.gz" -C dist go-glpi-agent
-          ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz *.zip > checksums.txt )
+          ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz *.zip *.msi > checksums.txt )
           ls -la dist/
 
       - name: Build release notes from CHANGELOG
@@ -74,7 +80,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
-            dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/*.zip dist/checksums.txt
+            dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/*.zip dist/*.msi dist/checksums.txt
 
   # Builds the macOS installers (.pkg + .dmg) on real Apple runners and uploads
   # them to the release created by the `release` job. pkgbuild/productbuild/hdiutil

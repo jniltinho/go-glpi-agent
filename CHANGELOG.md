@@ -7,10 +7,11 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-**macOS inventory support (Intel + Apple Silicon).** A single codebase now builds
-for Linux, Windows, FreeBSD and macOS. Validated on GitHub Actions across both
-`macos-13` (x86_64) and `macos-latest` (arm64): the native JSON is schema-valid and
-the output is compared against the official GLPI-Agent installed from its release.
+**macOS inventory support (Apple Silicon) + Windows `.msi`.** A single codebase now
+builds for Linux, Windows, FreeBSD and macOS. macOS is validated on a `macos-latest`
+(arm64) runner with exact per-section parity against the official GLPI-Agent; the
+Windows `.msi` is validated with a full install → verify → uninstall round-trip on
+`windows-latest`.
 
 ### ✨ New Features
 - feat(macos): macOS inventory support — `go-glpi-agent` collects the same
@@ -18,7 +19,7 @@ the output is compared against the official GLPI-Agent installed from its releas
   (`SPHardwareDataType` for model/serial/UUID/boot-ROM, `SPMemoryDataType`,
   `SPNVMeDataType`/`SPSerialATADataType`, `SPUSBDataType`, `SPApplicationsDataType`),
   `sysctl machdep.cpu.*`/`hw.*` (CPU, incl. Apple Silicon chip name), `sw_vers`/`uname`
-  (OS), `ioreg` (identity fallback) and `route` (gateway).
+  (OS), `ioreg` (identity fallback), `networksetup` (interface typing) and `route`.
 - feat(macos): system serial/UUID resolved through the official agent's fallback
   chain (`Serial Number` → `Serial Number (system)` → `ioreg IOPlatformSerialNumber`;
   `Hardware UUID` → `ioreg IOPlatformUUID`), with a serial-of-last-resort = UUID rule
@@ -27,11 +28,26 @@ the output is compared against the official GLPI-Agent installed from its releas
   `darwin/amd64` + `darwin/arm64` binaries and `.pkg` + `.dmg` installers
   (`pkgbuild`/`productbuild` + `hdiutil`) with a `LaunchDaemon` for scheduled runs;
   `contrib/macos/` holds the daemon, pre/postinstall, `uninstall.sh` and build driver.
-- ci(macos): new `macos.yml` matrix (`macos-13` Intel + `macos-latest` Apple Silicon)
-  builds, runs a real inventory, validates the native JSON against GLPI's schema,
-  installs and runs the official GLPI-Agent for a per-section comparison, asserts the
-  serial is never empty, and uploads the `.pkg`/`.dmg` artifacts; `release.yml` publishes
-  the four macOS installers; `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
+- ci(macos): new `macos.yml` (arm64 `macos-latest`; Intel `macos-13` deferred) builds,
+  runs a real inventory, validates the native JSON against GLPI's schema, installs and
+  runs the official GLPI-Agent for a per-section comparison, asserts the serial is never
+  empty, and uploads the `.pkg`/`.dmg`; `release.yml` publishes the macOS installers;
+  `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
+- feat(windows): Windows `.msi` installer for managed deployment (GPO / Intune /
+  SCCM / PDQ). Installs the `.exe`, registers the hourly `go-glpi-agent` Scheduled
+  Task (SYSTEM), seeds `agent.cfg`, supports silent install with `SERVER`/`TAG`
+  properties (`msiexec /i … /qn SERVER=… TAG=…`), in-place upgrades (stable
+  `UpgradeCode`), and clean uninstall by product code (`PURGE=1` to also drop
+  config). Built **on Linux with `wixl`** (msitools) — no Windows build host — via
+  `make package-msi`; a `contrib/windows/msi/Dockerfile` builds it in a container.
+- feat(windows): hidden `service install|uninstall|configure|purge` subcommands the
+  MSI's deferred (SYSTEM) custom actions call; the exe self-locates via
+  `os.Executable()` and owns `agent.cfg` (writes a default only when absent, so
+  upgrades preserve operator edits).
+- ci(windows-msi): new workflow builds the `.msi` on Ubuntu (`wixl`) and runs a full
+  install → verify (binary + Scheduled Task + configured `agent.cfg`) → inventory +
+  schema-validate → uninstall round-trip on `windows-latest`; `release.yml` publishes
+  the `.msi` alongside the existing artifacts.
 
 ## [0.3.0] — 2026-06-30
 
