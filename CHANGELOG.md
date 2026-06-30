@@ -7,10 +7,14 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-**macOS inventory support (Apple Silicon) + Windows `.msi`.** A single codebase now
+—
+
+## [0.4.0] — 2026-06-30
+
+**macOS inventory support (Apple Silicon) + a Windows `.msi`.** A single codebase now
 builds for Linux, Windows, FreeBSD and macOS. macOS is validated on a `macos-latest`
-(arm64) runner with exact per-section parity against the official GLPI-Agent; the
-Windows `.msi` is validated with a full install → verify → uninstall round-trip on
+(arm64) runner with **exact per-section parity** against the official GLPI-Agent, and
+the Windows `.msi` is validated with a full install → verify → uninstall round-trip on
 `windows-latest`.
 
 ### ✨ New Features
@@ -24,21 +28,10 @@ Windows `.msi` is validated with a full install → verify → uninstall round-t
   chain (`Serial Number` → `Serial Number (system)` → `ioreg IOPlatformSerialNumber`;
   `Hardware UUID` → `ioreg IOPlatformUUID`), with a serial-of-last-resort = UUID rule
   so a Mac is never reported without a serial — including on virtualized CI runners.
-- feat(macos): dual-arch distribution — `make build-macos`/`package-macos` produce
-  `darwin/amd64` + `darwin/arm64` binaries and `.pkg` + `.dmg` installers
-  (`pkgbuild`/`productbuild` + `hdiutil`) with a `LaunchDaemon` for scheduled runs;
-  `contrib/macos/` holds the daemon, pre/postinstall, `uninstall.sh` and build driver.
-- ci(macos): new `macos.yml` (arm64 `macos-latest`) builds, runs a real inventory,
-  validates the native JSON against GLPI's schema, installs and runs the official
-  GLPI-Agent for a per-section comparison (exact parity), asserts the serial is never
-  empty, and uploads the `.pkg`/`.dmg`; `release.yml` publishes the Apple Silicon
-  installers; `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
-
-### 🔧 Improvements
-- fix(agent): when the configured `vardir` is not writable (e.g. the agent is run
-  manually, not installed under the system prefix), fall back to a per-user cache
-  directory so the `deviceid`/`agentid` still persist across runs instead of being
-  regenerated — and the noisy mkdir-permission warning is gone.
+- feat(macos): Apple Silicon distribution — `make build-macos`/`package-macos` produce
+  the `darwin/arm64` binary and a `.pkg` + `.dmg` installer (`pkgbuild`/`productbuild`
+  + `hdiutil`) with a `LaunchDaemon` for scheduled runs; `contrib/macos/` holds the
+  daemon, pre/postinstall, `uninstall.sh` and build driver. (Intel builds from source.)
 - feat(windows): Windows `.msi` installer for managed deployment (GPO / Intune /
   SCCM / PDQ). Installs the `.exe`, registers the hourly `go-glpi-agent` Scheduled
   Task (SYSTEM), seeds `agent.cfg`, supports silent install with `SERVER`/`TAG`
@@ -50,6 +43,17 @@ Windows `.msi` is validated with a full install → verify → uninstall round-t
   MSI's deferred (SYSTEM) custom actions call; the exe self-locates via
   `os.Executable()` and owns `agent.cfg` (writes a default only when absent, so
   upgrades preserve operator edits).
+
+### 🔧 Improvements
+- fix(agent): when the configured `vardir` is not writable (e.g. the agent is run
+  manually, not installed under the system prefix), fall back to a per-user cache
+  directory so the `deviceid`/`agentid` still persist across runs instead of being
+  regenerated — and the noisy mkdir-permission warning is gone.
+- ci(macos): new `macos.yml` (arm64 `macos-latest`) builds, runs a real inventory,
+  validates the native JSON against GLPI's schema, installs and runs the official
+  GLPI-Agent for a per-section comparison, asserts the serial is never empty, and
+  uploads the `.pkg`/`.dmg`; `release.yml` publishes the Apple Silicon installers;
+  `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
 - ci(windows-msi): new workflow builds the `.msi` on Ubuntu (`wixl`) and runs a full
   install → verify (binary + Scheduled Task + configured `agent.cfg`) → inventory +
   schema-validate → uninstall round-trip on `windows-latest`; `release.yml` publishes
