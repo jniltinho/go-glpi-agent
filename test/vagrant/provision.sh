@@ -81,15 +81,16 @@ REF_OUT=""
 if [[ -x "$APP" ]]; then
   # o instalador exige um target (--local/--server); --runnow roda o inventário
   # logo após instalar, gravando o XML de referência em $OUTDIR/glpi.
-  echo "==> Instalando glpi-agent (referência) + inventário local via AppImage..."
-  APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --runnow --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
+  echo "==> Instalando glpi-agent (referência) via AppImage..."
+  APPIMAGE_EXTRACT_AND_RUN=1 "$APP" --install --no-service --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
   # o instalador grava em /usr/local/bin, que pode não estar no PATH do
-  # provisioner (RHEL/SUSE) — use o caminho absoluto.
+  # provisioner (RHEL/SUSE) — use o caminho absoluto. --force/--no-fork garantem
+  # que o inventário roda de forma síncrona (o guard de agendamento pularia).
   GA=$(command -v glpi-agent || echo /usr/local/bin/glpi-agent)
   if [[ -x "$GA" ]]; then
     echo "==> glpi-agent: inventário local + envio ao GLPI..."
-    "$GA" --local="$OUTDIR/glpi" >/dev/null 2>&1 || true
-    "$GA" --server="$GLPI_URL" >/dev/null 2>&1 || true
+    "$GA" --local="$OUTDIR/glpi" --force --no-fork >/dev/null 2>&1 || true
+    "$GA" --server="$GLPI_URL" --force --no-fork >/dev/null 2>&1 || true
     REF_OUT=$(ls "$OUTDIR"/glpi/*.xml "$OUTDIR"/glpi/*.json 2>/dev/null | head -1 || true)
   else
     echo "   (glpi-agent não ficou disponível após instalar)"

@@ -27,7 +27,8 @@ VMS = [
   { name: "ubuntu2404", box: "bento/ubuntu-24.04",     family: "debian" },
   { name: "ubuntu2604", box: "bento/ubuntu-26.04",     family: "debian" },
   { name: "popos2004",  box: "xtangle/pop_os-20.04",   family: "debian" },  # Pop!_OS (box comunitário)
-  { name: "mint20",     box: "VMR/LinuxMint20-R",      family: "debian" },  # Linux Mint (box comunitário)
+  # Linux Mint: sem box oficial; os comunitários (VMR/LinuxMint20-R) falham no
+  # SSH/boot. Mint é derivado do Ubuntu (apt), coberto por ubuntu2404/popos2004.
   { name: "opensuse15", box: "bento/opensuse-leap-15", family: "suse"   },
   { name: "fedora42",   box: "bento/fedora-42",        family: "rhel"   },
   { name: "arch",       box: "generic/arch",           family: "arch"   },
