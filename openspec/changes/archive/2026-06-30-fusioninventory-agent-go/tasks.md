@@ -40,8 +40,8 @@
 - [x] 4.3 Implementar device ID formato Perl com persistência JSON e importação de `FusionInventory-Agent.dump` (`internal/agent/storage.go`)
 - [x] 4.4 Implementar parsing de flags em `cmd/fusioninventory-agent/main.go` (`--server`, `--local`, `--conf-file`, `--daemon`, `--debug`, `--force`, `--version`, `--run-once`, `--no-category`)
 - [~] 4.5 Implementar modo execução única e daemon com loop, SIGTERM e `delaytime` — **falta**: `lazy`, `force`, aplicar `PROLOG_FREQ`/schedule do servidor no daemon
-- [ ] 4.6 Implementar `lazy = 1`: pular envio quando servidor não solicitou inventário (comportamento Perl)
-- [ ] 4.7 Implementar `--force` / `force = 1`: enviar inventário mesmo sem solicitação do servidor
+- [x] 4.6 Implementar `lazy = 1`: pular envio quando servidor não solicitou inventário (comportamento Perl)
+- [x] 4.7 Implementar `--force` / `force = 1`: enviar inventário mesmo sem solicitação do servidor
 - [ ] 4.8 Aplicar intervalo retornado pelo servidor (`PROLOG_FREQ` no legado; schedule do CONTACT no nativo) ao `delaytime` do daemon
 - [ ] 4.9 Adicionar flags CLI `--user` e `--password` (sobrescrevem `agent.cfg`)
 
@@ -98,7 +98,7 @@
 - [ ] 11.3 Validar fallback XML/PROLOG contra plugin FusionInventory (se disponível no ambiente de teste)
 - [~] 11.4 Testes unitários por coletor com mocks/fixtures (serialize/config/storage feitos; coletores pendentes)
 - [x] 11.5 Migração device ID: import de `FusionInventory-Agent.dump`
-- [ ] 11.6 Migração agentid: import de `GLPI-Agent.dump`
+- [x] 11.6 Migração agentid: import de `GLPI-Agent.dump`
 - [x] 11.7 `agent.cfg` existente (`tag`, `lazy`, SSL, `include`) lido sem erro
 
 ## 12. Melhorias incrementais (pós-v1 mínimo)
