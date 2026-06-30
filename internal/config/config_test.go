@@ -89,7 +89,10 @@ func TestDefaults(t *testing.T) {
 	if cfg.BackendCollectTimeout != 180 {
 		t.Errorf("default timeout = %d, expected 180", cfg.BackendCollectTimeout)
 	}
-	if cfg.VarDir != "/opt/go-glpi-agent/var" {
-		t.Errorf("default VarDir = %q", cfg.VarDir)
+	// VarDir is derived from the OS-specific base dir, so assert against that
+	// rather than a hardcoded POSIX path (keeps the test correct on Windows too).
+	wantVarDir := filepath.Join(defaultBaseDir(), "var")
+	if cfg.VarDir != wantVarDir {
+		t.Errorf("default VarDir = %q, expected %q", cfg.VarDir, wantVarDir)
 	}
 }

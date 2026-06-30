@@ -11,8 +11,9 @@ import (
 	"strings"
 )
 
-// DefaultConfFile is the default path of the configuration file.
-const DefaultConfFile = "/opt/go-glpi-agent/agent.cfg"
+// DefaultConfFile is the default path of the configuration file. It is derived
+// from the OS-specific base directory (see paths_unix.go / paths_windows.go).
+var DefaultConfFile = filepath.Join(defaultBaseDir(), "agent.cfg")
 
 // Config holds the parameters supported in v1. Unmapped fields from agent.cfg
 // are ignored (with a debug warning) — see design.md D7.
@@ -63,7 +64,7 @@ func Default() *Config {
 		DelayTime:             3600,
 		BackendCollectTimeout: 180,
 		Timeout:               180,
-		VarDir:                "/opt/go-glpi-agent/var",
+		VarDir:                filepath.Join(defaultBaseDir(), "var"),
 		Logger:                "Stderr",
 		LogFacility:           "LOG_USER",
 	}

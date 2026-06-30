@@ -4,11 +4,11 @@ Guidance for AI agents (and humans) working on **go-glpi-agent**.
 
 ## What this is
 
-A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux**.
-It produces a single static binary (`go-glpi-agent`) that collects local
-hardware/software inventory and sends it to a **GLPI 10+** server using the
-native JSON protocol, with automatic fallback to the legacy OCS/FusionInventory
-XML protocol. It can also write the inventory to a local XML file.
+A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux and
+Windows**. It produces a single static binary (`go-glpi-agent` / `.exe`) that
+collects local hardware/software inventory and sends it to a **GLPI 10+** server
+using the native JSON protocol, with automatic fallback to the legacy
+OCS/FusionInventory XML protocol. It can also write the inventory to a local XML file.
 
 The Go agent lives at the repository root. The Perl reference projects (kept
 intact, for behavior comparison only) live under `base/` (`base/perl/`,
@@ -26,11 +26,31 @@ intact, for behavior comparison only) live under `base/` (`base/perl/`,
   - Business logic stays in `internal/...`, never in `cmd/`.
 - **Module path:** `go-glpi-agent` (no host prefix). The GitHub
   remote is `github.com/jniltinho/go-glpi-agent`.
-- **Stdlib first, then existing deps.** The only runtime dependencies are
-  `gopsutil` (collection) and `cobra` (CLI); inventory IDs use `crypto/rand`
-  (no UUID dependency). Don't add a dependency for what a few lines can do.
+- **Stdlib first, then existing deps.** Runtime dependencies are `gopsutil`
+  (collection), `cobra` (CLI), `yusufpapurcu/wmi` + `x/sys/windows/registry`
+  (Windows collection); inventory IDs use `crypto/rand` (no UUID dependency).
+  Don't add a dependency for what a few lines can do.
 - Keep the data model in `internal/inventory` as the single source of truth;
   the XML and JSON serializers both read from it (see `internal/transport/server`).
+
+## Per-OS layout (build tags)
+
+The code is split by OS so each platform's binary carries only its own collectors,
+and adding macOS/BSD later is "drop in a package + a registration file":
+
+- `internal/collector/linux/` — `//go:build linux`, reads `/sys`, `/proc`, dmidecode, lsblk, lvs.
+- `internal/collector/windows/` — `//go:build windows`, reads WMI (`Win32_*`) and the registry.
+  Pure parsing helpers live in `windows/parse.go` (**no** build tag, no Windows-only
+  imports) so they are unit-tested on any platform (`windows/parse_test.go`).
+- `internal/collector/generic/` — cross-platform; `users.go` is `//go:build !windows`.
+- Registration: `internal/agent/register_<goos>.go` blank-imports that OS's package.
+- `internal/logger/logger_unix.go` (syslog) vs `logger_windows.go` (stub); OS-aware
+  default paths in `internal/config/paths_<unix|windows>.go`.
+
+Conventions for Windows collectors: gate `IsEnabled` on `runtime.GOOS == "windows"`;
+run identity strings through `sysutil.CleanDMI`; **never** use WMI `Win32_Product`
+(slow, triggers MSI self-repair) — read installed software from the uninstall
+registry keys. Verify changes with `GOOS=windows go build ./...` and `GOOS=windows go vet ./...`.
 
 ## Go skills
 
@@ -51,10 +71,14 @@ Specs and tasks live in `openspec/changes/`. Use the OpenSpec skills
 ## Build, test, run
 
 ```sh
-make build          # local binary ./go-glpi-agent
-make build-all      # static linux/amd64 in dist/
-make test           # go test ./...
+make build           # local binary ./go-glpi-agent
+make build-all       # static linux/amd64 in dist/
+make build-windows   # static windows/amd64 (dist/go-glpi-agent.exe)
+make package-windows # Windows .zip (exe + agent.cfg + install/uninstall.ps1)
+make test            # go test ./...
 go vet ./...
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./...   # Windows compile check
+GOOS=windows go vet ./...
 
 ./go-glpi-agent run --local /tmp/inv          # write XML locally
 ./go-glpi-agent run --server http://glpi/front/inventory.php
@@ -77,6 +101,9 @@ the file.
   first; `dist/go-glpi-agent` is copied into each VM via a file provisioner
   (works on boxes without guest additions). `make fetch-glpi-agent` adds the
   official glpi-agent AppImage as a reference.
+- `test/vagrant-windows/` — a Windows Server 2022 box (WinRM-provisioned). Run
+  `make build-windows` first; `provision.ps1` installs the agent and sends a
+  native inventory to the GLPI stack in `test/glpi/`.
 
 When validating the native protocol, GLPI's strict `inventory.schema.json`
 (in the GLPI container under `vendor/glpi-project/inventory_format/`) is the

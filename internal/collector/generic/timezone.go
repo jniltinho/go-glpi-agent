@@ -56,7 +56,8 @@ func timezoneName() string {
 			return target[i+len("zoneinfo/"):]
 		}
 	}
-	return ""
+	// 3) OS-specific source (Windows registry); "" on Unix.
+	return osTimezoneName()
 }
 
 // formatOffset renders a signed second offset as the GLPI-expected +HHMM/-HHMM

@@ -1,11 +1,15 @@
 # --- Go (projeto na raiz) ---
 /go-glpi-agent
+/go-glpi-agent.exe
 /dist/
 *.out
 coverage.txt
 *.swp
 *.swo
 *~
+
+# --- Notas/análises locais (não versionar) ---
+/windows-inventory-support-analysis.md
 
 # --- Testes: VMs Vagrant e configs locais (não versionar) ---
 .vagrant/
@@ -39,3 +43,8 @@ base/**/SIGNATURE
 base/**/debian/*.install
 base/**/etc/*.local
 base/**/etc/*.pem
+
+# Windows SSH test artifacts (local only)
+test/vagrant-windows/_winkey.pub
+test/vagrant-windows/_out/
+test/vagrant-windows/_openssh.zip

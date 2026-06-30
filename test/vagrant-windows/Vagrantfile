@@ -1,0 +1,90 @@
+# Vagrantfile to validate go-glpi-agent on Windows against the GLPI 10 docker
+# stack in ../glpi. Uses the gusztavvargadr Windows Server box (VirtualBox or
+# Hyper-V) communicating over WinRM.
+#
+# Prerequisite on the host (run before `vagrant up`):
+#   cd ../..              # repo root
+#   make build-windows    # produces dist/go-glpi-agent.exe
+#
+# Point the agent at your GLPI server (the docker stack in ../glpi or any GLPI 10):
+#   GLPI_SERVER=http://192.168.0.10/front/inventory.php vagrant up
+#
+# Bring up:    vagrant up
+# Re-run:      vagrant provision
+# Destroy:     vagrant destroy -f
+#
+# Windows boxes are large (~10 GB) and licensed as evaluation editions; this is
+# meant for a test host, never the dev machine or GitHub Actions.
+
+GLPI_SERVER = ENV.fetch("GLPI_SERVER", "http://10.0.2.2:8080/front/inventory.php")
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "gusztavvargadr/windows-server-2022-standard"
+  config.vm.hostname = "win-gfi-test"
+  config.vm.communicator = "winrm"
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 4096
+    v.cpus = 2
+  end
+  config.vm.provider "hyperv" do |v|
+    v.memory = 4096
+    v.cpus = 2
+  end
+
+  # Copy the cross-compiled binary and the install/uninstall scripts into the VM.
+  config.vm.provision "file", source: "../../dist/go-glpi-agent.exe",
+                              destination: "C:\\gfi\\go-glpi-agent.exe"
+  config.vm.provision "file", source: "../../contrib/windows/install.ps1",
+                              destination: "C:\\gfi\\install.ps1"
+  config.vm.provision "file", source: "../../contrib/windows/uninstall.ps1",
+                              destination: "C:\\gfi\\uninstall.ps1"
+  config.vm.provision "file", source: "../../contrib/windows/agent.cfg",
+                              destination: "C:\\gfi\\agent.cfg"
+
+  # Official GLPI Agent (portable zip) used as a reference for output comparison,
+  # mirroring the Linux matrix's glpi-agent AppImage. Run `make fetch-glpi-agent-win`
+  # first (downloads dist/ref/GLPI-Agent-1.18-x64.zip).
+  if File.exist?("../../dist/ref/GLPI-Agent-1.18-x64.zip")
+    config.vm.provision "file", source: "../../dist/ref/GLPI-Agent-1.18-x64.zip",
+                                destination: "C:\\gfi\\glpi-agent-ref.zip"
+  end
+
+  config.vm.provision "shell", path: "provision.ps1", args: [GLPI_SERVER]
+
+  # On-demand only (run: never): demonstrates the SSH path. Enables the built-in
+  # OpenSSH Server, authorizes the host key staged at _winkey.pub via the synced
+  # folder, and copies the agent outputs back to the host for inspection.
+  # Use: vagrant provision --provision-with sshsetup
+  config.vm.provision "sshsetup", type: "shell", run: "never", inline: <<-'PS'
+    $ErrorActionPreference = "Continue"
+    # Standalone Win32-OpenSSH (staged at _openssh.zip via the synced folder) avoids
+    # the Feature-on-Demand capability, which needs Windows Update and is flaky on
+    # eval boxes. Extract + install-sshd.ps1 + start.
+    if (-not (Get-Service sshd -ErrorAction SilentlyContinue)) {
+      Expand-Archive -Force C:\vagrant\_openssh.zip C:\
+      & powershell -ExecutionPolicy Bypass -File C:\OpenSSH-Win64\install-sshd.ps1
+    }
+    Set-Service -Name sshd -StartupType Automatic
+    Start-Service sshd
+    if (-not (Get-NetFirewallRule -Name 'sshd' -ErrorAction SilentlyContinue)) {
+      New-NetFirewallRule -Name 'sshd' -DisplayName 'OpenSSH' -Enabled True -Direction Inbound -Protocol TCP -Action Allow -LocalPort 22 | Out-Null
+    }
+    $key = (Get-Content C:\vagrant\_winkey.pub -Raw).Trim()
+    # Use the per-user authorized_keys and disable the default "Match Group
+    # administrators" block (which would force the StrictModes-picky
+    # administrators_authorized_keys file for admin users like vagrant).
+    $dir = "C:\Users\vagrant\.ssh"
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    Set-Content -Path "$dir\authorized_keys" -Value $key -Encoding ascii
+    icacls "$dir\authorized_keys" /inheritance:r /grant "vagrant:F" /grant "SYSTEM:F" | Out-Null
+    $cfg = "$env:ProgramData\ssh\sshd_config"
+    (Get-Content $cfg) -replace '^(\s*Match Group administrators)', '#$1' `
+                       -replace '^(\s*AuthorizedKeysFile __PROGRAMDATA__/ssh/administrators_authorized_keys)', '#$1' |
+        Set-Content $cfg
+    Restart-Service sshd
+    New-Item -ItemType Directory -Force -Path C:\vagrant\_out | Out-Null
+    Copy-Item -Force -Recurse C:\gfi\out\* C:\vagrant\_out\
+    Write-Host ("sshd status: " + (Get-Service sshd).Status)
+  PS
+end
