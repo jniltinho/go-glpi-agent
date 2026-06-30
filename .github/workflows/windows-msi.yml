@@ -134,5 +134,7 @@ jobs:
             throw "binary still present after uninstall"
           }
           schtasks /Query /TN go-glpi-agent 2>$null | Out-Null
-          if ($LASTEXITCODE -eq 0) { throw "Scheduled Task still present after uninstall" }
+          $taskGone = ($LASTEXITCODE -ne 0)
+          if (-not $taskGone) { throw "Scheduled Task still present after uninstall" }
           Write-Host "OK: binary and Scheduled Task removed"
+          exit 0   # schtasks /Query set a non-zero $LASTEXITCODE; the assertions passed
