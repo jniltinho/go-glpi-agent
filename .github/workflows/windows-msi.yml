@@ -74,11 +74,19 @@ jobs:
             'SERVER=http://glpi.example.com/front/inventory.php', 'TAG=ci',
             '/l*vx', 'install.log')
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
-            Write-Host "===== action errors / return values ====="
-            Select-String -Path install.log -Pattern 'Return value 3|Action ended|value 3\.|1: 2|CustomAction|Note: 1:' | Select-Object -Last 80 | ForEach-Object { $_.Line }
+            Write-Host "===== lines around the first 'Return value 3' ====="
+            Select-String -Path install.log -Pattern 'Return value 3' -Context 25,2 | Select-Object -First 1 | ForEach-Object { $_.Context.PreContext; $_.Line }
             throw "install failed: exit $($p.ExitCode)"
           }
           echo "install exit: $($p.ExitCode)"
+
+      - name: Upload MSI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi-logs
+          path: '*.log'
+          if-no-files-found: ignore
 
       - name: Assert install (binary, task, config)
         shell: pwsh
