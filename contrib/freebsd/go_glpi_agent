@@ -1,0 +1,35 @@
+#!/bin/sh
+#
+# PROVIDE: go_glpi_agent
+# REQUIRE: NETWORKING DAEMON
+# KEYWORD: shutdown
+#
+# go-glpi-agent rc.d service. Runs the agent in daemon mode (periodic inventory
+# cycles). Enable it in /etc/rc.conf:
+#
+#   go_glpi_agent_enable="YES"
+#   # optional overrides:
+#   # go_glpi_agent_conf="/opt/go-glpi-agent/agent.cfg"
+#
+# Then: service go_glpi_agent start
+#
+# Alternatively, for a single scheduled run (the analog of a systemd timer), skip
+# this service and add a cron entry instead, e.g. hourly:
+#   0 * * * * root /opt/go-glpi-agent/go-glpi-agent run --conf-file /opt/go-glpi-agent/agent.cfg
+
+. /etc/rc.subr
+
+name=go_glpi_agent
+rcvar=go_glpi_agent_enable
+
+load_rc_config $name
+
+: ${go_glpi_agent_enable:="NO"}
+: ${go_glpi_agent_conf:="/opt/go-glpi-agent/agent.cfg"}
+: ${go_glpi_agent_bin:="/opt/go-glpi-agent/go-glpi-agent"}
+
+pidfile="/var/run/${name}.pid"
+command="/usr/sbin/daemon"
+command_args="-c -p ${pidfile} -t ${name} ${go_glpi_agent_bin} daemon --conf-file ${go_glpi_agent_conf}"
+
+run_rc_command "$1"
