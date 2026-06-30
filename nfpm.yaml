@@ -11,7 +11,7 @@ description: |
   Collects local Linux hardware and software inventory and sends it to a GLPI
   10+ server or writes it to a local XML file.
 vendor: jniltinho
-homepage: https://github.com/jniltinho/go-fusioninventory-agent
+homepage: https://github.com/jniltinho/go-glpi-agent
 license: GPL-2.0-or-later
 
 contents:
@@ -34,3 +34,10 @@ overrides:
   rpm:
     depends:
       - dmidecode
+  archlinux:
+    depends:
+      - dmidecode
+
+archlinux:
+  pkgbase: go-glpi-agent
+  packager: Nilton Oliveira <jniltinho@gmail.com>

@@ -7,7 +7,7 @@ compatibility: Requires git + gh (GitHub CLI, authenticated). Optional: nfpm for
 
 # Releasing this Go project (GitHub)
 
-This project lives on **GitHub** (`github.com/jniltinho/go-fusioninventory-agent`).
+This project lives on **GitHub** (`github.com/jniltinho/go-glpi-agent`).
 A release is: bump `CHANGELOG.md`, build the artifacts, commit, tag, push, then
 publish with **`gh release create`** (creating the release and uploading the assets
 in one step). No Gitea, no hand-rolled API calls.
@@ -21,8 +21,8 @@ in one step). No Gitea, no hand-rolled API calls.
 ## Project facts
 
 ```bash
-REMOTE=$(git remote get-url origin)           # git@github.com:jniltinho/go-fusioninventory-agent.git
-OWNER="jniltinho"; REPO="go-fusioninventory-agent"
+REMOTE=$(git remote get-url origin)           # git@github.com:jniltinho/go-glpi-agent.git
+OWNER="jniltinho"; REPO="go-glpi-agent"
 LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
 echo "Last tag: $LAST"
 gh auth status                                # must be authenticated for releases
@@ -108,12 +108,12 @@ Omit empty sections. Update README/docs only if user-facing and the user agrees.
 go vet ./... && go build ./... && go test ./...
 
 # build the release artifacts into dist/
-make build-all                       # dist/fusioninventory-agent (static linux/amd64)
-make package-deb package-rpm 2>/dev/null || echo "(skip .deb/.rpm — nfpm not installed)"
+make build-all                       # dist/go-glpi-agent (static linux/amd64)
+make packages 2>/dev/null || echo "(skip .deb/.rpm/.pkg.tar.zst — nfpm not installed)"
 
 # versioned tarball + checksums
-tar -czf "dist/fusioninventory-agent_${NEXT}_linux_amd64.tar.gz" -C dist fusioninventory-agent
-( cd dist && sha256sum fusioninventory-agent_${NEXT}_linux_amd64.tar.gz *.deb *.rpm 2>/dev/null > checksums.txt )
+tar -czf "dist/go-glpi-agent_${NEXT}_linux_amd64.tar.gz" -C dist go-glpi-agent
+( cd dist && sha256sum go-glpi-agent_${NEXT}_linux_amd64.tar.gz *.deb *.rpm *.pkg.tar.zst 2>/dev/null > checksums.txt )
 ls -la dist/
 ```
 
@@ -162,9 +162,9 @@ EOF
 gh release create "$NEXT" \
   --title "$NEXT — <title>" \
   --notes-file /tmp/notes.md \
-  dist/fusioninventory-agent_${NEXT}_linux_amd64.tar.gz \
+  dist/go-glpi-agent_${NEXT}_linux_amd64.tar.gz \
   dist/checksums.txt \
-  $(ls dist/*.deb dist/*.rpm 2>/dev/null)
+  $(ls dist/*.deb dist/*.rpm dist/*.pkg.tar.zst 2>/dev/null)
 ```
 
 > Prefer this CLI path. If the repo has a release workflow (see below), pushing the
@@ -216,10 +216,10 @@ jobs:
       - uses: actions/setup-go@v5
         with: { go-version: '1.26' }
       - run: make build-all
-      - run: tar -czf dist/fusioninventory-agent_${GITHUB_REF_NAME}_linux_amd64.tar.gz -C dist fusioninventory-agent
+      - run: tar -czf dist/go-glpi-agent_${GITHUB_REF_NAME}_linux_amd64.tar.gz -C dist go-glpi-agent
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/fusioninventory-agent_*_linux_amd64.tar.gz
+          files: dist/go-glpi-agent_*_linux_amd64.tar.gz
           generate_release_notes: true
 ```
 

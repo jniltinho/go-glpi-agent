@@ -1,4 +1,4 @@
-// Package cmd provides the command-line interface for fusioninventory-agent,
+// Package cmd provides the command-line interface for go-glpi-agent,
 // built with Cobra. Global flags live on the root command and are shared by the
 // run and daemon subcommands.
 package cmd

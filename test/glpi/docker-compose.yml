@@ -1,4 +1,4 @@
-# GLPI 10 + MariaDB para testes de inventário do go-fusioninventory-agent.
+# GLPI 10 + MariaDB para testes de inventário do go-glpi-agent.
 # Imagem oficial glpi/glpi (auto-instala/atualiza no primeiro start).
 # Endpoint de inventário nativo (GLPI 10): /front/inventory.php
 #

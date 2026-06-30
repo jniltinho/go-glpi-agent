@@ -27,6 +27,9 @@ sudo dpkg -i go-glpi-agent_*_amd64.deb
 # RHEL / Rocky / Alma / Fedora / openSUSE
 sudo rpm -i go-glpi-agent-*.x86_64.rpm
 
+# Arch Linux
+sudo pacman -U go-glpi-agent-*-x86_64.pkg.tar.zst
+
 # or the portable tarball
 tar -xzf go-glpi-agent_*_linux_amd64.tar.gz -C /opt/go-glpi-agent
 ```
@@ -135,6 +138,8 @@ make build-all      # static linux/amd64 in dist/
 make test           # go test ./...
 make package-deb    # .deb (requires nfpm)
 make package-rpm    # .rpm (requires nfpm)
+make package-arch   # Arch .pkg.tar.zst (requires nfpm)
+make packages       # all three at once
 ```
 
 Module/repository: `go-glpi-agent`. The version is the git tag (`make build`

@@ -38,9 +38,9 @@ jobs:
       - name: Build packages, tarball and checksums
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
-          make package-deb package-rpm
+          make packages   # .deb + .rpm + arch .pkg.tar.zst
           tar -czf "dist/go-glpi-agent_${VERSION}_linux_amd64.tar.gz" -C dist go-glpi-agent
-          ( cd dist && sha256sum *.deb *.rpm *.tar.gz > checksums.txt )
+          ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz > checksums.txt )
           ls -la dist/
 
       - name: Publish release
@@ -50,5 +50,6 @@ jobs:
           files: |
             dist/*.deb
             dist/*.rpm
+            dist/*.pkg.tar.zst
             dist/*.tar.gz
             dist/checksums.txt

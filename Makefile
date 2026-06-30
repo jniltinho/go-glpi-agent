@@ -1,4 +1,4 @@
-# Makefile do go-glpi-agent (módulo/repo: go-fusioninventory-agent)
+# Makefile do go-glpi-agent (módulo/repo: go-glpi-agent)
 
 BINARY      := go-glpi-agent
 PKG         := .
@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all test vet clean install package-deb package-rpm fetch-glpi-agent
+.PHONY: all build build-all test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent
 
 all: build
 
@@ -52,3 +52,10 @@ package-deb: build-all
 
 package-rpm: build-all
 	VERSION=$(VERSION) nfpm package --packager rpm --target dist/
+
+# Arch Linux package (.pkg.tar.zst), instalável com `pacman -U`
+package-arch: build-all
+	VERSION=$(VERSION) nfpm package --packager archlinux --target dist/
+
+# todos os formatos de pacote de uma vez
+packages: package-deb package-rpm package-arch

@@ -69,7 +69,7 @@ func New(opts Options) *Logger {
 			}
 		}
 	case "syslog":
-		if w, err := syslog.New(syslog.LOG_INFO|facility(opts.LogFacility), "fusioninventory-agent"); err == nil {
+		if w, err := syslog.New(syslog.LOG_INFO|facility(opts.LogFacility), "go-glpi-agent"); err == nil {
 			l.syslogW = w
 		} else {
 			fmt.Fprintf(os.Stderr, "[logger] failed to connect to syslog: %v; using stderr\n", err)

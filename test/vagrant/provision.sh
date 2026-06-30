@@ -27,22 +27,16 @@ install_debian() {
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y >/dev/null 2>&1 || true
   apt-get install -y dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1 || true
-  apt-get install -y fusioninventory-agent >/dev/null 2>&1 || \
-    echo "   (agente Perl indisponível — segue só com o Go)"
 }
 
 install_rhel() {
   dnf install -y dmidecode util-linux lvm2 pciutils usbutils which >/dev/null 2>&1 || true
   dnf install -y epel-release >/dev/null 2>&1 || true
-  dnf install -y fusioninventory-agent >/dev/null 2>&1 || \
-    echo "   (agente Perl indisponível no repo — segue só com o Go)"
 }
 
 install_suse() {
   zypper --non-interactive --gpg-auto-import-keys refresh >/dev/null 2>&1 || true
   zypper --non-interactive install -y dmidecode util-linux lvm2 pciutils usbutils >/dev/null 2>&1 || true
-  zypper --non-interactive install -y fusioninventory-agent >/dev/null 2>&1 || \
-    echo "   (agente Perl indisponível no repo — segue só com o Go)"
 }
 
 install_arch() {
