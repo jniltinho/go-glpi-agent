@@ -7,7 +7,32 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-—
+### ✨ New Features
+- feat(windows): Windows inventory support — `go-glpi-agent.exe` collects the same
+  categories as the Linux build (OS, CPU, memory + slots, BIOS/board/chassis, disks,
+  filesystems, USB, network, software, users, timezone, processes) via `gopsutil`,
+  WMI (`Win32_*`) and the registry, and sends them to GLPI 10+.
+- feat(windows): Windows distribution — `make build-windows`/`package-windows`
+  produce a `.zip` (exe + `agent.cfg` + `install.ps1`/`uninstall.ps1`) built on the
+  Linux CI runner; `install.ps1` registers an hourly Scheduled Task (the analog of
+  the systemd timer). Software is read from the uninstall registry keys (not the
+  slow, side-effecting `Win32_Product`).
+
+### 🔧 Improvements
+- refactor: split the codebase per-OS with build tags (`collector/linux`,
+  `collector/windows`, cross-platform `collector/generic`); register collectors via
+  `internal/agent/register_<goos>.go` so adding macOS/BSD is a sibling package + one file.
+- refactor: OS-split logger (`logger_unix.go` syslog vs `logger_windows.go` stub) so
+  `GOOS=windows go build` compiles; OS-aware default paths (`%ProgramData%` on Windows).
+- refactor: share the DMI/WMI junk-value filter as `sysutil.CleanDMI`.
+
+### 🧹 Cleanup
+- ci: `go.yml` now also runs `GOOS=windows go build`/`go vet`; `release.yml` publishes
+  the Windows `.zip`.
+
+### 📚 Documentation
+- docs: README "Windows" section + per-OS collector table; AGENTS.md per-OS layout
+  and WMI/registry conventions; `test/vagrant-windows/` for end-to-end validation.
 
 ## [0.1.3] — 2026-06-30
 

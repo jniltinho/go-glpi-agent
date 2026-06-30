@@ -18,9 +18,9 @@ import (
 	"go-glpi-agent/internal/transport/local"
 	"go-glpi-agent/internal/transport/server"
 
-	// import the collectors to register them via init()
+	// Cross-platform collectors register here; OS-specific collectors are
+	// blank-imported from the per-OS register_<goos>.go files.
 	_ "go-glpi-agent/internal/collector/generic"
-	_ "go-glpi-agent/internal/collector/linux"
 )
 
 // Agent brings together configuration, logger and the inventory target.

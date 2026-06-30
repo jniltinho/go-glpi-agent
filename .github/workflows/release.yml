@@ -35,12 +35,15 @@ jobs:
       - name: Install nfpm
         run: go install github.com/goreleaser/nfpm/v2/cmd/nfpm@latest
 
+      - name: Build Windows zip
+        run: make package-windows VERSION="$VERSION"   # dist/go-glpi-agent_<version>_windows_amd64.zip
+
       - name: Build packages, tarball and checksums
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
           make packages   # .deb + .rpm + arch .pkg.tar.zst
           tar -czf "dist/go-glpi-agent_${VERSION}_linux_amd64.tar.gz" -C dist go-glpi-agent
-          ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz > checksums.txt )
+          ( cd dist && sha256sum *.deb *.rpm *.pkg.tar.zst *.tar.gz *.zip > checksums.txt )
           ls -la dist/
 
       - name: Build release notes from CHANGELOG
@@ -68,4 +71,4 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
-            dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/checksums.txt
+            dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/*.zip dist/checksums.txt

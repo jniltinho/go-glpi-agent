@@ -1,11 +1,12 @@
 // Package logger provides logging with configurable levels and backends
-// (stderr, file, syslog), mirroring the Perl agent's backends.
+// (stderr, file, syslog), mirroring the Perl agent's backends. The syslog
+// backend is only available on non-Windows platforms; see logger_unix.go /
+// logger_windows.go.
 package logger
 
 import (
 	"fmt"
 	"io"
-	"log/syslog"
 	"os"
 	"strings"
 )
@@ -37,11 +38,20 @@ func (l Level) String() string {
 	}
 }
 
+// syslogWriter is the subset of *syslog.Writer the logger uses. It is supplied
+// by newSyslog, which returns a real writer on unix and nil on Windows.
+type syslogWriter interface {
+	Err(string) error
+	Warning(string) error
+	Info(string) error
+	Debug(string) error
+}
+
 // Logger emits messages according to the configured level.
 type Logger struct {
 	level   Level
 	out     io.Writer
-	syslogW *syslog.Writer
+	syslogW syslogWriter
 }
 
 // Options configures the creation of a Logger.
@@ -52,8 +62,8 @@ type Options struct {
 	Debug       bool
 }
 
-// New creates a logger according to the options. If opening the
-// file/syslog fails, it falls back to stderr.
+// New creates a logger according to the options. If opening the file fails, or
+// the syslog backend is unavailable (e.g. on Windows), it falls back to stderr.
 func New(opts Options) *Logger {
 	level := LevelInfo
 	if opts.Debug {
@@ -71,30 +81,16 @@ func New(opts Options) *Logger {
 			}
 		}
 	case "syslog":
-		if w, err := syslog.New(syslog.LOG_INFO|facility(opts.LogFacility), "go-glpi-agent"); err == nil {
-			l.syslogW = w
-		} else {
+		w, err := newSyslog(opts.LogFacility)
+		switch {
+		case err != nil:
 			fmt.Fprintf(os.Stderr, "[logger] failed to connect to syslog: %v; using stderr\n", err)
+		case w != nil:
+			l.syslogW = w
 		}
+		// w == nil with no error: platform has no syslog (Windows); use stderr.
 	}
 	return l
-}
-
-// facility maps a logfacility name (with or without the LOG_ prefix) to a
-// syslog priority, defaulting to LOG_USER for empty or unknown names.
-func facility(name string) syslog.Priority {
-	switch strings.ToUpper(strings.TrimPrefix(name, "LOG_")) {
-	case "DAEMON":
-		return syslog.LOG_DAEMON
-	case "USER", "":
-		return syslog.LOG_USER
-	case "LOCAL0":
-		return syslog.LOG_LOCAL0
-	case "LOCAL1":
-		return syslog.LOG_LOCAL1
-	default:
-		return syslog.LOG_USER
-	}
 }
 
 // logf formats and emits a message, dropping it when level is below the

@@ -59,3 +59,35 @@ func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
+
+// junkValues are placeholder identity strings that mean "no real value". They
+// are reported by many BIOSes, VMs and WMI providers and must not be treated as
+// real data — mirrors what dmidecode/glpi-agent filter out. Shared by the Linux
+// DMI collector and the Windows WMI collectors.
+var junkValues = map[string]bool{
+	"none": true, "n/a": true, "na": true, "not specified": true,
+	"not available": true, "not applicable": true, "default string": true,
+	"to be filled by o.e.m.": true, "to be filled by oem": true,
+	"system serial number": true, "system product name": true,
+	"system manufacturer": true, "system version": true, "system name": true,
+	"chassis serial number": true, "base board serial number": true,
+	"no asset tag": true, "asset tag": true, "empty": true, "unknown": true,
+	"oem": true, "invalid": true, "fill by oem": true,
+}
+
+// CleanDMI returns "" for placeholder/junk identity values (including all-zero
+// strings like "0" or "0000"), otherwise the trimmed value. Used for DMI fields
+// on Linux and the equivalent WMI string properties on Windows.
+func CleanDMI(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	if junkValues[strings.ToLower(s)] {
+		return ""
+	}
+	if strings.Trim(s, "0") == "" { // "0", "00", "0000000000", ...
+		return ""
+	}
+	return s
+}

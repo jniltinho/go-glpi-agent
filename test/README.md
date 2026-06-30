@@ -87,8 +87,38 @@ boxes that lack them (RHEL/CentOS). `provision.sh`:
 
 Set `GLPI_URL` to override the server (default `http://10.0.2.2:8080/front/inventory.php`).
 
+## 3. Windows (Vagrant)
+
+Validates the Windows build (WMI + registry collectors) against the same GLPI 10
+stack. Requires Vagrant + VirtualBox (or Hyper-V) and the
+`gusztavvargadr/windows-server-2022-standard` box. Windows VMs are large (~10 GB)
+and run as evaluation editions — keep this on a test host.
+
+```sh
+cd ../..                                  # repo root
+make build-windows                        # produces dist/go-glpi-agent.exe
+cd test/vagrant-windows
+GLPI_SERVER=http://10.0.2.2/front/inventory.php vagrant up
+vagrant provision                         # re-run the agent
+vagrant destroy -f                        # clean up
+```
+
+The `.exe` and the `contrib/windows/` scripts are copied into the VM via a **file
+provisioner** (WinRM). `provision.ps1`:
+
+1. points `agent.cfg` at `GLPI_SERVER`;
+2. runs `run --local` (XML sanity check) and `run` with `GFI_DUMP_JSON` set (so the
+   native JSON can be validated offline against GLPI's `inventory.schema.json`);
+3. runs `install.ps1`, which registers the hourly **Scheduled Task** (SYSTEM) and
+   sends a native inventory — a `win-gfi-test` Computer asset then appears in GLPI.
+
+Set `GLPI_SERVER` to override the target (default `http://10.0.2.2/front/inventory.php`,
+the VirtualBox NAT gateway to the host).
+
 ## Notes
 
 - On VirtualBox VMs the BIOS serial comes from the box image (often `0`, which
   the agent filters as junk); on real hardware the true serial is read.
 - `centos/stream10` may have a transient NAT networking issue reaching the host.
+- The Windows Scheduled Task runs as SYSTEM, so per-user `HKCU` software (other
+  users' installs) is not enumerated in v1 — machine-wide software is complete.

@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent
+.PHONY: all build build-all build-windows package-windows test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
 
 all: build
 
@@ -23,9 +23,28 @@ fetch-glpi-agent:
 	curl -fsSL https://github.com/glpi-project/glpi-agent/releases/download/$(GLPI_AGENT_VERSION)/glpi-agent-$(GLPI_AGENT_VERSION)-x86_64.AppImage -o dist/glpi-agent.AppImage
 	chmod +x dist/glpi-agent.AppImage
 
+# baixa o GLPI Agent oficial (portable zip) para Windows, usado como referência
+# de comparação na VM Windows (ver test/vagrant-windows/provision.ps1).
+fetch-glpi-agent-win:
+	mkdir -p dist/ref
+	curl -fsSL https://github.com/glpi-project/glpi-agent/releases/download/$(GLPI_AGENT_VERSION)/GLPI-Agent-$(GLPI_AGENT_VERSION)-x64.zip -o dist/ref/GLPI-Agent-$(GLPI_AGENT_VERSION)-x64.zip
+
 # build estático para linux/amd64
 build-all:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY) $(PKG)
+
+# build estático para windows/amd64 (cross-compila a partir do Linux)
+build-windows:
+	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY).exe $(PKG)
+
+# empacota o .exe + agent.cfg + scripts de install/uninstall num .zip
+package-windows: build-windows
+	mkdir -p dist/windows
+	cp dist/$(BINARY).exe dist/windows/
+	cp contrib/windows/agent.cfg dist/windows/
+	cp contrib/windows/install.ps1 dist/windows/
+	cp contrib/windows/uninstall.ps1 dist/windows/
+	cd dist/windows && zip -q -r ../$(BINARY)_$(VERSION)_windows_amd64.zip .
 
 test:
 	go test ./...

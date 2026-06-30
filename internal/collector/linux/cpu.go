@@ -1,3 +1,5 @@
+//go:build linux
+
 // Package linux holds the Linux-specific inventory collectors. Each collector
 // registers itself with the collector registry at init time and runs only when
 // the agent is executing on Linux (gated by IsEnabled). Data is gathered from

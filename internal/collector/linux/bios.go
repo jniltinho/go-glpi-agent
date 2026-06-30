@@ -1,9 +1,10 @@
+//go:build linux
+
 package linux
 
 import (
 	"context"
 	"runtime"
-	"strings"
 
 	"go-glpi-agent/internal/collector"
 	"go-glpi-agent/internal/config"
@@ -29,35 +30,9 @@ func (biosCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS ==
 
 const dmiPath = "/sys/class/dmi/id/"
 
-// junkDMI are placeholder DMI strings that mean "no real value". They are
-// reported by many BIOSes/VMs (e.g. VirtualBox sets a serial of "0") and must
-// not be treated as real data — mirrors what dmidecode/glpi-agent filter out.
-var junkDMI = map[string]bool{
-	"none": true, "n/a": true, "na": true, "not specified": true,
-	"not available": true, "not applicable": true, "default string": true,
-	"to be filled by o.e.m.": true, "to be filled by oem": true,
-	"system serial number": true, "system product name": true,
-	"system manufacturer": true, "system version": true, "system name": true,
-	"chassis serial number": true, "base board serial number": true,
-	"no asset tag": true, "asset tag": true, "empty": true, "unknown": true,
-	"oem": true, "invalid": true, "fill by oem": true,
-}
-
-// cleanDMI returns "" for placeholder/junk DMI values (including all-zero
-// strings like "0" or "0000"), otherwise the trimmed value.
-func cleanDMI(s string) string {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return ""
-	}
-	if junkDMI[strings.ToLower(s)] {
-		return ""
-	}
-	if strings.Trim(s, "0") == "" { // "0", "00", "0000000000", ...
-		return ""
-	}
-	return s
-}
+// cleanDMI filters placeholder/junk DMI values; the implementation is shared
+// with the Windows WMI collectors via sysutil.CleanDMI.
+func cleanDMI(s string) string { return sysutil.CleanDMI(s) }
 
 // Collect reads the DMI fields into a BIOS struct and sets the BIOS section
 // plus the hardware UUID. It returns without writing anything when no real DMI
