@@ -72,9 +72,10 @@ jobs:
           $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
             '/i', '${{ steps.msi.outputs.path }}', '/qn',
             'SERVER=http://glpi.example.com/front/inventory.php', 'TAG=ci',
-            '/l*v', 'install.log')
+            '/l*vx', 'install.log')
           if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
-            Get-Content install.log -Tail 60
+            Write-Host "===== action errors / return values ====="
+            Select-String -Path install.log -Pattern 'Return value 3|Action ended|value 3\.|1: 2|CustomAction|Note: 1:' | Select-Object -Last 80 | ForEach-Object { $_.Line }
             throw "install failed: exit $($p.ExitCode)"
           }
           echo "install exit: $($p.ExitCode)"
