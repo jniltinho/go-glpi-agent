@@ -7,6 +7,16 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
+—
+
+## [0.2.0] — 2026-06-30
+
+**Windows inventory support.** A single codebase now builds for Linux and Windows;
+`go-glpi-agent.exe` collects the same categories via WMI and the registry and sends
+them to GLPI 10+. Validated end-to-end on Windows Server 2022 against a real GLPI 10
+(native JSON schema-valid, computer asset created over both WinRM and SSH) and
+cross-checked against the official glpi-agent 1.18.
+
 ### ✨ New Features
 - feat(windows): Windows inventory support — `go-glpi-agent.exe` collects the same
   categories as the Linux build (OS, CPU, memory + slots, BIOS/board/chassis, disks,
@@ -25,14 +35,14 @@ each release's notes are this file's section for that version (published by CI).
 - refactor: OS-split logger (`logger_unix.go` syslog vs `logger_windows.go` stub) so
   `GOOS=windows go build` compiles; OS-aware default paths (`%ProgramData%` on Windows).
 - refactor: share the DMI/WMI junk-value filter as `sysutil.CleanDMI`.
-
-### 🧹 Cleanup
-- ci: `go.yml` now also runs `GOOS=windows go build`/`go vet`; `release.yml` publishes
-  the Windows `.zip`.
+- ci: `go.yml` adds a `GOOS=windows` build/vet check and a `windows-latest` job that
+  runs the agent on real Windows and validates the native JSON against GLPI's
+  `inventory.schema.json`; `release.yml` publishes the Windows `.zip`.
 
 ### 📚 Documentation
 - docs: README "Windows" section + per-OS collector table; AGENTS.md per-OS layout
-  and WMI/registry conventions; `test/vagrant-windows/` for end-to-end validation.
+  and WMI/registry conventions; `test/vagrant-windows/` for end-to-end validation
+  (WinRM + SSH) comparing against the official glpi-agent.
 
 ## [0.1.3] — 2026-06-30
 
