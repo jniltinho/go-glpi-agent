@@ -85,8 +85,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-13       # Intel
-            arch: x86_64
+          # Apple Silicon only for now; Intel (macos-13 / x86_64) is deferred —
+          # re-add the entry here (and in macos.yml) when revisiting that arch.
           - runner: macos-latest   # Apple Silicon
             arch: arm64
     runs-on: ${{ matrix.runner }}
