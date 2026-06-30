@@ -1,0 +1,12 @@
+#!/bin/bash
+# Runs before the payload is laid down. Unload a previously installed
+# LaunchDaemon so the binary can be replaced cleanly. Never fails the install.
+set +e
+
+PLIST="/Library/LaunchDaemons/com.glpi.go-agent.plist"
+
+if [ -f "$PLIST" ]; then
+    launchctl bootout system "$PLIST" 2>/dev/null || launchctl unload "$PLIST" 2>/dev/null
+fi
+
+exit 0

@@ -5,7 +5,7 @@ Guidance for AI agents (and humans) working on **go-glpi-agent**.
 ## What this is
 
 A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux,
-Windows and FreeBSD**. It produces a single static binary (`go-glpi-agent` / `.exe`)
+Windows, FreeBSD and macOS** (Intel + Apple Silicon). It produces a single static binary (`go-glpi-agent` / `.exe`)
 that collects local hardware/software inventory and sends it to a **GLPI 10+** server
 using the native JSON protocol, with automatic fallback to the legacy
 OCS/FusionInventory XML protocol. It can also write the inventory to a local XML file.
@@ -45,6 +45,16 @@ and adding macOS/BSD later is "drop in a package + a registration file":
 - `internal/collector/freebsd/` — `//go:build freebsd`, reads kenv (`smbios.*`), `pkg`,
   `geom`/`camcontrol`, sysctl and `usbconfig`. Pure parsers in `freebsd/parse.go`
   (no build tag) are unit-tested on any platform (`freebsd/parse_test.go`).
+- `internal/collector/macos/` — `//go:build darwin`, reads `system_profiler -json`
+  (`SPHardwareDataType`, `SPMemoryDataType`, `SPNVMeDataType`/`SPSerialATADataType`,
+  `SPUSBDataType`, `SPApplicationsDataType`), `sysctl machdep.cpu.*`/`hw.*`, `sw_vers`,
+  `ioreg` (identity fallback) and `route`. Pure parsers + the serial/UUID
+  `resolveIdentity` logic live in `macos/parse.go` (no build tag) and are unit-tested
+  on any platform (`macos/parse_test.go`); the command I/O lives in `macos/sysprofiler.go`
+  (`//go:build darwin`). Builds for both `darwin/amd64` (Intel) and `darwin/arm64`
+  (Apple Silicon). Serial resolves through `Serial Number` → `Serial Number (system)` →
+  `ioreg IOPlatformSerialNumber`, then falls back to the UUID so a host is never
+  serial-less (important on virtualized CI runners).
 - `internal/collector/generic/` — cross-platform; `users.go` is `//go:build !windows`,
   and timezone has a FreeBSD source (`timezone_freebsd.go`, reads `/var/db/zoneinfo`).
 - Registration: `internal/agent/register_<goos>.go` blank-imports that OS's package.
@@ -86,6 +96,10 @@ GOOS=windows go vet ./...
 CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build ./...   # FreeBSD compile check
 GOOS=freebsd go vet ./...
 make build-freebsd   # static freebsd/amd64; package-freebsd → tarball + rc.d
+CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build ./...     # macOS compile check (Intel)
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build ./...     # macOS compile check (Apple Silicon)
+make build-macos     # static darwin/amd64 + darwin/arm64
+make package-macos ARCH=arm64   # .pkg + .dmg (REQUIRES macOS: pkgbuild/hdiutil)
 
 ./go-glpi-agent run --local /tmp/inv          # write XML locally
 ./go-glpi-agent run --server http://glpi/front/inventory.php

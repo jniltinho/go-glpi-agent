@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all build-windows package-windows package-msi build-freebsd package-freebsd test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
+.PHONY: all build build-all build-windows package-windows package-msi build-freebsd package-freebsd build-macos-amd64 build-macos-arm64 build-macos package-macos test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
 
 all: build
 
@@ -72,6 +72,28 @@ package-freebsd: build-freebsd
 	cp contrib/freebsd/go_glpi_agent dist/freebsd/
 	cp contrib/freebsd/INSTALL.md dist/freebsd/
 	tar -czf dist/$(BINARY)_$(VERSION)_freebsd_amd64.tar.gz -C dist/freebsd .
+
+# build estático para macOS (cross-compila a partir de qualquer host)
+build-macos-amd64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-amd64 $(PKG)
+
+build-macos-arm64:
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-arm64 $(PKG)
+
+build-macos: build-macos-amd64 build-macos-arm64
+
+# empacota .pkg + .dmg para a arch indicada (ARCH=x86_64|arm64). REQUER macOS
+# (pkgbuild/productbuild/hdiutil). Builda o binário darwin correspondente antes.
+# Ex.: make package-macos ARCH=arm64
+ARCH ?= $(shell uname -m)
+package-macos:
+	@case "$(ARCH)" in \
+	  x86_64) GOARCH=amd64 ;; \
+	  arm64)  GOARCH=arm64 ;; \
+	  *) echo "ARCH inválida: $(ARCH) (use x86_64 ou arm64)"; exit 2 ;; \
+	esac; \
+	CGO_ENABLED=0 GOOS=darwin GOARCH=$$GOARCH go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-darwin-$$GOARCH $(PKG); \
+	contrib/macos/build-pkg.sh "$(ARCH)" "$(VERSION)" "dist/$(BINARY)-darwin-$$GOARCH" dist
 
 test:
 	go test ./...

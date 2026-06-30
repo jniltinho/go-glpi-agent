@@ -7,7 +7,32 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
+**macOS inventory support (Apple Silicon) + Windows `.msi`.** A single codebase now
+builds for Linux, Windows, FreeBSD and macOS. macOS is validated on a `macos-latest`
+(arm64) runner with exact per-section parity against the official GLPI-Agent; the
+Windows `.msi` is validated with a full install → verify → uninstall round-trip on
+`windows-latest`.
+
 ### ✨ New Features
+- feat(macos): macOS inventory support — `go-glpi-agent` collects the same
+  categories on macOS via `gopsutil` plus native sources: `system_profiler -json`
+  (`SPHardwareDataType` for model/serial/UUID/boot-ROM, `SPMemoryDataType`,
+  `SPNVMeDataType`/`SPSerialATADataType`, `SPUSBDataType`, `SPApplicationsDataType`),
+  `sysctl machdep.cpu.*`/`hw.*` (CPU, incl. Apple Silicon chip name), `sw_vers`/`uname`
+  (OS), `ioreg` (identity fallback), `networksetup` (interface typing) and `route`.
+- feat(macos): system serial/UUID resolved through the official agent's fallback
+  chain (`Serial Number` → `Serial Number (system)` → `ioreg IOPlatformSerialNumber`;
+  `Hardware UUID` → `ioreg IOPlatformUUID`), with a serial-of-last-resort = UUID rule
+  so a Mac is never reported without a serial — including on virtualized CI runners.
+- feat(macos): dual-arch distribution — `make build-macos`/`package-macos` produce
+  `darwin/amd64` + `darwin/arm64` binaries and `.pkg` + `.dmg` installers
+  (`pkgbuild`/`productbuild` + `hdiutil`) with a `LaunchDaemon` for scheduled runs;
+  `contrib/macos/` holds the daemon, pre/postinstall, `uninstall.sh` and build driver.
+- ci(macos): new `macos.yml` (arm64 `macos-latest`; Intel `macos-13` deferred) builds,
+  runs a real inventory, validates the native JSON against GLPI's schema, installs and
+  runs the official GLPI-Agent for a per-section comparison, asserts the serial is never
+  empty, and uploads the `.pkg`/`.dmg`; `release.yml` publishes the macOS installers;
+  `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
 - feat(windows): Windows `.msi` installer for managed deployment (GPO / Intune /
   SCCM / PDQ). Installs the `.exe`, registers the hourly `go-glpi-agent` Scheduled
   Task (SYSTEM), seeds `agent.cfg`, supports silent install with `SERVER`/`TAG`
