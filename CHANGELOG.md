@@ -8,6 +8,15 @@ All notable changes to this project are documented here. The format is based on
 
 —
 
+## [0.1.2] — 2026-06-30
+
+### Changed
+- docs: polish the `create-release` skill — adopt the clearer structure
+  (release-approaches table, commit→CHANGELOG categorization, monitor/verify
+  checklists, workflow-capabilities and adapting tables) from the go-postfixadmin
+  skill, while keeping this project's CHANGELOG-driven CI publishing, nfpm
+  `.deb`/`.rpm`/Arch packaging, and YAML frontmatter for skill discovery.
+
 ## [0.1.1] — 2026-06-30
 
 ### Changed
