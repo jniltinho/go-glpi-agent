@@ -7,6 +7,28 @@ import (
 	"time"
 )
 
+func TestWritableVarDir(t *testing.T) {
+	// A creatable path under a temp root is used as-is (no fallback).
+	preferred := filepath.Join(t.TempDir(), "var")
+	if dir, fellBack := WritableVarDir(preferred); dir != preferred || fellBack {
+		t.Errorf("writable preferred: got (%q, %v), want (%q, false)", dir, fellBack, preferred)
+	}
+
+	// An uncreatable path (a child of a regular file) falls back to a writable dir.
+	file := filepath.Join(t.TempDir(), "afile")
+	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	blocked := filepath.Join(file, "var") // can't mkdir under a file
+	dir, fellBack := WritableVarDir(blocked)
+	if !fellBack {
+		t.Errorf("expected fallback for %q, got %q", blocked, dir)
+	}
+	if !isWritableDir(dir) {
+		t.Errorf("fallback dir %q is not writable", dir)
+	}
+}
+
 func TestGenerateDeviceIDFormat(t *testing.T) {
 	now := time.Date(2026, 6, 29, 15, 30, 45, 0, time.UTC)
 	id := generateDeviceID("srv-web.example.com", now)

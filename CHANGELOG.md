@@ -28,11 +28,17 @@ Windows `.msi` is validated with a full install → verify → uninstall round-t
   `darwin/amd64` + `darwin/arm64` binaries and `.pkg` + `.dmg` installers
   (`pkgbuild`/`productbuild` + `hdiutil`) with a `LaunchDaemon` for scheduled runs;
   `contrib/macos/` holds the daemon, pre/postinstall, `uninstall.sh` and build driver.
-- ci(macos): new `macos.yml` (arm64 `macos-latest`; Intel `macos-13` deferred) builds,
-  runs a real inventory, validates the native JSON against GLPI's schema, installs and
-  runs the official GLPI-Agent for a per-section comparison, asserts the serial is never
-  empty, and uploads the `.pkg`/`.dmg`; `release.yml` publishes the macOS installers;
-  `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
+- ci(macos): new `macos.yml` (arm64 `macos-latest`) builds, runs a real inventory,
+  validates the native JSON against GLPI's schema, installs and runs the official
+  GLPI-Agent for a per-section comparison (exact parity), asserts the serial is never
+  empty, and uploads the `.pkg`/`.dmg`; `release.yml` publishes the Apple Silicon
+  installers; `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
+
+### 🔧 Improvements
+- fix(agent): when the configured `vardir` is not writable (e.g. the agent is run
+  manually, not installed under the system prefix), fall back to a per-user cache
+  directory so the `deviceid`/`agentid` still persist across runs instead of being
+  regenerated — and the noisy mkdir-permission warning is gone.
 - feat(windows): Windows `.msi` installer for managed deployment (GPO / Intune /
   SCCM / PDQ). Installs the `.exe`, registers the hourly `go-glpi-agent` Scheduled
   Task (SYSTEM), seeds `agent.cfg`, supports silent install with `SERVER`/`TAG`

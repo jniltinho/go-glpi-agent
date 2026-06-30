@@ -82,6 +82,46 @@ func LoadOrCreateAgentID(vardir string) (string, error) {
 	return id, nil
 }
 
+// WritableVarDir returns preferred when it exists (or can be created) and is
+// writable; otherwise it falls back to a per-user cache directory, then the temp
+// dir. This lets a manually-run agent — one not installed under the system prefix
+// whose state dir is not writable — still persist its deviceid/agentid instead of
+// regenerating them every run (and avoids a noisy mkdir-permission warning). The
+// returned bool reports whether a fallback was used.
+func WritableVarDir(preferred string) (dir string, fellBack bool) {
+	if isWritableDir(preferred) {
+		return preferred, false
+	}
+	if cache, err := os.UserCacheDir(); err == nil {
+		if alt := filepath.Join(cache, "go-glpi-agent"); isWritableDir(alt) {
+			return alt, true
+		}
+	}
+	if alt := filepath.Join(os.TempDir(), "go-glpi-agent"); isWritableDir(alt) {
+		return alt, true
+	}
+	return preferred, false // nothing writable; caller surfaces the persist error
+}
+
+// isWritableDir creates dir if needed and reports whether a file can be written
+// in it, probing with a temporary file.
+func isWritableDir(dir string) bool {
+	if dir == "" {
+		return false
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return false
+	}
+	f, err := os.CreateTemp(dir, ".probe-*")
+	if err != nil {
+		return false
+	}
+	name := f.Name()
+	_ = f.Close()
+	_ = os.Remove(name)
+	return true
+}
+
 // readJSONDeviceID returns the deviceid stored in the JSON state, or "" when
 // the file is missing or holds no deviceid.
 func readJSONDeviceID(path string) string {

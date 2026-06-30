@@ -90,9 +90,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # Apple Silicon (arm64) only. To also publish Intel installers, add
+        # `{runner: macos-13, arch: x86_64}` here (and in macos.yml).
         include:
-          # Apple Silicon only for now; Intel (macos-13 / x86_64) is deferred —
-          # re-add the entry here (and in macos.yml) when revisiting that arch.
           - runner: macos-latest   # Apple Silicon
             arch: arm64
     runs-on: ${{ matrix.runner }}
