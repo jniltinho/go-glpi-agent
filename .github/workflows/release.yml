@@ -75,3 +75,45 @@ jobs:
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
             dist/*.deb dist/*.rpm dist/*.pkg.tar.zst dist/*.tar.gz dist/*.zip dist/checksums.txt
+
+  # Builds the macOS installers (.pkg + .dmg) on real Apple runners and uploads
+  # them to the release created by the `release` job. pkgbuild/productbuild/hdiutil
+  # only run on macOS, so this cannot share the Linux runner above.
+  release-macos:
+    needs: release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-13       # Intel
+            arch: x86_64
+          - runner: macos-latest   # Apple Silicon
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+
+      - name: Resolve version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build .pkg + .dmg
+        run: |
+          make package-macos ARCH=${{ matrix.arch }} VERSION="$VERSION"
+          ( cd dist && shasum -a 256 *_${{ matrix.arch }}.pkg *_${{ matrix.arch }}.dmg > checksums_macos_${{ matrix.arch }}.txt )
+          ls -lh dist/*.pkg dist/*.dmg
+
+      - name: Upload installers to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/go-glpi-agent_${VERSION}_${{ matrix.arch }}.pkg \
+            dist/go-glpi-agent_${VERSION}_${{ matrix.arch }}.dmg \
+            dist/checksums_macos_${{ matrix.arch }}.txt \
+            --clobber
