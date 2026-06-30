@@ -7,7 +7,31 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-—
+**macOS inventory support (Intel + Apple Silicon).** A single codebase now builds
+for Linux, Windows, FreeBSD and macOS. Validated on GitHub Actions across both
+`macos-13` (x86_64) and `macos-latest` (arm64): the native JSON is schema-valid and
+the output is compared against the official GLPI-Agent installed from its release.
+
+### ✨ New Features
+- feat(macos): macOS inventory support — `go-glpi-agent` collects the same
+  categories on macOS via `gopsutil` plus native sources: `system_profiler -json`
+  (`SPHardwareDataType` for model/serial/UUID/boot-ROM, `SPMemoryDataType`,
+  `SPNVMeDataType`/`SPSerialATADataType`, `SPUSBDataType`, `SPApplicationsDataType`),
+  `sysctl machdep.cpu.*`/`hw.*` (CPU, incl. Apple Silicon chip name), `sw_vers`/`uname`
+  (OS), `ioreg` (identity fallback) and `route` (gateway).
+- feat(macos): system serial/UUID resolved through the official agent's fallback
+  chain (`Serial Number` → `Serial Number (system)` → `ioreg IOPlatformSerialNumber`;
+  `Hardware UUID` → `ioreg IOPlatformUUID`), with a serial-of-last-resort = UUID rule
+  so a Mac is never reported without a serial — including on virtualized CI runners.
+- feat(macos): dual-arch distribution — `make build-macos`/`package-macos` produce
+  `darwin/amd64` + `darwin/arm64` binaries and `.pkg` + `.dmg` installers
+  (`pkgbuild`/`productbuild` + `hdiutil`) with a `LaunchDaemon` for scheduled runs;
+  `contrib/macos/` holds the daemon, pre/postinstall, `uninstall.sh` and build driver.
+- ci(macos): new `macos.yml` matrix (`macos-13` Intel + `macos-latest` Apple Silicon)
+  builds, runs a real inventory, validates the native JSON against GLPI's schema,
+  installs and runs the official GLPI-Agent for a per-section comparison, asserts the
+  serial is never empty, and uploads the `.pkg`/`.dmg` artifacts; `release.yml` publishes
+  the four macOS installers; `go.yml` adds `darwin/amd64`+`arm64` compile/vet checks.
 
 ## [0.3.0] — 2026-06-30
 

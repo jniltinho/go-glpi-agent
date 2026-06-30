@@ -1,0 +1,22 @@
+#!/bin/bash
+# Runs after the payload is installed. Loads the LaunchDaemon so the agent starts
+# running on its periodic schedule.
+set -e
+
+BINARY="/usr/local/go-glpi-agent/go-glpi-agent"
+PLIST="/Library/LaunchDaemons/com.glpi.go-agent.plist"
+
+# Make sure the binary is executable.
+[ -f "$BINARY" ] && chmod 0755 "$BINARY"
+
+# Ensure the log file exists and is writable by the daemon (runs as root).
+touch /var/log/go-glpi-agent.log 2>/dev/null || true
+
+# Load (or reload) the LaunchDaemon.
+if [ -f "$PLIST" ]; then
+    chown root:wheel "$PLIST"
+    chmod 0644 "$PLIST"
+    launchctl bootstrap system "$PLIST" 2>/dev/null || launchctl load -w "$PLIST" 2>/dev/null || true
+fi
+
+exit 0

@@ -1,0 +1,171 @@
+name: macOS Agent CI
+
+# Builds and validates the macOS agent on real Apple hardware runners. Everything
+# is validated here (there is no local Mac): build, run a real inventory, validate
+# the native JSON against GLPI's schema, install the official GLPI-Agent from its
+# release and compare the two agents' output, then build and upload the .pkg/.dmg.
+
+on:
+  push:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'contrib/macos/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.github/workflows/macos.yml'
+  pull_request:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'contrib/macos/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.github/workflows/macos.yml'
+  workflow_dispatch:
+
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Apple Silicon only for now. The Intel (macos-13 / x86_64) runner is
+          # deferred — it queues for a long time on the hosted pool; re-add it here
+          # (and in release.yml) when revisiting that architecture.
+          - runner: macos-latest   # Apple Silicon
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.arch }} (${{ matrix.runner }})
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: go.sum
+
+      - name: Runner arch
+        run: |
+          echo "runner $(uname -m), matrix arch ${{ matrix.arch }}"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        run: go build -o go-glpi-agent .
+
+      - name: Run inventory (real system_profiler/ioreg/sysctl) + dump native JSON
+        env:
+          GFI_DUMP_JSON: out/inventory.json
+        run: |
+          mkdir -p out
+          ./go-glpi-agent run --local out --debug
+          ls -la out
+
+      - name: Validate native JSON against GLPI inventory.schema.json
+        run: |
+          git clone --depth 1 https://github.com/glpi-project/inventory_format
+          python3 -m pip install --quiet check-jsonschema \
+            || python3 -m pip install --quiet --break-system-packages check-jsonschema
+          python3 -m check_jsonschema --schemafile inventory_format/inventory.schema.json out/inventory.json
+
+      - name: Assert system serial/UUID resolved (never both empty on CI VMs)
+        run: |
+          python3 - <<'PY'
+          import json, sys
+          d = json.load(open('out/inventory.json'))
+          c = d.get('content', {})
+          ssn  = (c.get('bios') or {}).get('ssn', '')
+          uuid = (c.get('hardware') or {}).get('uuid', '')
+          print(f"BIOS serial = {ssn!r}")
+          print(f"HARDWARE uuid = {uuid!r}")
+          if not ssn and not uuid:
+              print("::error::both serial and UUID are empty — identity fallback failed")
+              sys.exit(1)
+          if not ssn:
+              print("::error::serial is empty although a UUID exists — serial-of-last-resort fallback failed")
+              sys.exit(1)
+          print("OK: serial resolved")
+          PY
+
+      - name: Install official GLPI-Agent (reference)
+        run: |
+          VER=1.18
+          URL="https://github.com/glpi-project/glpi-agent/releases/download/${VER}/GLPI-Agent-${VER}_${{ matrix.arch }}.pkg"
+          echo "Downloading $URL"
+          curl -fsSL -o glpi-agent.pkg "$URL"
+          sudo installer -pkg glpi-agent.pkg -target /
+          /Applications/GLPI-Agent/bin/glpi-agent --version || true
+
+      - name: Run official agent (reference inventory)
+        run: |
+          mkdir -p ref
+          sudo /Applications/GLPI-Agent/bin/glpi-agent --local "$PWD/ref" --debug || true
+          ls -la ref || true
+
+      - name: Compare per-section counts (Go agent vs official agent)
+        run: |
+          python3 - <<'PY'
+          import glob, sys
+          import xml.etree.ElementTree as ET
+
+          SECTIONS = ["CPUS","MEMORIES","DRIVES","STORAGES","NETWORKS",
+                      "SOFTWARES","USBDEVICES","BIOS","HARDWARE","OPERATINGSYSTEM"]
+
+          def counts(pattern):
+              files = sorted(glob.glob(pattern))
+              if not files:
+                  return None, None
+              path = files[0]
+              try:
+                  root = ET.parse(path).getroot()
+              except Exception as e:
+                  print(f"  (failed to parse {path}: {e})")
+                  return path, {}
+              # find the CONTENT element wherever it is
+              content = root.find(".//CONTENT") or root
+              c = {s: len(content.findall(s)) for s in SECTIONS}
+              return path, c
+
+          go_path, go = counts("out/*.xml")
+          ref_path, ref = counts("ref/*.xml")
+          if ref is None:
+              ref_path, ref = counts("ref/*.ocs")
+
+          print(f"Go agent  XML: {go_path}")
+          print(f"Official  XML: {ref_path}")
+          print()
+          print(f"{'SECTION':<18}{'GO':>6}{'OFFICIAL':>10}")
+          print("-" * 34)
+          for s in SECTIONS:
+              g = go.get(s, 0) if go else 0
+              r = ref.get(s, 0) if ref else 0
+              print(f"{s:<18}{g:>6}{r:>10}")
+
+          if not go:
+              print("::error::Go agent produced no XML")
+              sys.exit(1)
+          # Core hardware identity sections must be present in the Go inventory.
+          for s in ["BIOS","HARDWARE","OPERATINGSYSTEM","CPUS"]:
+              if go.get(s, 0) < 1:
+                  print(f"::error::Go inventory missing {s}")
+                  sys.exit(1)
+          print("\nOK: core sections populated by the Go agent")
+          PY
+
+      - name: Build .pkg + .dmg
+        run: |
+          make package-macos ARCH=${{ matrix.arch }} VERSION="ci-${GITHUB_SHA::8}"
+          ls -lh dist/*.pkg dist/*.dmg
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-glpi-agent-macos-${{ matrix.arch }}
+          path: |
+            dist/*.pkg
+            dist/*.dmg
+          if-no-files-found: error

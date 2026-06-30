@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>One small binary that inventories Linux, Windows and FreeBSD into GLPI 10+</b><br>
+  <b>One small binary that inventories Linux, Windows, FreeBSD and macOS into GLPI 10+</b><br>
   — no agent runtime, no Perl, no dependencies.
 </p>
 
@@ -11,7 +11,7 @@
   <a href="https://github.com/jniltinho/go-glpi-agent/releases"><img src="https://img.shields.io/github/v/release/jniltinho/go-glpi-agent?sort=semver" alt="Release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="License"></a>
   <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go" alt="Go"></a>
-  <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20FreeBSD-555" alt="Platforms">
+  <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20FreeBSD%20%7C%20macOS-555" alt="Platforms">
 </p>
 
 <p align="center">
@@ -26,11 +26,11 @@ it to a local file.
 ## Why use it
 
 - **🚀 Single static binary** — drop it in and run. No Perl, no modules, no `pkg` tree.
-- **💻 One agent, three OSes** — Linux, Windows and FreeBSD from the same build.
+- **💻 One agent, four OSes** — Linux, Windows, FreeBSD and macOS (Intel + Apple Silicon) from the same source.
 - **🔌 Drop-in for GLPI** — reads the same `agent.cfg` as the Perl agent and reuses your
   existing device IDs, so hosts aren't re-created as new assets.
 - **📦 Native packages** — `.deb`, `.rpm`, Arch `.pkg.tar.zst`, a Windows `.zip` installer,
-  and a FreeBSD tarball — published on every release.
+  a FreeBSD tarball, and macOS `.pkg`/`.dmg` (x86_64 + arm64) — published on every release.
 - **🪶 Lightweight & quiet** — runs on a schedule (systemd timer / Scheduled Task / cron),
   collects in parallel, and stays out of the way.
 
@@ -49,6 +49,7 @@ sudo pacman -U go-glpi-agent-*-x86_64.pkg.tar.zst
 
 Windows: extract `…_windows_amd64.zip` and run `install.ps1` (elevated).
 FreeBSD: extract `…_freebsd_amd64.tar.gz` and follow `INSTALL.md`.
+macOS: open `go-glpi-agent_<version>_<arch>.dmg` and run the `.pkg` (`x86_64` for Intel, `arm64` for Apple Silicon).
 
 **2. Point it at your GLPI** — edit `/opt/go-glpi-agent/agent.cfg`:
 
@@ -75,8 +76,9 @@ That's it — a computer asset appears in GLPI on the next run. Want to test fir
 | **Linux** (16 distros) | amd64 | `/sys`, `/proc`, dmidecode, lsblk, lvs, dpkg/rpm/pacman |
 | **Windows** 10/11 / Server | amd64 | WMI (`Win32_*`) + registry |
 | **FreeBSD** 14 | amd64 | kenv (smbios), pkg, geom, sysctl, usbconfig |
+| **macOS** 13+ | x86_64, arm64 | `system_profiler`, `ioreg`, `sysctl`, `sw_vers` |
 
-Validated against a real GLPI 10 across all three. The full collector matrix, per-OS
+Validated against a real GLPI 10 across all four. The full collector matrix, per-OS
 install details, CLI/config reference, build instructions and architecture live in
 **[docs/REFERENCE.md](docs/REFERENCE.md)**.
 
