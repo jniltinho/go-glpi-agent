@@ -1,11 +1,22 @@
-# go-glpi-agent
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="go-glpi-agent — bridge your devices to GLPI with the power of Go" width="100%">
+</p>
 
-**One small binary that inventories Linux, Windows and FreeBSD into GLPI 10+ — no
-agent runtime, no Perl, no dependencies.**
+<h1 align="center">
+  <img src="docs/assets/logo.svg" alt="" height="28" valign="middle">&nbsp; go-glpi-agent
+</h1>
 
-[![Release](https://img.shields.io/github/v/release/jniltinho/go-glpi-agent?sort=semver)](https://github.com/jniltinho/go-glpi-agent/releases)
-[![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
-[![Go](https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go)](go.mod)
+<p align="center">
+  <b>One small binary that inventories Linux, Windows and FreeBSD into GLPI 10+</b><br>
+  — no agent runtime, no Perl, no dependencies.
+</p>
+
+<p align="center">
+  <a href="https://github.com/jniltinho/go-glpi-agent/releases"><img src="https://img.shields.io/github/v/release/jniltinho/go-glpi-agent?sort=semver" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="License"></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go" alt="Go"></a>
+  <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20FreeBSD-555" alt="Platforms">
+</p>
 
 A Go reimplementation of the FusionInventory/GLPI inventory agent. It collects local
 hardware and software inventory and sends it to a **GLPI 10+** server using the native
