@@ -37,7 +37,8 @@ jobs:
 
       - name: Build MSI
         run: |
-          make package-msi VERSION="ci-${GITHUB_SHA::8}"
+          # MSI ProductVersion must be numeric (x.y.z), so use the run number.
+          make package-msi VERSION="0.0.${GITHUB_RUN_NUMBER}"
           ls -lh dist/*.msi
           msiinfo export dist/*.msi InstallExecuteSequence | grep -iE "Task|Configure|Purge" || true
 
