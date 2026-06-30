@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Go GLPI Agent periodically
+
+[Timer]
+# once per hour, with a random delay to spread the load on the server
+OnCalendar=hourly
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

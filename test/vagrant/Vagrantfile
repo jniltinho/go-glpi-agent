@@ -38,8 +38,8 @@ Vagrant.configure("2") do |config|
   # Sem synced_folder: várias boxes (RHEL/CentOS) não trazem o VirtualBox Guest
   # Additions, então o vboxsf falha. Copiamos o binário Go e o AppImage do
   # glpi-agent via "file" provisioner (SCP/SSH), que funciona em qualquer box.
-  config.vm.provision "file", source: "../../dist/fusioninventory-agent",
-                              destination: "/tmp/fusioninventory-agent"
+  config.vm.provision "file", source: "../../dist/go-glpi-agent",
+                              destination: "/tmp/go-glpi-agent"
   config.vm.provision "file", source: "../../dist/glpi-agent.AppImage",
                               destination: "/tmp/glpi-agent.AppImage"
 

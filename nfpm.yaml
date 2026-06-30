@@ -1,7 +1,7 @@
 # nfpm configuration for building .deb/.rpm packages.
 # https://nfpm.goreleaser.com
 # Build the binary first (make build-all), then: make package-deb / package-rpm.
-name: fusioninventory-agent
+name: go-glpi-agent
 arch: amd64
 platform: linux
 version: ${VERSION}
@@ -15,17 +15,17 @@ homepage: https://github.com/jniltinho/go-fusioninventory-agent
 license: GPL-2.0-or-later
 
 contents:
-  - src: ./dist/fusioninventory-agent
-    dst: /usr/bin/fusioninventory-agent
-  - src: ./contrib/fusioninventory-agent.service
-    dst: /lib/systemd/system/fusioninventory-agent.service
-  - src: ./contrib/fusioninventory-agent.timer
-    dst: /lib/systemd/system/fusioninventory-agent.timer
-  - src: ./contrib/fusioninventory-agent-daemon.service
-    dst: /lib/systemd/system/fusioninventory-agent-daemon.service
+  - src: ./dist/go-glpi-agent
+    dst: /opt/go-glpi-agent/go-glpi-agent
   - src: ./contrib/agent.cfg
-    dst: /etc/fusioninventory/agent.cfg
+    dst: /opt/go-glpi-agent/agent.cfg
     type: "config|noreplace" # keep user edits across upgrades
+  - src: ./contrib/go-glpi-agent.service
+    dst: /lib/systemd/system/go-glpi-agent.service
+  - src: ./contrib/go-glpi-agent.timer
+    dst: /lib/systemd/system/go-glpi-agent.timer
+  - src: ./contrib/go-glpi-agent-daemon.service
+    dst: /lib/systemd/system/go-glpi-agent-daemon.service
 
 overrides:
   deb:

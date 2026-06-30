@@ -3,8 +3,8 @@ package server
 import (
 	"encoding/xml"
 
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/version"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/version"
 )
 
 // Serialize converts an Inventory into the OCS/FusionInventory protocol's

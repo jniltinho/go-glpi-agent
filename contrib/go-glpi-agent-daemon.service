@@ -1,5 +1,5 @@
 [Unit]
-Description=Go FusionInventory Agent (daemon)
+Description=Go GLPI Agent (daemon)
 Documentation=https://github.com/jniltinho/go-fusioninventory-agent
 After=network-online.target
 Wants=network-online.target
@@ -9,7 +9,7 @@ Wants=network-online.target
 # itself (interval from `delaytime` in agent.cfg). Use EITHER this OR the
 # .timer, not both.
 Type=simple
-ExecStart=/usr/bin/fusioninventory-agent daemon --conf-file /etc/fusioninventory/agent.cfg
+ExecStart=/opt/go-glpi-agent/go-glpi-agent daemon --conf-file /opt/go-glpi-agent/agent.cfg
 Restart=on-failure
 RestartSec=30
 User=root

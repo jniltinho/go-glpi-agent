@@ -10,17 +10,17 @@ import (
 	"syscall"
 	"time"
 
-	"go-fusioninventory-agent/internal/collector"
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/logger"
-	"go-fusioninventory-agent/internal/transport"
-	"go-fusioninventory-agent/internal/transport/local"
-	"go-fusioninventory-agent/internal/transport/server"
+	"go-glpi-agent/internal/collector"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/logger"
+	"go-glpi-agent/internal/transport"
+	"go-glpi-agent/internal/transport/local"
+	"go-glpi-agent/internal/transport/server"
 
 	// import the collectors to register them via init()
-	_ "go-fusioninventory-agent/internal/collector/generic"
-	_ "go-fusioninventory-agent/internal/collector/linux"
+	_ "go-glpi-agent/internal/collector/generic"
+	_ "go-glpi-agent/internal/collector/linux"
 )
 
 // Agent brings together configuration, logger and the inventory target.

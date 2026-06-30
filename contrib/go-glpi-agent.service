@@ -1,5 +1,5 @@
 [Unit]
-Description=Go FusionInventory Agent (inventory run)
+Description=Go GLPI Agent (inventory run)
 Documentation=https://github.com/jniltinho/go-fusioninventory-agent
 After=network-online.target
 Wants=network-online.target
@@ -8,7 +8,7 @@ Wants=network-online.target
 Type=oneshot
 # `run` does a single inventory cycle (server or local, per agent.cfg).
 # Scheduling is handled by the companion .timer.
-ExecStart=/usr/bin/fusioninventory-agent run --conf-file /etc/fusioninventory/agent.cfg
+ExecStart=/opt/go-glpi-agent/go-glpi-agent run --conf-file /opt/go-glpi-agent/agent.cfg
 # runs as root to read dmidecode, /sys/class/dmi and disk serials
 User=root
 

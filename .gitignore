@@ -1,5 +1,5 @@
 # --- Go (projeto na raiz) ---
-/fusioninventory-agent
+/go-glpi-agent
 /dist/
 *.out
 coverage.txt

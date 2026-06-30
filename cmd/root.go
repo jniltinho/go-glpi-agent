@@ -10,9 +10,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go-fusioninventory-agent/internal/agent"
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/logger"
+	"go-glpi-agent/internal/agent"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/logger"
 )
 
 // Global flags shared across subcommands.
@@ -28,11 +28,11 @@ var (
 // rootCmd is the base command. It only holds shared flags; the actual work is
 // done by the run and daemon subcommands.
 var rootCmd = &cobra.Command{
-	Use:   "fusioninventory-agent",
+	Use:   "go-glpi-agent",
 	Short: "Go inventory agent for GLPI (native JSON) and legacy OCS/FusionInventory (XML)",
-	Long: `fusioninventory-agent collects local hardware and software inventory on
-Linux and sends it to a GLPI 10+ server (native JSON protocol) or writes it to a
-local XML file. It reads the same agent.cfg as the Perl agent.`,
+	Long: `go-glpi-agent collects local hardware and software inventory on Linux and
+sends it to a GLPI 10+ server (native JSON protocol) or writes it to a local XML
+file. It reads the same agent.cfg as the Perl FusionInventory/GLPI agent.`,
 }
 
 // Execute runs the CLI. It is called from main.

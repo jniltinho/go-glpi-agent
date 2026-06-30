@@ -7,9 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/logger"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/logger"
 )
 
 // Collector is the unit of collection. Each kind of data (CPU, network, software...)

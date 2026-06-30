@@ -13,10 +13,10 @@ import (
 	"os"
 	"time"
 
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/logger"
-	"go-fusioninventory-agent/internal/version"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/logger"
+	"go-glpi-agent/internal/version"
 )
 
 // Target implements transport.Target, sending the inventory to a GLPI server.

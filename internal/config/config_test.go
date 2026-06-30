@@ -89,7 +89,7 @@ func TestDefaults(t *testing.T) {
 	if cfg.BackendCollectTimeout != 180 {
 		t.Errorf("default timeout = %d, expected 180", cfg.BackendCollectTimeout)
 	}
-	if cfg.VarDir != "/var/lib/fusioninventory/agent" {
+	if cfg.VarDir != "/opt/go-glpi-agent/var" {
 		t.Errorf("default VarDir = %q", cfg.VarDir)
 	}
 }

@@ -5,8 +5,8 @@ package version
 // Version is the Go agent version. Overridden at build time via -ldflags.
 var Version = "0.1.0-dev"
 
-// Name is the agent name.
-const Name = "go-fusioninventory-agent"
+// Name is the agent name (distinct from the Perl fusioninventory-agent).
+const Name = "go-glpi-agent"
 
 // UserAgent returns the string sent as VERSIONCLIENT in the XML and as the
 // User-Agent header in HTTP requests. GLPI expects the prefix

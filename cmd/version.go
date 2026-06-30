@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go-fusioninventory-agent/internal/version"
+	"go-glpi-agent/internal/version"
 )
 
 // versionCmd prints the agent version and exits.

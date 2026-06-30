@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"github.com/shirou/gopsutil/v3/process"
-	"go-fusioninventory-agent/internal/collector"
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/collector"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
 )
 
 // processCollector only runs when scan-processes=1 (disabled by default, as in

@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"go-fusioninventory-agent/internal/collector"
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/sysutil"
+	"go-glpi-agent/internal/collector"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/sysutil"
 )
 
 // usersCollector collects three sections like the Perl agent:

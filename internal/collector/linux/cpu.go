@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/shirou/gopsutil/v3/cpu"
-	"go-fusioninventory-agent/internal/collector"
-	"go-fusioninventory-agent/internal/config"
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/collector"
+	"go-glpi-agent/internal/config"
+	"go-glpi-agent/internal/inventory"
 )
 
 type cpuCollector struct{}

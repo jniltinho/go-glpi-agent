@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/inventory"
 )
 
 // jsonMessage is the native GLPI 10+ envelope (action=inventory). The

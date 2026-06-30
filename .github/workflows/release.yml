@@ -39,7 +39,7 @@ jobs:
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"
           make package-deb package-rpm
-          tar -czf "dist/fusioninventory-agent_${VERSION}_linux_amd64.tar.gz" -C dist fusioninventory-agent
+          tar -czf "dist/go-glpi-agent_${VERSION}_linux_amd64.tar.gz" -C dist go-glpi-agent
           ( cd dist && sha256sum *.deb *.rpm *.tar.gz > checksums.txt )
           ls -la dist/
 

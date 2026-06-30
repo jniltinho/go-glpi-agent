@@ -5,7 +5,7 @@ package transport
 import (
 	"context"
 
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/inventory"
 )
 
 // Target is a destination the inventory is sent/written to.

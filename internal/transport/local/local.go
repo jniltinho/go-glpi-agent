@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"go-fusioninventory-agent/internal/inventory"
-	"go-fusioninventory-agent/internal/logger"
-	"go-fusioninventory-agent/internal/transport/server"
+	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/logger"
+	"go-glpi-agent/internal/transport/server"
 )
 
 // Target writes the inventory as <DEVICEID>.xml in a directory.

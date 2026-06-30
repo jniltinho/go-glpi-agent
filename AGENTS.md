@@ -1,11 +1,11 @@
 # AGENTS.md
 
-Guidance for AI agents (and humans) working on **go-fusioninventory-agent**.
+Guidance for AI agents (and humans) working on **go-glpi-agent**.
 
 ## What this is
 
 A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux**.
-It produces a single static binary (`fusioninventory-agent`) that collects local
+It produces a single static binary (`go-glpi-agent`) that collects local
 hardware/software inventory and sends it to a **GLPI 10+** server using the
 native JSON protocol, with automatic fallback to the legacy OCS/FusionInventory
 XML protocol. It can also write the inventory to a local XML file.
@@ -24,8 +24,8 @@ intact, for behavior comparison only) live under `base/` (`base/perl/`,
   - `cmd/root.go` defines the root command and shared/persistent flags.
   - `cmd/<name>.go` defines one subcommand each (`run`, `daemon`, `version`).
   - Business logic stays in `internal/...`, never in `cmd/`.
-- **Module path:** `go-fusioninventory-agent` (no host prefix). The GitHub
-  remote is `github.com/jniltinho/go-fusioninventory-agent`.
+- **Module path:** `go-glpi-agent` (no host prefix). The GitHub
+  remote is `github.com/jniltinho/go-glpi-agent`.
 - **Stdlib first, then existing deps.** The only runtime dependencies are
   `gopsutil` (collection) and `cobra` (CLI); inventory IDs use `crypto/rand`
   (no UUID dependency). Don't add a dependency for what a few lines can do.
@@ -51,15 +51,15 @@ Specs and tasks live in `openspec/changes/`. Use the OpenSpec skills
 ## Build, test, run
 
 ```sh
-make build          # local binary ./fusioninventory-agent
+make build          # local binary ./go-glpi-agent
 make build-all      # static linux/amd64 in dist/
 make test           # go test ./...
 go vet ./...
 
-./fusioninventory-agent run --local /tmp/inv          # write XML locally
-./fusioninventory-agent run --server http://glpi/front/inventory.php
-./fusioninventory-agent daemon                         # periodic cycles
-./fusioninventory-agent version
+./go-glpi-agent run --local /tmp/inv          # write XML locally
+./go-glpi-agent run --server http://glpi/front/inventory.php
+./go-glpi-agent daemon                         # periodic cycles
+./go-glpi-agent version
 ```
 
 The agent reads the same `agent.cfg` (INI) as the Perl agent; CLI flags override
@@ -72,8 +72,11 @@ the file.
 - `test/glpi/` — GLPI 10 + MariaDB via `docker compose`. Enable native
   inventory before testing: set `glpi_configs.enabled_inventory = 1`
   (context `inventory`) and clear the GLPI cache (`php bin/console cache:clear`).
-- `test/vagrant/` — Rocky 9 and Debian 12 VMs (VirtualBox/libvirt); run
-  `make build-all` first so `dist/fusioninventory-agent` is mounted into the VMs.
+- `test/vagrant/` — a multi-distro VirtualBox matrix (RHEL/Rocky/Alma/Oracle/
+  CentOS/Fedora, Debian/Ubuntu/Pop!_OS, openSUSE, Arch). Run `make build-all`
+  first; `dist/go-glpi-agent` is copied into each VM via a file provisioner
+  (works on boxes without guest additions). `make fetch-glpi-agent` adds the
+  official glpi-agent AppImage as a reference.
 
 When validating the native protocol, GLPI's strict `inventory.schema.json`
 (in the GLPI container under `vendor/glpi-project/inventory_format/`) is the

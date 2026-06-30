@@ -10,7 +10,7 @@ set -euo pipefail
 FAMILY="${1:-unknown}"
 DISTRO="${2:-$FAMILY}"
 # binário Go e AppImage do glpi-agent são copiados para /tmp pelo file provisioner
-BIN=/tmp/fusioninventory-agent
+BIN=/tmp/go-glpi-agent
 APP=/tmp/glpi-agent.AppImage
 OUTDIR=/tmp/gfi-test
 # pré-cria os diretórios de saída: glpi-agent grava em PATH-como-arquivo se o

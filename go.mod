@@ -1,4 +1,4 @@
-module go-fusioninventory-agent
+module go-glpi-agent
 
 go 1.25.0
 

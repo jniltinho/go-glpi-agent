@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/inventory"
 )
 
 // TestSerializeStructure verifies that the generated XML has the correct

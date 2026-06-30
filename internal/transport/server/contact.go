@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/inventory"
 )
 
 // contactReply is the (loosely typed) JSON answer to a native CONTACT request.

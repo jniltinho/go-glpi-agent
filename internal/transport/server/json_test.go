@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"go-fusioninventory-agent/internal/inventory"
+	"go-glpi-agent/internal/inventory"
 )
 
 // TestBuildInventoryJSON checks the normalizations the GLPI native schema

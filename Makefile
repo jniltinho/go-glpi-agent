@@ -1,10 +1,10 @@
-# Makefile do go-fusioninventory-agent
+# Makefile do go-glpi-agent (módulo/repo: go-fusioninventory-agent)
 
-BINARY      := fusioninventory-agent
+BINARY      := go-glpi-agent
 PKG         := .
 VERSION     ?= $(shell git describe --tags --always 2>/dev/null || echo 0.1.0-dev)
-LDFLAGS     := -s -w -X go-fusioninventory-agent/internal/version.Version=$(VERSION)
-PREFIX      ?= /usr
+LDFLAGS     := -s -w -X go-glpi-agent/internal/version.Version=$(VERSION)
+OPTDIR      := /opt/go-glpi-agent
 DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
@@ -37,12 +37,14 @@ clean:
 	rm -f $(BINARY)
 	rm -rf dist
 
+# instala tudo sob /opt/go-glpi-agent; os units do systemd ficam em
+# /lib/systemd/system (exigência do systemd) apontando para o binário em /opt.
 install: build
-	install -D -m 0755 $(BINARY) $(DESTDIR)$(PREFIX)/bin/$(BINARY)
+	install -D -m 0755 $(BINARY) $(DESTDIR)$(OPTDIR)/$(BINARY)
+	install -D -m 0644 contrib/agent.cfg $(DESTDIR)$(OPTDIR)/agent.cfg
 	install -D -m 0644 contrib/$(BINARY).service $(DESTDIR)/lib/systemd/system/$(BINARY).service
 	install -D -m 0644 contrib/$(BINARY).timer $(DESTDIR)/lib/systemd/system/$(BINARY).timer
 	install -D -m 0644 contrib/$(BINARY)-daemon.service $(DESTDIR)/lib/systemd/system/$(BINARY)-daemon.service
-	install -D -m 0644 contrib/agent.cfg $(DESTDIR)/etc/fusioninventory/agent.cfg
 
 # requer nfpm (https://nfpm.goreleaser.com); usa nfpm.yaml na raiz
 package-deb: build-all
