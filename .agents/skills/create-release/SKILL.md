@@ -66,16 +66,16 @@ git log "$LAST"..HEAD --stat    # more detail
 
 ### 2. Write the `CHANGELOG.md` entry
 
-Repo-root `CHANGELOG.md`, **Keep a Changelog** format. Add a new section **above**
-the previous version and move items out of `[Unreleased]`. Categorize commits:
+Repo-root `CHANGELOG.md`. Add a new section **above** the previous version and
+move items out of `[Unreleased]`. Use the emoji sections (in this order, omit
+empty ones) and categorize commits by prefix:
 
-| CHANGELOG section | Commit prefixes | What goes here |
+| Section | Commit prefixes | What goes here |
 |---|---|---|
-| `### Added` | `feat:` | new user-visible functionality |
-| `### Changed` | `refactor:`, `perf:`, `ci:`, `build:` | behavior/infra changes |
-| `### Fixed` | `fix:` | bug fixes |
-| `### Removed` | `chore:` (removals) | dropped features/deps |
-| `### Security` | — | security-relevant changes |
+| `### ✨ New Features` | `feat:` | new user-visible functionality |
+| `### 🔧 Improvements` | `fix:`, `perf:`, `refactor:`, `ci:`, `build:` | fixes, perf, refactors, infra |
+| `### 🧹 Cleanup` | `chore:`, `cleanup:` | dead code / dependency removal |
+| `### 📚 Documentation` | `docs:` | README, guides, comments |
 
 ```markdown
 ## [Unreleased]
@@ -86,17 +86,18 @@ the previous version and move items out of `[Unreleased]`. Categorize commits:
 
 **One- or two-line summary.**
 
-### Added
-- ...
-### Changed
-- ...
-### Fixed
-- ...
+### ✨ New Features
+- feat: ...
+### 🔧 Improvements
+- fix: ...
+### 📚 Documentation
+- docs: ...
 ```
 
-Omit empty sections. The text under `## [$NEXT]` becomes the GitHub release notes
-verbatim (the workflow extracts it with awk and passes `--notes-file`), so write
-it for readers. Update README/docs only if user-facing.
+The text under `## [$NEXT]` becomes the GitHub release notes verbatim (the
+workflow extracts it with awk and passes `--notes-file`), so write it for readers.
+CI appends a `**Full Changelog**: …compare/PREV...NEXT` link automatically.
+Update README/docs only if user-facing.
 
 ### 3. Verify green
 

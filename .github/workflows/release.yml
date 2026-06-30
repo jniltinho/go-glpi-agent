@@ -53,6 +53,12 @@ jobs:
           if [ ! -s notes.md ]; then
             echo "Release $GITHUB_REF_NAME. See CHANGELOG.md." > notes.md
           fi
+          # append a Full Changelog compare link to the previous tag, if any
+          PREV=$(git describe --tags --abbrev=0 "${GITHUB_REF_NAME}^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            printf '\n**Full Changelog**: https://github.com/%s/compare/%s...%s\n' \
+              "$GITHUB_REPOSITORY" "$PREV" "$GITHUB_REF_NAME" >> notes.md
+          fi
           cat notes.md
 
       - name: Publish release
