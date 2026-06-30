@@ -396,6 +396,69 @@ func resolveIdentity(hw spHardware, io ioPlatform) (inventory.BIOS, string) {
 	}, uuid
 }
 
+// --- networksetup ----------------------------------------------------------
+
+// hwPort is a physical network hardware port as listed by
+// `networksetup -listallhardwareports` (e.g. device "en0" → "Wi-Fi").
+type hwPort struct {
+	Description string // hardware port name, e.g. "Ethernet", "Wi-Fi"
+	MAC         string
+}
+
+// parseNetworkSetup parses `networksetup -listallhardwareports` into a map keyed
+// by BSD device name (en0, en1, ...). Interfaces present here are physical; those
+// absent are virtual. Parsing stops at the trailing "VLAN Configurations" block.
+func parseNetworkSetup(out string) map[string]hwPort {
+	ports := map[string]hwPort{}
+	var curDesc, curMAC, curDev string
+	flush := func() {
+		if curDev != "" {
+			ports[curDev] = hwPort{Description: curDesc, MAC: curMAC}
+		}
+		curDesc, curMAC, curDev = "", "", ""
+	}
+	for _, line := range sysutil.SplitLines(out) {
+		line = strings.TrimSpace(line)
+		switch {
+		case strings.HasPrefix(line, "VLAN Configurations"):
+			flush()
+			return ports
+		case strings.HasPrefix(line, "Hardware Port:"):
+			flush()
+			curDesc = strings.TrimSpace(strings.TrimPrefix(line, "Hardware Port:"))
+		case strings.HasPrefix(line, "Device:"):
+			curDev = strings.TrimSpace(strings.TrimPrefix(line, "Device:"))
+		case strings.HasPrefix(line, "Ethernet Address:"):
+			curMAC = strings.TrimSpace(strings.TrimPrefix(line, "Ethernet Address:"))
+		}
+	}
+	flush()
+	return ports
+}
+
+// ifaceTypeFromPort classifies an interface from its hardware-port description
+// (the official agent's rules) or the BSD name, returning ethernet/wifi/bridge/
+// bluetooth/loopback.
+func ifaceTypeFromPort(desc, name string) string {
+	d := strings.ToLower(desc)
+	switch {
+	case strings.HasPrefix(name, "lo"):
+		return "loopback"
+	case strings.Contains(d, "wi-fi") || strings.Contains(d, "wifi") || strings.Contains(d, "airport"):
+		return "wifi"
+	case strings.Contains(d, "bridge") || strings.HasPrefix(name, "bridge"):
+		return "bridge"
+	case strings.Contains(d, "bluetooth"):
+		return "bluetooth"
+	case strings.Contains(d, "ethernet") || strings.Contains(d, "thunderbolt") || strings.Contains(d, "lan"):
+		return "ethernet"
+	case strings.HasPrefix(name, "en"):
+		return "ethernet"
+	default:
+		return "ethernet"
+	}
+}
+
 // --- route -----------------------------------------------------------------
 
 // parseRouteGateway extracts the gateway from `route -n get default` output

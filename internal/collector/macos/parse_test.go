@@ -307,6 +307,57 @@ destination: default
 	}
 }
 
+// --- networksetup ---
+
+const netSetup = `Hardware Port: Ethernet
+Device: en0
+Ethernet Address: a4:83:e7:11:22:33
+
+Hardware Port: Wi-Fi
+Device: en1
+Ethernet Address: a4:83:e7:44:55:66
+
+Hardware Port: Thunderbolt Bridge
+Device: bridge0
+Ethernet Address: 82:11:22:33:44:55
+
+VLAN Configurations
+===================
+`
+
+func TestParseNetworkSetup(t *testing.T) {
+	ports := parseNetworkSetup(netSetup)
+	if len(ports) != 3 {
+		t.Fatalf("got %d ports, want 3: %+v", len(ports), ports)
+	}
+	if ports["en0"].Description != "Ethernet" || ports["en0"].MAC != "a4:83:e7:11:22:33" {
+		t.Errorf("en0 = %+v", ports["en0"])
+	}
+	if ports["en1"].Description != "Wi-Fi" || ports["en1"].MAC != "a4:83:e7:44:55:66" {
+		t.Errorf("en1 = %+v", ports["en1"])
+	}
+	if _, ok := ports["bridge0"]; !ok {
+		t.Errorf("bridge0 missing")
+	}
+}
+
+func TestIfaceTypeFromPort(t *testing.T) {
+	cases := []struct{ desc, name, want string }{
+		{"Wi-Fi", "en1", "wifi"},
+		{"Ethernet", "en0", "ethernet"},
+		{"Thunderbolt Bridge", "bridge0", "bridge"},
+		{"Bluetooth PAN", "en5", "bluetooth"},
+		{"", "lo0", "loopback"},
+		{"", "en0", "ethernet"},   // physical NIC with no port desc
+		{"", "utun0", "ethernet"}, // unknown virtual -> default ethernet
+	}
+	for _, c := range cases {
+		if got := ifaceTypeFromPort(c.desc, c.name); got != c.want {
+			t.Errorf("ifaceTypeFromPort(%q,%q) = %q, want %q", c.desc, c.name, got, c.want)
+		}
+	}
+}
+
 // --- memSizeMB ---
 
 func TestMemSizeMB(t *testing.T) {

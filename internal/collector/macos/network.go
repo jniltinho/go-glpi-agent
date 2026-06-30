@@ -16,8 +16,11 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
-// networkCollector collects network interfaces via gopsutil/net, with the default
-// gateway from `route -n get default`.
+// networkCollector collects network interfaces via gopsutil/net, enriched with
+// the hardware-port description / physical-vs-virtual flag from
+// `networksetup -listallhardwareports` and the default gateway from
+// `route -n get default`. It emits one entry per interface (combining IPv4 and
+// IPv6), matching the official macOS agent (MacOS/Networks.pm).
 type networkCollector struct{}
 
 func init() { collector.Register(networkCollector{}) }
@@ -26,55 +29,73 @@ func (networkCollector) Name() string                      { return "macos/netwo
 func (networkCollector) Category() string                  { return "network" }
 func (networkCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "darwin" }
 
-// Collect emits one network entry per IP address (matching the Perl agent), or a
-// single address-less entry for interfaces without IPs. Interface type is
-// classified as loopback/wifi/ethernet from the name and flags.
+// Collect adds one NETWORKS entry per interface. The hardware port name and the
+// physical/virtual flag come from networksetup; the type is derived from that
+// description; the default gateway is attached only to the interface whose subnet
+// contains it (the official agent's isSameNetwork rule).
 func (networkCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	ifaces, err := gnet.InterfacesWithContext(ctx)
 	if err != nil {
 		return err
 	}
 
+	ports := map[string]hwPort{}
+	if out, perr := sysutil.RunContext(ctx, "networksetup", "-listallhardwareports"); perr == nil {
+		ports = parseNetworkSetup(out)
+	}
+
 	gateway := ""
 	if out, rerr := sysutil.RunContext(ctx, "route", "-n", "get", "default"); rerr == nil {
 		gateway = parseRouteGateway(out)
 	}
+	gwIP := net.ParseIP(gateway)
 
 	for _, ifc := range ifaces {
-		ifType := macIfaceType(ifc.Name, ifc.Flags)
-		base := inventory.Network{
-			Description: ifc.Name,
-			MACAddr:     ifc.HardwareAddr,
-			Type:        ifType,
-			Status:      "Down",
-			IPGateway:   gateway,
+		port, isPhysical := ports[ifc.Name]
+
+		desc := ifc.Name
+		if port.Description != "" {
+			desc = port.Description
 		}
-		if ifType == "loopback" {
-			base.VirtualDev = "1"
-		}
-		if hasFlag(ifc.Flags, "up") {
-			base.Status = "Up"
+		mac := ifc.HardwareAddr
+		if mac == "" {
+			mac = port.MAC
 		}
 
-		if len(ifc.Addrs) == 0 {
-			inv.AddNetwork(base)
-			continue
+		n := inventory.Network{
+			Description: desc,
+			MACAddr:     mac,
+			Type:        ifaceTypeFromPort(port.Description, ifc.Name),
+			Status:      "Down",
+			VirtualDev:  "1",
 		}
+		if isPhysical {
+			n.VirtualDev = "0"
+		}
+		if hasFlag(ifc.Flags, "up") {
+			n.Status = "Up"
+		}
+
+		// One entry per interface: first IPv4 (with mask/subnet) + first IPv6.
 		for _, addr := range ifc.Addrs {
 			ip, ipNet, perr := net.ParseCIDR(addr.Addr)
 			if perr != nil {
 				continue
 			}
-			n := base
 			if ip.To4() != nil {
-				n.IPAddress = ip.String()
-				n.IPMask = net.IP(ipNet.Mask).String()
-				n.IPSubnet = ipNet.IP.String()
-			} else {
+				if n.IPAddress == "" {
+					n.IPAddress = ip.String()
+					n.IPMask = net.IP(ipNet.Mask).String()
+					n.IPSubnet = ipNet.IP.String()
+					if gwIP != nil && ipNet.Contains(gwIP) {
+						n.IPGateway = gateway
+					}
+				}
+			} else if n.IPAddress6 == "" {
 				n.IPAddress6 = ip.String()
 			}
-			inv.AddNetwork(n)
 		}
+		inv.AddNetwork(n)
 	}
 	return nil
 }
@@ -87,18 +108,4 @@ func hasFlag(flags []string, f string) bool {
 		}
 	}
 	return false
-}
-
-// macIfaceType classifies a macOS interface from its BSD name and flags. Wi-Fi is
-// conventionally en0/en1 but indistinguishable from wired purely by name, so only
-// loopback (lo*) is special-cased; awdl/llw/utun/bridge are treated as virtual.
-func macIfaceType(name string, flags []string) string {
-	switch {
-	case hasFlag(flags, "loopback") || strings.HasPrefix(name, "lo"):
-		return "loopback"
-	case strings.HasPrefix(name, "en"):
-		return "ethernet"
-	default:
-		return "ethernet"
-	}
 }
