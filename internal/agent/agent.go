@@ -28,12 +28,23 @@ type Agent struct {
 	cfg    *config.Config
 	log    *logger.Logger
 	target transport.Target
+	vardir string // resolved, writable state directory (deviceid/agentid)
 }
 
 // New creates an agent with the appropriate target (server takes priority over
 // local). Returns an error if no target was configured.
 func New(cfg *config.Config, log *logger.Logger) (*Agent, error) {
 	a := &Agent{cfg: cfg, log: log}
+
+	// Resolve a writable state directory. When the configured vardir is not
+	// writable (e.g. the agent is run manually, not installed under the system
+	// prefix), fall back to a per-user dir so the deviceid/agentid still persist
+	// instead of being regenerated every run.
+	a.vardir = cfg.VarDir
+	if dir, fellBack := WritableVarDir(cfg.VarDir); fellBack {
+		log.Debug("vardir %q not writable; persisting state in %q", cfg.VarDir, dir)
+		a.vardir = dir
+	}
 
 	switch {
 	case cfg.Server != "":
@@ -53,13 +64,13 @@ func New(cfg *config.Config, log *logger.Logger) (*Agent, error) {
 // RunOnce executes a single inventory cycle.
 func (a *Agent) RunOnce(ctx context.Context) error {
 	hostname, _ := os.Hostname()
-	deviceID, err := LoadOrCreateDeviceID(a.cfg.VarDir, hostname, time.Now())
+	deviceID, err := LoadOrCreateDeviceID(a.vardir, hostname, time.Now())
 	if err != nil {
 		a.log.Warning("device id: %v", err)
 	}
 	a.log.Info("device id: %s", deviceID)
 
-	agentID, err := LoadOrCreateAgentID(a.cfg.VarDir)
+	agentID, err := LoadOrCreateAgentID(a.vardir)
 	if err != nil {
 		a.log.Warning("agent id: %v", err)
 	}

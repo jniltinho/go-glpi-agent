@@ -26,11 +26,11 @@ it to a local file.
 ## Why use it
 
 - **🚀 Single static binary** — drop it in and run. No Perl, no modules, no `pkg` tree.
-- **💻 One agent, four OSes** — Linux, Windows, FreeBSD and macOS (Intel + Apple Silicon) from the same source.
+- **💻 One agent, four OSes** — Linux, Windows, FreeBSD and macOS from the same source.
 - **🔌 Drop-in for GLPI** — reads the same `agent.cfg` as the Perl agent and reuses your
   existing device IDs, so hosts aren't re-created as new assets.
 - **📦 Native packages** — `.deb`, `.rpm`, Arch `.pkg.tar.zst`, a Windows `.zip` and `.msi`
-  (GPO/Intune-ready), a FreeBSD tarball, and macOS `.pkg`/`.dmg` (x86_64 + arm64) — published on every release.
+  (GPO/Intune-ready), a FreeBSD tarball, and a macOS `.pkg`/`.dmg` (Apple Silicon) — published on every release.
 - **🪶 Lightweight & quiet** — runs on a schedule (systemd timer / Scheduled Task / cron),
   collects in parallel, and stays out of the way.
 
@@ -49,7 +49,7 @@ sudo pacman -U go-glpi-agent-*-x86_64.pkg.tar.zst
 
 Windows: extract `…_windows_amd64.zip` and run `install.ps1` (elevated), or deploy the `…_x64.msi` (`msiexec /i …_x64.msi /qn SERVER=http://glpi/front/inventory.php` — GPO/Intune/SCCM-ready).
 FreeBSD: extract `…_freebsd_amd64.tar.gz` and follow `INSTALL.md`.
-macOS: open `go-glpi-agent_<version>_<arch>.dmg` and run the `.pkg` (`x86_64` for Intel, `arm64` for Apple Silicon).
+macOS (Apple Silicon): open `go-glpi-agent_<version>_arm64.dmg` and run the `.pkg`. (Intel Macs: build from source with `make package-macos ARCH=x86_64` on an Intel host.)
 
 **2. Point it at your GLPI** — edit `/opt/go-glpi-agent/agent.cfg`:
 
@@ -76,7 +76,7 @@ That's it — a computer asset appears in GLPI on the next run. Want to test fir
 | **Linux** (16 distros) | amd64 | `/sys`, `/proc`, dmidecode, lsblk, lvs, dpkg/rpm/pacman |
 | **Windows** 10/11 / Server | amd64 | WMI (`Win32_*`) + registry |
 | **FreeBSD** 14 | amd64 | kenv (smbios), pkg, geom, sysctl, usbconfig |
-| **macOS** 13+ | x86_64, arm64 | `system_profiler`, `ioreg`, `sysctl`, `sw_vers` |
+| **macOS** 13+ | arm64 (Intel from source) | `system_profiler`, `ioreg`, `sysctl`, `sw_vers` |
 
 Validated against a real GLPI 10 across all four. The full collector matrix, per-OS
 install details, CLI/config reference, build instructions and architecture live in
