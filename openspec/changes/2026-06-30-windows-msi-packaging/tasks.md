@@ -9,7 +9,7 @@
 ## 2. Build target
 
 - [ ] 2.1 Add `make package-msi`: build `go-glpi-agent.exe` (`GOOS=windows GOARCH=amd64`), then `wixl -D Version=$(VERSION) -o dist/go-glpi-agent_$(VERSION)_x64.msi contrib/windows/msi/go-glpi-agent.wxs` (+ stage the exe/agent.cfg payload).
-- [ ] 2.2 Document the Windows-native alternative (`dotnet tool install --global wix` → `wix build`) in `contrib/windows/msi/README.md`; keep the `.wxs` v3-clean so both toolchains consume it.
+- [ ] 2.2 Document the alternative toolchains in `contrib/windows/msi/README.md`: `go-msi` (`wix.json`, WiX-under-Wine container) and WiX-via-Wine images (`dactylos/wix`, `electronuserland/builder`) as Linux fallbacks if `wixl` lacks a needed feature, plus `wix build` (WiX v5/v6) on a Windows host. Keep the `.wxs` v3-clean so every path consumes it unchanged.
 - [ ] 2.3 Verify `wixl` is apt-installable on the Ubuntu runner (`apt-get install -y wixl`); the MSI builds on Linux with no Windows tooling.
 
 ## 3. CI validation (windows-latest round-trip)

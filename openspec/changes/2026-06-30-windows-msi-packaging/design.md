@@ -30,14 +30,23 @@ scheduled task (no native WiX element) and config preservation, both solved belo
 
 ## Build toolchain
 
-Two paths, same `.wxs`:
+Several paths can emit the MSI; the project picks one as primary and keeps the others
+documented so we are not locked in:
 
-| Path | Tool | Runs on | Use |
-|---|---|---|---|
-| Primary | `wixl` (from **msitools**, `apt-get install wixl`) | **Linux** | CI release build — matches how the `.zip` is built today |
-| Alt | `wix build` (WiX v5/v6, `dotnet tool install --global wix`) | Windows | local/dev builds on a Windows box |
+| Path | Tool | Runs on | Wine? | Notes |
+|---|---|---|---|---|
+| **Primary** | `wixl` (from **msitools**, `apt-get install wixl`) | **Linux** | no | Native Linux, no Wine — matches how the `.zip` is built today; best for our one-exe payload |
+| Alt A | **`go-msi`** (`wix.json`, wrapper over WiX) | Linux container | yes (WiX under Wine) | Go-native ergonomics: describe the package in `wix.json`; convenient since this is a Go project. Runs WiX inside a Wine container |
+| Alt B | **WiX via Wine** (e.g. `dactylos/wix`, `electronuserland/builder` images) | Linux container | yes | Full WiX 3/4 feature set (bundles, advanced CAs) without a Windows box |
+| Alt C | `wix build` (WiX v5/v6, `dotnet tool install --global wix`) | Windows | no | Local/dev builds on a real Windows host |
 
-`wixl` consumes WiX v3-schema `.wxs`, so the source targets that schema for portability.
+**Decision:** start with **`wixl`** — it needs no Wine, installs from apt in one line on
+the Ubuntu runner, and our payload (one exe + one config + a scheduled task) is exactly
+the simple case `wixl` handles well. The `.wxs` is kept **WiX v3-schema clean** so it also
+feeds Alt C unchanged. If we later need a WiX feature `wixl` lacks (e.g. a bundled
+prerequisite, a richer UI, or a burn bundle), we escalate to **`go-msi`** (`wix.json`,
+nice for a Go repo) or **WiX-via-Wine** (Alt B) — both run on Linux in a container, so CI
+stays Windows-free for the *build* (validation still runs on `windows-latest`).
 
 ## WiX product structure (`contrib/windows/msi/go-glpi-agent.wxs`)
 

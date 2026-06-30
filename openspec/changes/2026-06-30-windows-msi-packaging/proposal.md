@@ -10,10 +10,13 @@ estates without changing any collector code.
 
 Because the agent is a **single static `.exe`** (no Perl runtime, no DLLs), the MSI
 is small and simple: one file component, one config component, and a scheduled task.
-It can be authored with WiX and — importantly — built with **`wixl` (msitools) on the
-existing Linux release runner**, matching how the Windows `.zip` is already produced
-on Linux today (no Windows-only build tooling required). Validation still happens on
-a real `windows-latest` runner via `msiexec`.
+It can be authored with WiX and — importantly — built **on the existing Linux release
+runner**, matching how the Windows `.zip` is already produced on Linux today (no
+Windows-only build tooling required). The primary build path is **`wixl` (msitools)**,
+which is native Linux and needs no Wine; documented fallbacks for richer WiX features
+are **`go-msi`** (a `wix.json` wrapper, Go-friendly) and **WiX via Wine** containers,
+both still Linux-side. Validation always happens on a real `windows-latest` runner via
+`msiexec`.
 
 ## What Changes
 
