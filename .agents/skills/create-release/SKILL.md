@@ -1,82 +1,81 @@
 ---
 name: create-release
-description: Cut a versioned release of this Go project on GitHub — bump the CHANGELOG, build artifacts, tag, push, and publish the release with assets via the GitHub CLI (gh). Use when the user asks to "create a release", "release vX", "fechar a release", or "publicar a versão".
+description: Cut a versioned GitHub release of this Go project — bump the CHANGELOG, tag, and let CI build the binary + .deb/.rpm/Arch packages + tarball and publish the release (notes come from the CHANGELOG). Use when the user asks to "create a release", "release vX", "fechar a release", or "publicar a versão".
 license: MIT
-compatibility: Requires git + gh (GitHub CLI, authenticated). Optional: nfpm for .deb/.rpm artifacts. The version comes from the git tag.
+compatibility: Requires git + gh (GitHub CLI, authenticated). Optional: nfpm for local package builds. The version is the git tag.
 ---
 
 # Releasing this Go project (GitHub)
 
-This project lives on **GitHub** (`github.com/jniltinho/go-glpi-agent`).
-A release is: bump `CHANGELOG.md`, build the artifacts, commit, tag, push, then
-publish with **`gh release create`** (creating the release and uploading the assets
-in one step). No Gitea, no hand-rolled API calls.
+This project lives on **GitHub** (`github.com/jniltinho/go-glpi-agent`). A release
+is **CHANGELOG-driven**: write the entry, tag, push. The `release.yml` workflow
+builds the binary, the `.deb`/`.rpm`/Arch `.pkg.tar.zst` packages and the tarball,
+then publishes the release with notes taken from `CHANGELOG.md`. No manual
+`gh release edit` needed.
 
-> ⚠️ The version comes from the **git tag** (`Makefile`: `git describe --tags` →
-> ldflags into `internal/version.Version`). There is **no version constant in code**
-> to bump — the tag *is* the version.
+> ⚠️ The version is the **git tag** (`Makefile`: `git describe --tags` → ldflags
+> into `internal/version.Version`). There is **no version constant in code** — the
+> tag *is* the version.
 
 ---
 
-## Project facts
+## Before you start
 
 ```bash
-REMOTE=$(git remote get-url origin)           # git@github.com:jniltinho/go-glpi-agent.git
-OWNER="jniltinho"; REPO="go-glpi-agent"
-LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-echo "Last tag: $LAST"
-gh auth status                                # must be authenticated for releases
+APP=$(basename "$(git rev-parse --show-toplevel)")     # go-glpi-agent
+REMOTE=$(git remote get-url origin)                    # git@github.com:jniltinho/go-glpi-agent.git
+LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)
+echo "App: $APP | Last tag: $LAST"
+gh auth status                                          # must be authenticated (repo scope)
+git fetch origin --tags && git checkout main && git pull --ff-only
+git status                                              # clean working tree
 ```
 
 ### Versioning
 
-Series `0.x` (pre-1.0), tags always prefixed with `v`:
+`v0.x` (pre-1.0), tags always prefixed with `v`:
 
-- **Feature** (new user-visible capability) → bump **minor**: `v0.1.0` → `v0.2.0`
-- **Fix / docs / infra only** → bump **patch**: `v0.1.0` → `v0.1.1`
+- **Feature** (new user-visible capability) → minor: `v0.1.0` → `v0.2.0`
+- **Fix / docs / CI / infra only** → patch: `v0.1.0` → `v0.1.1`
 
 ```bash
-IFS=. read MAJ MIN PAT <<< "${LAST#v}"
-NEXT="v${MAJ}.$((MIN+1)).0"     # feature → minor   (patch: v${MAJ}.${MIN}.$((PAT+1)))
+IFS=. read MA MI PA <<<"${LAST#v}"
+NEXT="v${MA}.$((MI+1)).0"     # feature → minor   (patch: v${MA}.${MI}.$((PA+1)))
 echo "Next: $NEXT"
 ```
 
-### Auth
+---
 
-Releases use the **GitHub CLI**, not a raw token. Authenticate once per machine:
+## Release approaches
 
-```bash
-gh auth status || gh auth login        # the user runs `gh auth login` (e.g. via `! gh auth login`)
-```
-
-> If a `GH_TOKEN`/`GITHUB_TOKEN` env var is used instead, never hardcode it in files
-> or commits, and remind the user to rotate a token pasted in chat.
+| Approach | Best for | Notes | Recommended |
+|---|---|---|---|
+| Tag + push (CHANGELOG entry) | everything | structured, from `CHANGELOG.md`, published by CI | **Yes** |
+| Tag + push, no CHANGELOG entry | emergency hotfix | CI falls back to a one-line note | No |
 
 ---
 
 ## Process
 
-### 1. Prerequisites
-
-```bash
-git fetch origin --tags
-git checkout main
-git pull --ff-only
-git status        # clean working tree (besides the release changes you'll stage)
-```
-
-### 2. Review changes since the last tag
+### 1. Review changes since the last tag
 
 ```bash
 git log "$LAST"..HEAD --oneline
 git log "$LAST"..HEAD --stat    # more detail
 ```
 
-### 3. Update `CHANGELOG.md`
+### 2. Write the `CHANGELOG.md` entry
 
-Repo-root `CHANGELOG.md`, **Keep a Changelog** format, with a top `## [Unreleased]`
-placeholder. Insert a new section **above** the previous version, moving the relevant
-items out of `[Unreleased]`. (Create `CHANGELOG.md` on the first release.)
+Repo-root `CHANGELOG.md`, **Keep a Changelog** format. Add a new section **above**
+the previous version and move items out of `[Unreleased]`. Categorize commits:
+
+| CHANGELOG section | Commit prefixes | What goes here |
+|---|---|---|
+| `### Added` | `feat:` | new user-visible functionality |
+| `### Changed` | `refactor:`, `perf:`, `ci:`, `build:` | behavior/infra changes |
+| `### Fixed` | `fix:` | bug fixes |
+| `### Removed` | `chore:` (removals) | dropped features/deps |
+| `### Security` | — | security-relevant changes |
 
 ```markdown
 ## [Unreleased]
@@ -93,92 +92,55 @@ items out of `[Unreleased]`. (Create `CHANGELOG.md` on the first release.)
 - ...
 ### Fixed
 - ...
-### Security
-- ...
-### Removed
-- ...
 ```
 
-Omit empty sections. Update README/docs only if user-facing and the user agrees.
+Omit empty sections. The text under `## [$NEXT]` becomes the GitHub release notes
+verbatim (the workflow extracts it with awk and passes `--notes-file`), so write
+it for readers. Update README/docs only if user-facing.
 
-### 4. Verify green, then build the artifacts
+### 3. Verify green
 
 ```bash
-# build + tests must be green before tagging
 go vet ./... && go build ./... && go test ./...
-
-# build the release artifacts into dist/
-make build-all                       # dist/go-glpi-agent (static linux/amd64)
-make packages 2>/dev/null || echo "(skip .deb/.rpm/.pkg.tar.zst — nfpm not installed)"
-
-# versioned tarball + checksums
-tar -czf "dist/go-glpi-agent_${NEXT}_linux_amd64.tar.gz" -C dist go-glpi-agent
-( cd dist && sha256sum go-glpi-agent_${NEXT}_linux_amd64.tar.gz *.deb *.rpm *.pkg.tar.zst 2>/dev/null > checksums.txt )
-ls -la dist/
+# optional local package smoke-test (CI does this anyway):
+#   make build-all && make packages   # .deb + .rpm + Arch .pkg.tar.zst
 ```
 
-### 5. Commit + tag
+### 4. Commit, tag, push
 
 ```bash
-# stage ONLY the release changes — never skills/dist/VM-state/secrets
+# stage ONLY the release changes (never skills/dist/VM-state/secrets)
 git add CHANGELOG.md   # plus any agreed doc/code changes
-git status --short
-
-git commit -m "release: $NEXT — <summary>"   # or feat:/fix: per the change
+git commit -m "release: $NEXT — <summary>"
 git tag -a "$NEXT" -m "Release $NEXT — <summary>"
+git push origin main
+git push origin "$NEXT"          # the tag push triggers release.yml
 ```
 
 End commit messages with the project's `Co-Authored-By` trailer if used elsewhere.
 
-### 6. Push main + tag
+### 5. Monitor CI
 
 ```bash
-git push origin main
-git push origin "$NEXT"
+RID=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId')
+gh run watch "$RID" --exit-status --interval 15
 ```
 
-### 7. Publish the release with assets (`gh`)
-
-`gh release create` creates the release **and** uploads the assets in one call.
-Use a notes file mirroring the CHANGELOG entry (or `--generate-notes` for an
-auto-generated diff of merged PRs/commits).
+### 6. Verify the release
 
 ```bash
-cat > /tmp/notes.md <<EOF
-# $NEXT — <title>
-
-## ✨ Added
-- ...
-## 🔧 Changed
-- ...
-## 🐛 Fixed
-- ...
-
-**Artifacts:** linux/amd64 (.tar.gz)$( ls dist/*.deb >/dev/null 2>&1 && echo ', .deb, .rpm' ), checksums.txt.
-
-**Changelog:** https://github.com/$OWNER/$REPO/compare/$LAST...$NEXT
-EOF
-
-gh release create "$NEXT" \
-  --title "$NEXT — <title>" \
-  --notes-file /tmp/notes.md \
-  dist/go-glpi-agent_${NEXT}_linux_amd64.tar.gz \
-  dist/checksums.txt \
-  $(ls dist/*.deb dist/*.rpm dist/*.pkg.tar.zst 2>/dev/null)
+gh release view "$NEXT" --json tagName,url,body,assets \
+  -q '"\(.tagName)  \(.url)\nassets: \([.assets[].name] | join(", "))"'
 ```
 
-> Prefer this CLI path. If the repo has a release workflow (see below), pushing the
-> tag triggers it instead — in that case skip `gh release create` and only enrich the
-> notes with `gh release edit "$NEXT" --notes-file /tmp/notes.md`.
+Check:
+- Title is `$NEXT`; notes match the CHANGELOG entry (not an auto commit dump).
+- Five assets: `.deb`, `.rpm`, `.pkg.tar.zst`, `.tar.gz`, `checksums.txt`.
 
-### 8. Verify
+> If CI ran but the notes are wrong (e.g. the CHANGELOG entry was missing), fix
+> the entry and re-publish notes only: `gh release edit "$NEXT" --notes-file notes.md`.
 
-```bash
-gh release view "$NEXT" --json tagName,assets,url \
-  -q '"\(.tagName) | \(.url)\nassets: \([.assets[].name] | join(", "))"'
-```
-
-### 9. (Optional) OpenSpec
+### 7. (Optional) OpenSpec
 
 If the release closes an OpenSpec change, run `/opsx:archive <change>` to sync the
 main specs and archive it, then commit + push that separately.
@@ -189,51 +151,48 @@ main specs and archive it, then commit + push that separately.
 
 ```bash
 LAST=$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0); IFS=. read MA MI PA <<<"${LAST#v}"; NEXT="v${MA}.$((MI+1)).0"
-# 1) edit CHANGELOG.md   2) go vet/build/test green   3) make build-all + packages + tarball + checksums
+# 1) write the ## [$NEXT] section in CHANGELOG.md   2) go vet/build/test green
 git add CHANGELOG.md && git commit -m "release: $NEXT — ..."
 git tag -a "$NEXT" -m "Release $NEXT" && git push origin main && git push origin "$NEXT"
-gh release create "$NEXT" --title "$NEXT — ..." --notes-file /tmp/notes.md dist/*.tar.gz dist/checksums.txt $(ls dist/*.deb dist/*.rpm 2>/dev/null)
+RID=$(gh run list --workflow=release.yml --limit 1 --json databaseId -q '.[0].databaseId'); gh run watch "$RID" --exit-status
+gh release view "$NEXT"
 ```
 
 ---
 
-## Optional CI workflow (`.github/workflows/release.yml`)
+## Workflow capabilities (`.github/workflows/release.yml`)
 
-If you prefer CI to build and publish on tag push, a minimal workflow is:
+| Artifact / step | Status |
+|---|---|
+| `linux/amd64` static binary | ✅ |
+| `.deb` (systemd units + config under `/opt/go-glpi-agent`) | ✅ nfpm |
+| `.rpm` (same layout) | ✅ nfpm |
+| Arch `.pkg.tar.zst` | ✅ nfpm |
+| `.tar.gz` + `checksums.txt` | ✅ |
+| Release notes from `CHANGELOG.md` | ✅ `--notes-file` |
+| Publish | ✅ native `gh` CLI (no Node actions) |
+| Multi-arch (arm64) | ❌ not yet |
 
-```yaml
-name: release
-on:
-  push:
-    tags: ['v*']
-permissions:
-  contents: write
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: '1.26' }
-      - run: make build-all
-      - run: tar -czf dist/go-glpi-agent_${GITHUB_REF_NAME}_linux_amd64.tar.gz -C dist go-glpi-agent
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: dist/go-glpi-agent_*_linux_amd64.tar.gz
-          generate_release_notes: true
-```
+---
 
-With this in place, the tag push creates the release automatically; the skill then
-only enriches the notes (`gh release edit "$NEXT" --notes-file ...`).
+## Adapting to another Go project
+
+| Item | This project | Your project |
+|---|---|---|
+| Repo | `github.com/jniltinho/go-glpi-agent` | your repo |
+| Version scheme | `v0.x.y` | `v1.0.x` / semver |
+| Packages | nfpm `.deb`/`.rpm`/`.pkg.tar.zst` | whatever CI builds |
+| Notes source | `CHANGELOG.md` via CI | CHANGELOG or `gh release edit` |
+| Install prefix | `/opt/go-glpi-agent` | yours |
 
 ## Guardrails
 
 - **Never** push a tag before `go vet`, `go build`, and `go test` are green.
 - **Never** stage `.agents/skills`, `.claude/skills`, `dist/`, Vagrant VM state
-  (`test/vagrant/.vagrant/`), `test/glpi/.env`, or local settings into a release commit.
-- **Never** hardcode a GitHub token; use `gh auth` and remind the user to rotate a
-  pasted token.
+  (`test/vagrant/.vagrant/`), `test/glpi/.env`, or local settings into a commit.
+- **Never** hardcode a GitHub token; use `gh auth`, and remind the user to rotate
+  a token pasted in chat.
 - The tag is the version — no code constant to bump.
-- Reuse an existing tag only by deleting it first (risky if already pulled); prefer a
-  new patch version instead.
+- Reuse an existing tag only by deleting it first (risky if already pulled);
+  prefer a new patch version instead.
 ```
