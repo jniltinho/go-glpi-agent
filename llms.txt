@@ -1,0 +1,55 @@
+# go-glpi-agent
+
+> A Go reimplementation of the FusionInventory/GLPI inventory agent for Linux.
+> Single static binary, no runtime deps. Sends inventory to GLPI 10+ using the
+> native JSON protocol (auto-fallback to legacy OCS/FusionInventory XML), or
+> writes it to a local XML file. Distinct from the Perl `fusioninventory-agent`
+> and the official `glpi-agent` so all three can coexist. Module/repo/binary:
+> `go-glpi-agent`; installs under `/opt/go-glpi-agent`.
+
+## Architecture
+
+- `main.go` — thin entrypoint, calls `cmd.Execute()`.
+- `cmd/` — Cobra CLI: `root.go` (shared flags + `buildAgent`), `run.go`,
+  `daemon.go`, `version.go`.
+- `internal/agent/` — orchestration: resolve device ID + agentid, run collectors,
+  deliver to the target. `RunOnce` / `RunDaemon`.
+- `internal/config/` — `agent.cfg` (INI) parser, compatible with the Perl agent.
+- `internal/inventory/` — the data model (single source of truth); thread-safe
+  `Set*/Add*` accessors. Both serializers read from it.
+- `internal/collector/` — `Collector` interface + registry + concurrent engine.
+  `generic/` (hostname, timezone, users, processes) and `linux/` (cpu, memory,
+  bios, drives, networks, lvm, usb, os, software).
+- `internal/transport/` — `Target` interface; `local/` writes XML; `server/`
+  speaks the GLPI native JSON protocol (`json.go`, `contact.go`) with legacy
+  XML/PROLOG fallback (`serialize.go`, `xml.go`, `prolog.go`) over an HTTP client
+  (`client.go`).
+- `internal/logger/`, `internal/sysutil/`, `internal/version/` — support.
+
+## Key behaviors
+
+- Native protocol: CONTACT probe → if JSON reply, POST inventory JSON to
+  `/front/inventory.php` with the `GLPI-Agent-ID` header; else fall back to XML.
+- The JSON serializer normalizes what GLPI's strict `inventory.schema.json`
+  requires but the legacy XML tolerates: ISO dates, canonical arch
+  (`amd64`→`x86_64`), typed fields (stepping/mtu int, virtualdev bool), enum
+  values (network status/type), and drops a nameless timezone.
+- DMI junk values (serial `0`, `None`, `To be filled by O.E.M.`, …) are filtered.
+- Device ID uses the Perl format; a separate `agentid` UUID is generated and
+  persisted; both can be imported from `FusionInventory-Agent.dump` /
+  `GLPI-Agent.dump`.
+
+## Build & release
+
+- `make build` / `make build-all` / `make test` / `go vet ./...`
+- `make packages` → `.deb` + `.rpm` + Arch `.pkg.tar.zst` (nfpm).
+- Release: push a `v*` tag → `.github/workflows/release.yml` builds artifacts and
+  publishes a GitHub release with notes from `CHANGELOG.md`.
+
+## Docs
+
+- `README.md` — install, config, systemd, usage, collectors, tested distros.
+- `AGENTS.md` — conventions (English-only Go, Cobra layout) + curated Go skills.
+- `CONTRIBUTING.md` — build/test/PR flow.
+- `CHANGELOG.md` — per-version notes (✨/🔧/🧹/📚).
+- `test/README.md` — GLPI Docker + multi-distro Vagrant matrix.

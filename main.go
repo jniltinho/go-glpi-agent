@@ -4,6 +4,7 @@ package main
 
 import "go-glpi-agent/cmd"
 
+// main is the program entry point; it delegates to the Cobra command tree.
 func main() {
 	cmd.Execute()
 }

@@ -88,6 +88,9 @@ func Load(path string) (*Config, error) {
 	return cfg, nil
 }
 
+// loadFile parses one .cfg file, applying each key over the current config.
+// Blank lines and # comments are skipped; include directives recurse. Unparsable
+// lines are ignored rather than failing the whole load.
 func (c *Config) loadFile(path string) error {
 	f, err := os.Open(path)
 	if err != nil {
@@ -138,6 +141,9 @@ func (c *Config) loadInclude(baseDir, pattern string) {
 	}
 }
 
+// splitKV splits a "key = value" line on the first '=', trimming surrounding
+// whitespace and matching quotes from the value. ok is false when there is no
+// '=' or the key is empty.
 func splitKV(line string) (key, value string, ok bool) {
 	idx := strings.Index(line, "=")
 	if idx < 0 {
@@ -149,6 +155,9 @@ func splitKV(line string) (key, value string, ok bool) {
 	return key, value, key != ""
 }
 
+// applyKey maps a single agent.cfg key onto the matching Config field. Keys in
+// ignoredKeys are dropped silently; any other unrecognized key is recorded in
+// UnknownKeys for a later debug warning.
 func (c *Config) applyKey(key, value string) {
 	switch key {
 	case "server":
@@ -202,7 +211,8 @@ func (c *Config) applyKey(key, value string) {
 	}
 }
 
-// HasCategory reports whether a category is disabled via no-category.
+// CategoryDisabled reports whether a category is disabled via no-category
+// (case-insensitive match against the configured list).
 func (c *Config) CategoryDisabled(cat string) bool {
 	for _, v := range c.NoCategory {
 		if strings.EqualFold(v, cat) {
@@ -212,6 +222,8 @@ func (c *Config) CategoryDisabled(cat string) bool {
 	return false
 }
 
+// atoiDefault parses s as an int, returning def when it is empty or non-numeric
+// so a malformed value keeps the existing default instead of zeroing it.
 func atoiDefault(s string, def int) int {
 	if n, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
 		return n
@@ -219,6 +231,8 @@ func atoiDefault(s string, def int) int {
 	return def
 }
 
+// isTrue reports whether s is one of the truthy tokens (1, true, yes, on),
+// case-insensitively; anything else is false.
 func isTrue(s string) bool {
 	switch strings.ToLower(strings.TrimSpace(s)) {
 	case "1", "true", "yes", "on":
@@ -227,6 +241,8 @@ func isTrue(s string) bool {
 	return false
 }
 
+// appendCSV splits value on commas and appends each non-empty, trimmed part to
+// dst, so repeated keys accumulate instead of overwriting.
 func appendCSV(dst []string, value string) []string {
 	for _, part := range strings.Split(value, ",") {
 		if p := strings.TrimSpace(part); p != "" {

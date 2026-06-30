@@ -7,7 +7,11 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-—
+### 📚 Documentation
+- docs: godoc comments on every function/method, type, and package (per the
+  golang-documentation standard) — `go doc` now renders the full API.
+- docs: add `CONTRIBUTING.md` (build/test/PR flow) and `llms.txt` (structured
+  overview for AI agents).
 
 ## [0.1.2] — 2026-06-30
 

@@ -226,90 +226,105 @@ type Volume struct {
 
 // ---- Thread-safe setters/adders ----
 
+// SetHardware mutates the Hardware section under the lock; safe for concurrent use.
 func (inv *Inventory) SetHardware(fn func(h *Hardware)) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	fn(&inv.Hardware)
 }
 
+// SetBIOS mutates the BIOS section under the lock; safe for concurrent use.
 func (inv *Inventory) SetBIOS(fn func(b *BIOS)) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	fn(&inv.BIOS)
 }
 
+// SetOperatingSystem mutates the OperatingSystem section under the lock; safe for concurrent use.
 func (inv *Inventory) SetOperatingSystem(fn func(o *OperatingSystem)) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	fn(&inv.OperatingSystem)
 }
 
+// AddCPU appends c to the inventory; safe for concurrent use.
 func (inv *Inventory) AddCPU(c CPU) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.CPUs = append(inv.CPUs, c)
 }
 
+// AddMemory appends m to the inventory; safe for concurrent use.
 func (inv *Inventory) AddMemory(m Memory) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Memories = append(inv.Memories, m)
 }
 
+// AddDrive appends d to the inventory; safe for concurrent use.
 func (inv *Inventory) AddDrive(d Drive) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Drives = append(inv.Drives, d)
 }
 
+// AddStorage appends s to the inventory; safe for concurrent use.
 func (inv *Inventory) AddStorage(s Storage) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Storages = append(inv.Storages, s)
 }
 
+// AddNetwork appends n to the inventory; safe for concurrent use.
 func (inv *Inventory) AddNetwork(n Network) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Networks = append(inv.Networks, n)
 }
 
+// AddSoftware appends s to the inventory; safe for concurrent use.
 func (inv *Inventory) AddSoftware(s Software) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Softwares = append(inv.Softwares, s)
 }
 
+// AddUSBDevice appends u to the inventory; safe for concurrent use.
 func (inv *Inventory) AddUSBDevice(u USBDevice) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.USBDevices = append(inv.USBDevices, u)
 }
 
+// AddLocalUser appends u to the inventory; safe for concurrent use.
 func (inv *Inventory) AddLocalUser(u LocalUser) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.LocalUsers = append(inv.LocalUsers, u)
 }
 
+// AddLocalGroup appends g to the inventory; safe for concurrent use.
 func (inv *Inventory) AddLocalGroup(g LocalGroup) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.LocalGroups = append(inv.LocalGroups, g)
 }
 
+// AddUser appends u to the inventory; safe for concurrent use.
 func (inv *Inventory) AddUser(u User) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Users = append(inv.Users, u)
 }
 
+// AddProcess appends p to the inventory; safe for concurrent use.
 func (inv *Inventory) AddProcess(p Process) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()
 	inv.Processes = append(inv.Processes, p)
 }
 
+// AddVolume appends v to the inventory; safe for concurrent use.
 func (inv *Inventory) AddVolume(v Volume) {
 	inv.mu.Lock()
 	defer inv.mu.Unlock()

@@ -20,6 +20,8 @@ const (
 	LevelDebug
 )
 
+// String returns the lowercase level name used as the line prefix; unknown
+// values fall back to "info".
 func (l Level) String() string {
 	switch l {
 	case LevelError:
@@ -78,6 +80,8 @@ func New(opts Options) *Logger {
 	return l
 }
 
+// facility maps a logfacility name (with or without the LOG_ prefix) to a
+// syslog priority, defaulting to LOG_USER for empty or unknown names.
 func facility(name string) syslog.Priority {
 	switch strings.ToUpper(strings.TrimPrefix(name, "LOG_")) {
 	case "DAEMON":
@@ -93,6 +97,9 @@ func facility(name string) syslog.Priority {
 	}
 }
 
+// logf formats and emits a message, dropping it when level is below the
+// configured threshold. Routes to syslog by severity when configured,
+// otherwise writes "[level] msg" to the output writer.
 func (l *Logger) logf(level Level, format string, args ...any) {
 	if level > l.level {
 		return
@@ -114,7 +121,14 @@ func (l *Logger) logf(level Level, format string, args ...any) {
 	fmt.Fprintf(l.out, "[%s] %s\n", level.String(), msg)
 }
 
-func (l *Logger) Error(format string, args ...any)   { l.logf(LevelError, format, args...) }
+// Error logs at the error level; always emitted regardless of configured level.
+func (l *Logger) Error(format string, args ...any) { l.logf(LevelError, format, args...) }
+
+// Warning logs at the warning level.
 func (l *Logger) Warning(format string, args ...any) { l.logf(LevelWarning, format, args...) }
-func (l *Logger) Info(format string, args ...any)    { l.logf(LevelInfo, format, args...) }
-func (l *Logger) Debug(format string, args ...any)   { l.logf(LevelDebug, format, args...) }
+
+// Info logs at the info level; suppressed unless the level is info or debug.
+func (l *Logger) Info(format string, args ...any) { l.logf(LevelInfo, format, args...) }
+
+// Debug logs at the debug level; emitted only when Debug was enabled in Options.
+func (l *Logger) Debug(format string, args ...any) { l.logf(LevelDebug, format, args...) }

@@ -12,16 +12,26 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// usbCollector collects connected USB devices by walking /sys/bus/usb/devices.
 type usbCollector struct{}
 
+// init registers the usb collector with the collector registry.
 func init() { collector.Register(usbCollector{}) }
 
-func (usbCollector) Name() string                      { return "linux/usb" }
-func (usbCollector) Category() string                  { return "usb" }
+// Name returns the collector's registry name.
+func (usbCollector) Name() string { return "linux/usb" }
+
+// Category returns the inventory section this collector fills.
+func (usbCollector) Category() string { return "usb" }
+
+// IsEnabled reports whether the collector should run; it is Linux-only.
 func (usbCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
 const usbDevPath = "/sys/bus/usb/devices"
 
+// Collect adds one USB device entry per real device under usbDevPath. Sysfs
+// entries that are interfaces/buses (no idVendor/idProduct) and hubs (class 09)
+// are skipped.
 func (usbCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	entries, err := os.ReadDir(usbDevPath)
 	if err != nil {

@@ -82,6 +82,8 @@ func LoadOrCreateAgentID(vardir string) (string, error) {
 	return id, nil
 }
 
+// readJSONDeviceID returns the deviceid stored in the JSON state, or "" when
+// the file is missing or holds no deviceid.
 func readJSONDeviceID(path string) string {
 	return readState(path).DeviceID
 }
@@ -95,6 +97,8 @@ func readState(path string) state {
 	return s
 }
 
+// readFile returns the whole file as a string, or "" on any read error — used
+// to scan binary .dump files for the agentid, where errors mean "not present".
 func readFile(path string) string {
 	b, _ := os.ReadFile(path)
 	return string(b)
@@ -127,6 +131,7 @@ func readPerlDeviceID(path string) string {
 	return deviceIDPattern.FindString(string(b))
 }
 
+// saveDeviceID persists id as the deviceid, leaving any existing agentid intact.
 func saveDeviceID(path, id string) error {
 	return saveState(path, func(s *state) { s.DeviceID = id })
 }
@@ -146,6 +151,8 @@ func saveState(path string, mut func(*state)) error {
 	return os.WriteFile(path, b, 0o644)
 }
 
+// generateDeviceID builds a deviceid as "{shorthostname}-{YYYY-MM-DD-HH-MM-SS}",
+// stripping the domain from the hostname and falling back to "localhost" when empty.
 func generateDeviceID(hostname string, now time.Time) string {
 	if i := strings.Index(hostname, "."); i >= 0 {
 		hostname = hostname[:i]

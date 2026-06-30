@@ -144,6 +144,8 @@ func BuildContactJSON(deviceID, name, tag string) ([]byte, error) {
 	return json.Marshal(msg)
 }
 
+// toJSONCPUs converts the XML CPU structs to their JSON form, parsing the
+// string Stepping into the integer the GLPI schema demands.
 func toJSONCPUs(in []xmlCPU) []jsonCPU {
 	out := make([]jsonCPU, 0, len(in))
 	for _, c := range in {
@@ -156,6 +158,9 @@ func toJSONCPUs(in []xmlCPU) []jsonCPU {
 	return out
 }
 
+// toJSONNetworks converts the XML network structs to their JSON form,
+// coercing the schema-typed fields: type via netType, status to lowercase,
+// virtualdev from "1" to bool and mtu to int.
 func toJSONNetworks(in []xmlNetwork) []jsonNetwork {
 	out := make([]jsonNetwork, 0, len(in))
 	for _, n := range in {

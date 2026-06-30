@@ -62,6 +62,12 @@ func New(cfg *config.Config, log *logger.Logger) (*Target, error) {
 	}, nil
 }
 
+// buildTLSConfig assembles the TLS config from the agent settings. With no
+// custom CA configured it returns a config that only honors NoSSLCheck;
+// otherwise it seeds a pool from the system store (falling back to an empty
+// pool) and appends the CA file and every readable file in the CA directory.
+// A missing ca-cert-file is fatal; unreadable entries in the CA directory are
+// skipped silently.
 func buildTLSConfig(cfg *config.Config) (*tls.Config, error) {
 	tlsCfg := &tls.Config{InsecureSkipVerify: cfg.NoSSLCheck}
 	if cfg.CACertFile == "" && cfg.CACertDir == "" {

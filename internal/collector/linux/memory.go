@@ -14,14 +14,25 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// memoryCollector collects total/swap memory via gopsutil/mem and, when
+// dmidecode is available (root), per-slot physical memory details.
 type memoryCollector struct{}
 
+// init registers the memory collector with the collector registry.
 func init() { collector.Register(memoryCollector{}) }
 
-func (memoryCollector) Name() string                      { return "linux/memory" }
-func (memoryCollector) Category() string                  { return "memory" }
+// Name returns the collector's registry name.
+func (memoryCollector) Name() string { return "linux/memory" }
+
+// Category returns the inventory section this collector fills.
+func (memoryCollector) Category() string { return "memory" }
+
+// IsEnabled reports whether the collector should run; it is Linux-only.
 func (memoryCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
+// Collect sets total memory and swap on the hardware section, then adds one
+// memory entry per populated DIMM slot when dmidecode is present. The slot
+// scan fails gracefully (no root, no dmidecode) without aborting collection.
 func (memoryCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	vm, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
@@ -48,6 +59,9 @@ func (memoryCollector) Collect(ctx context.Context, inv *inventory.Inventory) er
 
 var dmiMemBlock = regexp.MustCompile(`(?m)^Memory Device\b`)
 
+// collectMemorySlots runs "dmidecode -t 17", splits its output into per-slot
+// "Memory Device" blocks, and adds an inventory entry for each populated slot.
+// Empty slots ("No Module Installed") are skipped; dmidecode failures are ignored.
 func collectMemorySlots(ctx context.Context, inv *inventory.Inventory) {
 	out, err := sysutil.RunContext(ctx, "dmidecode", "-t", "17")
 	if err != nil {
@@ -71,6 +85,8 @@ func collectMemorySlots(ctx context.Context, inv *inventory.Inventory) {
 	}
 }
 
+// parseMemoryBlock parses a single dmidecode "Memory Device" block into a
+// Memory entry, dropping placeholder values like "Unknown" / "Not Specified".
 func parseMemoryBlock(block string) inventory.Memory {
 	var m inventory.Memory
 	for _, line := range sysutil.SplitLines(block) {

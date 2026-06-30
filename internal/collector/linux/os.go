@@ -12,14 +12,24 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// osCollector collects operating system details (distro, version, kernel,
+// hostname, boot time, host ID) via gopsutil/host and /etc/os-release.
 type osCollector struct{}
 
+// init registers the os collector with the collector registry.
 func init() { collector.Register(osCollector{}) }
 
-func (osCollector) Name() string                      { return "linux/os" }
-func (osCollector) Category() string                  { return "os" }
+// Name returns the collector's registry name.
+func (osCollector) Name() string { return "linux/os" }
+
+// Category returns the inventory section this collector fills.
+func (osCollector) Category() string { return "os" }
+
+// IsEnabled reports whether the collector should run; it is Linux-only.
 func (osCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
+// Collect fills both the operating-system and hardware sections from host info,
+// then overrides the OS full name with /etc/os-release PRETTY_NAME when present.
 func (osCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
@@ -68,6 +78,8 @@ func (osCollector) Collect(ctx context.Context, inv *inventory.Inventory) error 
 	return nil
 }
 
+// osReleasePretty returns the PRETTY_NAME value from /etc/os-release, or ""
+// when the file is missing or the key is absent.
 func osReleasePretty() string {
 	content := sysutil.ReadFileTrim("/etc/os-release")
 	if content == "" {
@@ -81,6 +93,8 @@ func osReleasePretty() string {
 	return ""
 }
 
+// cutQuoted returns the value following prefix on line with surrounding single
+// or double quotes stripped, and false if line does not start with prefix.
 func cutQuoted(line, prefix string) (string, bool) {
 	if len(line) < len(prefix) || line[:len(prefix)] != prefix {
 		return "", false

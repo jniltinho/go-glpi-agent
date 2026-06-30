@@ -43,6 +43,7 @@ func Execute() {
 	}
 }
 
+// init wires the persistent flags and subcommands onto the root command.
 func init() {
 	pf := rootCmd.PersistentFlags()
 	pf.StringVar(&flagConfFile, "conf-file", config.DefaultConfFile, "path to agent.cfg")

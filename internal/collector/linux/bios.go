@@ -11,12 +11,20 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// biosCollector collects BIOS, baseboard and system identity (vendor, model,
+// serials, asset tag, UUID) by reading /sys/class/dmi/id/, no root required.
 type biosCollector struct{}
 
+// init registers the bios collector with the collector registry.
 func init() { collector.Register(biosCollector{}) }
 
-func (biosCollector) Name() string                      { return "linux/bios" }
-func (biosCollector) Category() string                  { return "bios" }
+// Name returns the collector's registry name.
+func (biosCollector) Name() string { return "linux/bios" }
+
+// Category returns the inventory section this collector fills.
+func (biosCollector) Category() string { return "bios" }
+
+// IsEnabled reports whether the collector should run; it is Linux-only.
 func (biosCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
 const dmiPath = "/sys/class/dmi/id/"
@@ -51,6 +59,9 @@ func cleanDMI(s string) string {
 	return s
 }
 
+// Collect reads the DMI fields into a BIOS struct and sets the BIOS section
+// plus the hardware UUID. It returns without writing anything when no real DMI
+// data is present (e.g. a VM without SMBIOS passthrough).
 func (biosCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	// /sys/class/dmi/id/ is readable without root for most fields.
 	b := inventory.BIOS{

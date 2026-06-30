@@ -16,12 +16,20 @@ import (
 //   - USERS        (who: logged-in sessions) + LASTLOGGEDUSER (last)
 type usersCollector struct{}
 
+// init registers the users collector with the collector registry.
 func init() { collector.Register(usersCollector{}) }
 
-func (usersCollector) Name() string                      { return "generic/users" }
-func (usersCollector) Category() string                  { return "local_user" }
+// Name returns the collector identifier.
+func (usersCollector) Name() string { return "generic/users" }
+
+// Category returns the inventory category controlled by --no-category.
+func (usersCollector) Category() string { return "local_user" }
+
+// IsEnabled always returns true; users are collected on every host.
 func (usersCollector) IsEnabled(cfg *config.Config) bool { return true }
 
+// Collect gathers local users, local groups, and logged-in/last users in turn;
+// each helper degrades silently when a file or tool is unavailable.
 func (usersCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	collectLocalUsers(inv)
 	collectLocalGroups(inv)
@@ -29,6 +37,8 @@ func (usersCollector) Collect(ctx context.Context, inv *inventory.Inventory) err
 	return nil
 }
 
+// collectLocalUsers parses /etc/passwd, skipping comments and lines with fewer
+// than the seven expected colon-separated fields.
 func collectLocalUsers(inv *inventory.Inventory) {
 	content := sysutil.ReadFileTrim("/etc/passwd")
 	for _, line := range sysutil.SplitLines(content) {
@@ -49,6 +59,8 @@ func collectLocalUsers(inv *inventory.Inventory) {
 	}
 }
 
+// collectLocalGroups parses /etc/group, reporting only groups that list at
+// least one member, mirroring the Perl agent's behavior.
 func collectLocalGroups(inv *inventory.Inventory) {
 	content := sysutil.ReadFileTrim("/etc/group")
 	for _, line := range sysutil.SplitLines(content) {
@@ -71,6 +83,9 @@ func collectLocalGroups(inv *inventory.Inventory) {
 	}
 }
 
+// collectLoggedUsers records currently logged-in sessions via `who`
+// (deduplicated by login) and the most recent real login via `last -R`,
+// skipping pseudo records. Both tools are optional.
 func collectLoggedUsers(ctx context.Context, inv *inventory.Inventory) {
 	if sysutil.CommandExists("who") {
 		out, err := sysutil.RunContext(ctx, "who")

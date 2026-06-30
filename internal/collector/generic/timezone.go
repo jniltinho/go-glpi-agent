@@ -12,14 +12,24 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// timezoneCollector records the system timezone name and its current UTC
+// offset in the operating-system section.
 type timezoneCollector struct{}
 
+// init registers the timezone collector with the collector registry.
 func init() { collector.Register(timezoneCollector{}) }
 
-func (timezoneCollector) Name() string                      { return "generic/timezone" }
-func (timezoneCollector) Category() string                  { return "timezone" }
+// Name returns the collector identifier.
+func (timezoneCollector) Name() string { return "generic/timezone" }
+
+// Category returns the inventory category controlled by --no-category.
+func (timezoneCollector) Category() string { return "timezone" }
+
+// IsEnabled always returns true; timezone is collected on every host.
 func (timezoneCollector) IsEnabled(cfg *config.Config) bool { return true }
 
+// Collect resolves the timezone name and computes the offset from the current
+// local time, so DST is reflected as of the moment of collection.
 func (timezoneCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	name := timezoneName()
 	// offset atual no formato +HHMM
@@ -33,6 +43,8 @@ func (timezoneCollector) Collect(ctx context.Context, inv *inventory.Inventory) 
 	return nil
 }
 
+// timezoneName returns the IANA zone name, preferring /etc/timezone and
+// falling back to the /etc/localtime symlink target; empty if neither is found.
 func timezoneName() string {
 	// 1) /etc/timezone (Debian/Ubuntu)
 	if tz := sysutil.ReadFileTrim("/etc/timezone"); tz != "" {
@@ -47,6 +59,8 @@ func timezoneName() string {
 	return ""
 }
 
+// formatOffset renders a signed second offset as the GLPI-expected +HHMM/-HHMM
+// string. Seconds beyond whole minutes are truncated.
 func formatOffset(sec int) string {
 	sign := "+"
 	if sec < 0 {
@@ -58,6 +72,7 @@ func formatOffset(sec int) string {
 	return sign + twoDigits(h) + twoDigits(m)
 }
 
+// twoDigits zero-pads n to two characters; assumes 0 <= n < 100.
 func twoDigits(n int) string {
 	if n < 10 {
 		return "0" + string(rune('0'+n))

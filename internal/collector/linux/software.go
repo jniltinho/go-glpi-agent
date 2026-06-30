@@ -16,11 +16,17 @@ import (
 // and collects from all of them. Covers dpkg, rpm and pacman (design.md D8).
 type softwareCollector struct{}
 
+// init registers the software collector with the collector registry.
 func init() { collector.Register(softwareCollector{}) }
 
-func (softwareCollector) Name() string     { return "linux/software" }
+// Name returns the collector's registry name.
+func (softwareCollector) Name() string { return "linux/software" }
+
+// Category returns the inventory section this collector fills.
 func (softwareCollector) Category() string { return "software" }
 
+// IsEnabled reports whether the collector should run; requires Linux and at
+// least one supported package manager (dpkg-query, rpm or pacman).
 func (softwareCollector) IsEnabled(cfg *config.Config) bool {
 	if runtime.GOOS != "linux" {
 		return false
@@ -30,6 +36,9 @@ func (softwareCollector) IsEnabled(cfg *config.Config) bool {
 		sysutil.CommandExists("pacman")
 }
 
+// Collect runs every package manager present on the host, accumulating their
+// installed packages into the software inventory. Individual managers fail
+// silently so one broken tool does not drop the others' results.
 func (softwareCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	if sysutil.CommandExists("dpkg-query") {
 		collectDpkg(ctx, inv)
@@ -43,6 +52,8 @@ func (softwareCollector) Collect(ctx context.Context, inv *inventory.Inventory) 
 	return nil
 }
 
+// collectDpkg lists Debian/dpkg packages via dpkg-query and adds each as a
+// software entry, converting the dpkg KB installed-size to bytes.
 func collectDpkg(ctx context.Context, inv *inventory.Inventory) {
 	const format = `${Package}\t${Version}\t${Architecture}\t${Installed-Size}\t${Section}\t${binary:Summary}\n`
 	out, err := sysutil.RunContext(ctx, "dpkg-query", "-W", "-f", format)
@@ -77,6 +88,8 @@ func collectDpkg(ctx context.Context, inv *inventory.Inventory) {
 	}
 }
 
+// collectRPM lists RPM packages via "rpm -qa" with a tab-separated format and
+// adds each as a software entry, including size, install date and vendor.
 func collectRPM(ctx context.Context, inv *inventory.Inventory) {
 	const format = `%{NAME}\t%{VERSION}-%{RELEASE}\t%{ARCH}\t%{SIZE}\t%{INSTALLTIME:date}\t%{VENDOR}\t%{SUMMARY}\n`
 	out, err := sysutil.RunContext(ctx, "rpm", "-qa", "--qf", format)
@@ -112,6 +125,8 @@ func collectRPM(ctx context.Context, inv *inventory.Inventory) {
 	}
 }
 
+// collectPacman lists Arch/pacman packages via "pacman -Q" and adds each
+// name/version pair as a software entry.
 func collectPacman(ctx context.Context, inv *inventory.Inventory) {
 	out, err := sysutil.RunContext(ctx, "pacman", "-Q")
 	if err != nil {

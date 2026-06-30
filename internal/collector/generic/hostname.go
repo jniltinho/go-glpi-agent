@@ -14,14 +14,25 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// hostnameCollector resolves the machine's short hostname, DNS domain, and FQDN
+// and records them in the hardware and operating-system sections.
 type hostnameCollector struct{}
 
+// init registers the hostname collector with the collector registry.
 func init() { collector.Register(hostnameCollector{}) }
 
-func (hostnameCollector) Name() string                      { return "generic/hostname" }
-func (hostnameCollector) Category() string                  { return "hostname" }
+// Name returns the collector identifier.
+func (hostnameCollector) Name() string { return "generic/hostname" }
+
+// Category returns the inventory category controlled by --no-category.
+func (hostnameCollector) Category() string { return "hostname" }
+
+// IsEnabled always returns true; hostname is collected on every host.
 func (hostnameCollector) IsEnabled(cfg *config.Config) bool { return true }
 
+// Collect splits the OS hostname into short name and domain, falling back to
+// resolv.conf for the domain and to gopsutil for the FQDN, then stores them
+// without overwriting a hardware Name already set by another collector.
 func (hostnameCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	hostname, _ := os.Hostname()
 

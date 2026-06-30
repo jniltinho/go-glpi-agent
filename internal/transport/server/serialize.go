@@ -113,6 +113,7 @@ func BuildRequest(inv *inventory.Inventory) Request {
 	}
 }
 
+// buildHardware maps the inventory Hardware section to its XML/JSON struct.
 func buildHardware(inv *inventory.Inventory) *xmlHardware {
 	h := inv.Hardware
 	return &xmlHardware{
@@ -123,6 +124,8 @@ func buildHardware(inv *inventory.Inventory) *xmlHardware {
 	}
 }
 
+// buildOS maps the inventory OperatingSystem section to its XML/JSON struct,
+// attaching a Timezone child only when a name or UTC offset was resolved.
 func buildOS(inv *inventory.Inventory) *xmlOS {
 	o := inv.OperatingSystem
 	x := &xmlOS{
@@ -136,6 +139,8 @@ func buildOS(inv *inventory.Inventory) *xmlOS {
 	return x
 }
 
+// buildBIOS maps the BIOS section to its XML/JSON struct, returning nil when
+// the section is empty so the omitempty tag drops it from the output.
 func buildBIOS(b inventory.BIOS) *xmlBIOS {
 	if b == (inventory.BIOS{}) {
 		return nil

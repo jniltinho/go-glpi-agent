@@ -14,14 +14,26 @@ import (
 	"go-glpi-agent/internal/sysutil"
 )
 
+// networkCollector collects network interfaces and their addresses via
+// gopsutil/net, enriched with speed/MTU/type from /sys/class/net and the
+// default gateway from /proc/net/route.
 type networkCollector struct{}
 
+// init registers the network collector with the collector registry.
 func init() { collector.Register(networkCollector{}) }
 
-func (networkCollector) Name() string                      { return "linux/networks" }
-func (networkCollector) Category() string                  { return "network" }
+// Name returns the collector's registry name.
+func (networkCollector) Name() string { return "linux/networks" }
+
+// Category returns the inventory section this collector fills.
+func (networkCollector) Category() string { return "network" }
+
+// IsEnabled reports whether the collector should run; it is Linux-only.
 func (networkCollector) IsEnabled(cfg *config.Config) bool { return runtime.GOOS == "linux" }
 
+// Collect emits one network entry per IP address (matching the Perl agent),
+// or a single address-less entry for interfaces without IPs. Each entry carries
+// the interface metadata: MAC, type, status, speed, MTU, virtual flag, gateway.
 func (networkCollector) Collect(ctx context.Context, inv *inventory.Inventory) error {
 	ifaces, err := gnet.InterfacesWithContext(ctx)
 	if err != nil {
@@ -74,6 +86,7 @@ func (networkCollector) Collect(ctx context.Context, inv *inventory.Inventory) e
 	return nil
 }
 
+// hasFlag reports whether the interface flag f is present (case-insensitive).
 func hasFlag(flags []string, f string) bool {
 	for _, v := range flags {
 		if strings.EqualFold(v, f) {
@@ -83,6 +96,8 @@ func hasFlag(flags []string, f string) bool {
 	return false
 }
 
+// ifaceType classifies an interface as loopback, wifi, virtual or ethernet
+// using its flags, name and presence under /sys/class/net.
 func ifaceType(name string, flags []string) string {
 	if hasFlag(flags, "loopback") || name == "lo" {
 		return "loopback"
