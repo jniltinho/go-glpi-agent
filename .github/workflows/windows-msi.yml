@@ -1,0 +1,128 @@
+name: Windows MSI
+
+# Builds the .msi on Linux with wixl (no Windows host needed) and validates the
+# full install -> verify -> uninstall round-trip on a real windows-latest runner.
+
+on:
+  push:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'contrib/windows/msi/**'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.github/workflows/windows-msi.yml'
+  pull_request:
+    paths:
+      - 'cmd/**'
+      - 'internal/**'
+      - 'contrib/windows/msi/**'
+      - 'Makefile'
+      - '.github/workflows/windows-msi.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.26'
+          cache-dependency-path: go.sum
+
+      - name: Install wixl (msitools)
+        run: sudo apt-get update && sudo apt-get install -y wixl msitools
+
+      - name: Build MSI
+        run: |
+          make package-msi VERSION="ci-${GITHUB_SHA::8}"
+          ls -lh dist/*.msi
+          msiinfo export dist/*.msi InstallExecuteSequence | grep -iE "Task|Configure|Purge" || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-glpi-agent-msi
+          path: dist/*.msi
+          if-no-files-found: error
+
+  test:
+    needs: build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-glpi-agent-msi
+          path: msi
+
+      - name: Resolve MSI path
+        id: msi
+        shell: pwsh
+        run: |
+          $m = (Get-ChildItem msi\*.msi | Select-Object -First 1).FullName
+          echo "path=$m" >> $env:GITHUB_OUTPUT
+          echo "MSI: $m"
+
+      - name: Install silently (msiexec /qn)
+        shell: pwsh
+        run: |
+          $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/i', '${{ steps.msi.outputs.path }}', '/qn',
+            'SERVER=http://glpi.example.com/front/inventory.php', 'TAG=ci',
+            '/l*v', 'install.log')
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
+            Get-Content install.log -Tail 60
+            throw "install failed: exit $($p.ExitCode)"
+          }
+          echo "install exit: $($p.ExitCode)"
+
+      - name: Assert install (binary, task, config)
+        shell: pwsh
+        run: |
+          $exe = "C:\Program Files\go-glpi-agent\go-glpi-agent.exe"
+          if (-not (Test-Path $exe)) { throw "binary missing: $exe" }
+          schtasks /Query /TN go-glpi-agent | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "Scheduled Task not registered" }
+          $cfg = "C:\ProgramData\go-glpi-agent\agent.cfg"
+          if (-not (Test-Path $cfg)) { throw "config missing: $cfg" }
+          $content = Get-Content $cfg -Raw
+          if ($content -notmatch 'server\s*=\s*http://glpi\.example\.com') {
+            Write-Host $content
+            throw "SERVER property was not written into agent.cfg"
+          }
+          Write-Host "OK: binary, Scheduled Task and configured agent.cfg present"
+
+      - name: Run inventory + dump native JSON
+        shell: pwsh
+        env:
+          GFI_DUMP_JSON: out\inventory.json
+        run: |
+          mkdir out | Out-Null
+          & "C:\Program Files\go-glpi-agent\go-glpi-agent.exe" run --local out --debug
+          Get-ChildItem out
+
+      - name: Validate native JSON against GLPI schema
+        shell: pwsh
+        run: |
+          git clone --depth 1 https://github.com/glpi-project/inventory_format
+          python -m pip install --quiet check-jsonschema
+          check-jsonschema --schemafile inventory_format/inventory.schema.json out/inventory.json
+
+      - name: Uninstall silently and assert cleanup
+        shell: pwsh
+        run: |
+          $p = Start-Process msiexec.exe -Wait -PassThru -ArgumentList @(
+            '/x', '${{ steps.msi.outputs.path }}', '/qn', '/l*v', 'uninstall.log')
+          if ($p.ExitCode -ne 0 -and $p.ExitCode -ne 3010) {
+            Get-Content uninstall.log -Tail 60
+            throw "uninstall failed: exit $($p.ExitCode)"
+          }
+          if (Test-Path "C:\Program Files\go-glpi-agent\go-glpi-agent.exe") {
+            throw "binary still present after uninstall"
+          }
+          schtasks /Query /TN go-glpi-agent 2>$null | Out-Null
+          if ($LASTEXITCODE -eq 0) { throw "Scheduled Task still present after uninstall" }
+          Write-Host "OK: binary and Scheduled Task removed"

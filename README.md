@@ -29,7 +29,7 @@ it to a local file.
 - **💻 One agent, three OSes** — Linux, Windows and FreeBSD from the same build.
 - **🔌 Drop-in for GLPI** — reads the same `agent.cfg` as the Perl agent and reuses your
   existing device IDs, so hosts aren't re-created as new assets.
-- **📦 Native packages** — `.deb`, `.rpm`, Arch `.pkg.tar.zst`, a Windows `.zip` installer,
+- **📦 Native packages** — `.deb`, `.rpm`, Arch `.pkg.tar.zst`, a Windows `.zip` and `.msi` (GPO/Intune-ready) installer,
   and a FreeBSD tarball — published on every release.
 - **🪶 Lightweight & quiet** — runs on a schedule (systemd timer / Scheduled Task / cron),
   collects in parallel, and stays out of the way.
@@ -47,7 +47,7 @@ sudo rpm -i go-glpi-agent-*.x86_64.rpm
 sudo pacman -U go-glpi-agent-*-x86_64.pkg.tar.zst
 ```
 
-Windows: extract `…_windows_amd64.zip` and run `install.ps1` (elevated).
+Windows: extract `…_windows_amd64.zip` and run `install.ps1` (elevated), or deploy the `…_x64.msi` (`msiexec /i …_x64.msi /qn SERVER=http://glpi/front/inventory.php` — GPO/Intune/SCCM-ready).
 FreeBSD: extract `…_freebsd_amd64.tar.gz` and follow `INSTALL.md`.
 
 **2. Point it at your GLPI** — edit `/opt/go-glpi-agent/agent.cfg`:

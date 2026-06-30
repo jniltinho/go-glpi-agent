@@ -7,7 +7,22 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-—
+### ✨ New Features
+- feat(windows): Windows `.msi` installer for managed deployment (GPO / Intune /
+  SCCM / PDQ). Installs the `.exe`, registers the hourly `go-glpi-agent` Scheduled
+  Task (SYSTEM), seeds `agent.cfg`, supports silent install with `SERVER`/`TAG`
+  properties (`msiexec /i … /qn SERVER=… TAG=…`), in-place upgrades (stable
+  `UpgradeCode`), and clean uninstall by product code (`PURGE=1` to also drop
+  config). Built **on Linux with `wixl`** (msitools) — no Windows build host — via
+  `make package-msi`; a `contrib/windows/msi/Dockerfile` builds it in a container.
+- feat(windows): hidden `service install|uninstall|configure|purge` subcommands the
+  MSI's deferred (SYSTEM) custom actions call; the exe self-locates via
+  `os.Executable()` and owns `agent.cfg` (writes a default only when absent, so
+  upgrades preserve operator edits).
+- ci(windows-msi): new workflow builds the `.msi` on Ubuntu (`wixl`) and runs a full
+  install → verify (binary + Scheduled Task + configured `agent.cfg`) → inventory +
+  schema-validate → uninstall round-trip on `windows-latest`; `release.yml` publishes
+  the `.msi` alongside the existing artifacts.
 
 ## [0.3.0] — 2026-06-30
 

@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all build-windows package-windows build-freebsd package-freebsd test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
+.PHONY: all build build-all build-windows package-windows package-msi build-freebsd package-freebsd test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
 
 all: build
 
@@ -45,6 +45,15 @@ package-windows: build-windows
 	cp contrib/windows/install.ps1 dist/windows/
 	cp contrib/windows/uninstall.ps1 dist/windows/
 	cd dist/windows && zip -q -r ../$(BINARY)_$(VERSION)_windows_amd64.zip .
+
+# empacota um .msi (WiX/wixl) para deploy via GPO/Intune/SCCM. REQUER wixl
+# (msitools): `apt-get install wixl`. O .exe é buildado e estanciado em dist/msi.
+package-msi: build-windows
+	mkdir -p dist/msi
+	cp dist/$(BINARY).exe dist/msi/$(BINARY).exe
+	cp contrib/windows/msi/agent.cfg dist/msi/agent.cfg
+	wixl -a x64 -D SourceDir=dist/msi -D Version=$(VERSION) \
+		-o dist/$(BINARY)_$(VERSION)_x64.msi contrib/windows/msi/$(BINARY).wxs
 
 # build estático para freebsd/amd64 (cross-compila a partir do Linux)
 build-freebsd:

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  WiX v3 source for the go-glpi-agent Windows installer (.msi).
+
+  Built on Linux with wixl (msitools):
+      wixl -a x64 -D SourceDir=dist/msi -D Version=<x.y.z> \
+           -o dist/go-glpi-agent_<x.y.z>_x64.msi contrib/windows/msi/go-glpi-agent.wxs
+
+  Kept WiX v3-schema clean (and within wixl's supported subset — custom actions
+  use FileKey, not Directory) so it also builds with WiX (`wix build`) on Windows.
+
+  The installer lays down the .exe + agent.cfg, writes the SERVER/TAG install
+  properties to HKLM, and runs the bundled exe's hidden `service` subcommands via
+  deferred (SYSTEM, elevated) custom actions to register the Scheduled Task and
+  seed the config. The exe self-locates with os.Executable(), so no install path
+  needs to survive into a deferred action.
+
+  GUIDs: UpgradeCode is FIXED forever (it drives in-place upgrades). Component
+  GUIDs are stable per install path. Product/@Id is "*" (auto per build).
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*"
+           Name="go-glpi-agent"
+           Language="1033"
+           Version="$(var.Version)"
+           Manufacturer="jniltinho"
+           UpgradeCode="52DFC631-DEF9-4ABF-8468-293D9A8A2853">
+
+    <!-- Platform comes from `wixl -a x64` (wixl has no Package/@Platform). -->
+    <Package InstallerVersion="200"
+             Compressed="yes"
+             InstallScope="perMachine"
+             Comments="Go inventory agent for GLPI 10+ (native JSON / legacy XML)"
+             Manufacturer="jniltinho" />
+
+    <Media Id="1" Cabinet="agent.cab" EmbedCab="yes" />
+
+    <!-- In-place upgrade: detect any previously installed version and remove it. -->
+    <Property Id="PREVIOUSVERSIONSINSTALLED" Secure="yes" />
+    <Upgrade Id="52DFC631-DEF9-4ABF-8468-293D9A8A2853">
+      <UpgradeVersion Minimum="0.0.0" IncludeMinimum="yes"
+                      Maximum="99.0.0" IncludeMaximum="no"
+                      Property="PREVIOUSVERSIONSINSTALLED" />
+    </Upgrade>
+
+    <!-- Public properties for unattended install: msiexec /qn SERVER=... TAG=... -->
+    <Property Id="SERVER" Secure="yes" />
+    <Property Id="TAG" Secure="yes" />
+    <!-- PURGE=1 also removes the config/var on uninstall (default: keep them). -->
+    <Property Id="PURGE" Secure="yes" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="go-glpi-agent">
+          <Component Id="MainExecutable" Guid="137ED256-FC9C-4C9D-AB0D-898F2E489A65" Win64="yes">
+            <File Id="GoGlpiAgentExe"
+                  Name="go-glpi-agent.exe"
+                  Source="$(var.SourceDir)/go-glpi-agent.exe"
+                  KeyPath="yes" />
+          </Component>
+          <!-- Record the SERVER/TAG install properties in HKLM so the deferred
+               `service configure` action can seed agent.cfg as SYSTEM. The agent's
+               `service install` owns the config file itself (writes a default only
+               when absent), so upgrades preserve it without MSI component flags. -->
+          <Component Id="AgentState" Guid="C173632E-6612-48E8-8AD9-F2D676BC754A" Win64="yes">
+            <RegistryValue Root="HKLM" Key="Software\go-glpi-agent"
+                           Name="installed" Type="integer" Value="1" KeyPath="yes" />
+            <RegistryValue Root="HKLM" Key="Software\go-glpi-agent"
+                           Name="Server" Type="string" Value="[SERVER]" />
+            <RegistryValue Root="HKLM" Key="Software\go-glpi-agent"
+                           Name="Tag" Type="string" Value="[TAG]" />
+          </Component>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <Feature Id="Complete" Level="1" Title="go-glpi-agent">
+      <ComponentRef Id="MainExecutable" />
+      <ComponentRef Id="AgentState" />
+    </Feature>
+
+    <!-- ===== Custom actions: run the bundled exe deferred, as SYSTEM ===== -->
+    <CustomAction Id="InstallTask" FileKey="GoGlpiAgentExe" ExeCommand="service install"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+    <CustomAction Id="ConfigureAgent" FileKey="GoGlpiAgentExe" ExeCommand="service configure"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+    <CustomAction Id="RemoveTask" FileKey="GoGlpiAgentExe" ExeCommand="service uninstall"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+    <CustomAction Id="PurgeData" FileKey="GoGlpiAgentExe" ExeCommand="service purge"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <!--
+      Explicit Sequence numbers (wixl does not reliably resolve Before/After for
+      custom actions). All deferred CAs must fall between InstallInitialize (1500)
+      and InstallFinalize (6600). Standard positions for reference: RemoveFiles
+      3500, InstallFiles 4000, RemoveExistingProducts 4003.
+        1550/1560 — uninstall: remove task / purge, while the exe still exists (<3500)
+        4010/4020 — install:   register task / seed config, after files are laid (>4000)
+    -->
+    <InstallExecuteSequence>
+      <RemoveExistingProducts After="InstallInitialize" />
+      <Custom Action="RemoveTask"     Sequence="1550">REMOVE="ALL"</Custom>
+      <Custom Action="PurgeData"      Sequence="1560">REMOVE="ALL" AND PURGE="1"</Custom>
+      <Custom Action="InstallTask"    Sequence="4010">NOT REMOVE="ALL"</Custom>
+      <Custom Action="ConfigureAgent" Sequence="4020">NOT REMOVE="ALL"</Custom>
+    </InstallExecuteSequence>
+  </Product>
+</Wix>
