@@ -1,10 +1,6 @@
 <p align="center">
-  <img src="docs/assets/banner.jpg" alt="go-glpi-agent — bridge your devices to GLPI with the power of Go" width="100%">
+  <img src="docs/assets/logo-horizontal.svg" alt="go-glpi-agent" width="440">
 </p>
-
-<h1 align="center">
-  <img src="docs/assets/logo.svg" alt="" height="28" valign="middle">&nbsp; go-glpi-agent
-</h1>
 
 <p align="center">
   <b>One small binary that inventories Linux, Windows and FreeBSD into GLPI 10+</b><br>
@@ -16,6 +12,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--2.0--or--later-blue" alt="License"></a>
   <a href="go.mod"><img src="https://img.shields.io/badge/Go-1.26%2B-00ADD8?logo=go" alt="Go"></a>
   <img src="https://img.shields.io/badge/platforms-Linux%20%7C%20Windows%20%7C%20FreeBSD-555" alt="Platforms">
+</p>
+
+<p align="center">
+  <img src="docs/assets/banner.jpg" alt="go-glpi-agent — bridge your devices to GLPI with the power of Go" width="100%">
 </p>
 
 A Go reimplementation of the FusionInventory/GLPI inventory agent. It collects local
