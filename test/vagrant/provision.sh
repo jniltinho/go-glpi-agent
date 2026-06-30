@@ -13,7 +13,10 @@ DISTRO="${2:-$FAMILY}"
 BIN=/tmp/fusioninventory-agent
 APP=/tmp/glpi-agent.AppImage
 OUTDIR=/tmp/gfi-test
-mkdir -p "$OUTDIR"
+# pré-cria os diretórios de saída: glpi-agent grava em PATH-como-arquivo se o
+# diretório não existir, então /tmp/gfi-test/glpi precisa existir como dir.
+rm -rf "$OUTDIR/glpi" "$OUTDIR/go"
+mkdir -p "$OUTDIR/go" "$OUTDIR/glpi"
 chmod +x "$BIN" "$APP" 2>/dev/null || true
 
 echo "==> Distro: $DISTRO (família: $FAMILY)"
