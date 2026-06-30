@@ -1,20 +1,21 @@
 # go-glpi-agent
 
-A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux and
-Windows**. It produces a single static binary with no runtime dependencies and
-talks to **GLPI 10+** using the native JSON protocol, with automatic fallback to
-the legacy OCS/FusionInventory XML protocol.
+A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux,
+Windows and FreeBSD**. It produces a single static binary with no runtime
+dependencies and talks to **GLPI 10+** using the native JSON protocol, with
+automatic fallback to the legacy OCS/FusionInventory XML protocol.
 
 The name is intentionally distinct from the Perl `fusioninventory-agent` and the
 official `glpi-agent`, so the three can coexist on the same host.
 
 ## Status
 
-Linux/amd64 and Windows/amd64. Collects local hardware and software inventory and
-sends it to GLPI 10+ (native JSON) or writes it to a local XML file. The Linux
-build is validated against a real GLPI 10 across 16 distributions (see
+Linux/amd64, Windows/amd64 and FreeBSD/amd64. Collects local hardware and software
+inventory and sends it to GLPI 10+ (native JSON) or writes it to a local XML file.
+The Linux build is validated against a real GLPI 10 across 16 distributions (see
 [Tested distributions](#tested-distributions)); the Windows build covers the same
-collector set via WMI and the registry (see [Windows](#windows)).
+collector set via WMI and the registry (see [Windows](#windows)); the FreeBSD build
+uses kenv/pkg/geom (see [FreeBSD](#freebsd)).
 
 ## Install
 
@@ -113,31 +114,44 @@ The installer registers a **Scheduled Task** (hourly, as SYSTEM) — the Windows
 analog of the Linux systemd timer. The binary, config and state live under
 `C:\Program Files\go-glpi-agent` and `C:\ProgramData\go-glpi-agent`.
 
+## FreeBSD
+
+The FreeBSD build covers the same collector set via `gopsutil` plus FreeBSD-native
+sources. Extract `go-glpi-agent_*_freebsd_amd64.tar.gz` and follow `INSTALL.md`:
+
+```sh
+sudo install -m 0755 go-glpi-agent /opt/go-glpi-agent/go-glpi-agent
+sudo cp -n agent.cfg /opt/go-glpi-agent/agent.cfg   # set the `server` line
+sudo /opt/go-glpi-agent/go-glpi-agent run           # once now
+# or the rc.d service (daemon) / a cron entry for periodic runs — see INSTALL.md
+```
+
 ## Collectors
 
-| Category | Linux source | Windows source |
-|---|---|---|
-| CPU | gopsutil/cpu | WMI Win32_Processor |
-| Memory + slots | gopsutil/mem, dmidecode | gopsutil/mem, WMI Win32_PhysicalMemory |
-| BIOS/board/chassis | /sys/class/dmi, dmidecode | WMI Win32_BIOS/ComputerSystem/BaseBoard/SystemEnclosure |
-| Physical disks | lsblk | WMI Win32_DiskDrive |
-| Filesystems | gopsutil/disk | gopsutil/disk |
-| LVM | lvs | — (n/a) |
-| USB | /sys/bus/usb | WMI Win32_PnPEntity |
-| Network | gopsutil/net, /proc/net/route | gopsutil/net, WMI Win32_NetworkAdapter[Configuration] |
-| OS / distro | gopsutil/host, /etc/os-release | gopsutil/host, registry CurrentVersion |
-| Hostname / domain | gopsutil/host, /etc | gopsutil/host |
-| Timezone | /etc/timezone, /etc/localtime | registry TimeZoneKeyName |
-| Users / groups / logged-in | /etc/passwd, /etc/group, who, last | WMI Win32_UserAccount/Group/ComputerSystem |
-| Processes (`scan-processes=1`) | gopsutil/process | gopsutil/process |
-| Software | dpkg-query, rpm, pacman | registry Uninstall keys (HKLM/WOW64/HKCU) |
+| Category | Linux source | Windows source | FreeBSD source |
+|---|---|---|---|
+| CPU | gopsutil/cpu | WMI Win32_Processor | gopsutil/cpu, hw.model |
+| Memory (+ slots) | gopsutil/mem, dmidecode | gopsutil/mem, WMI Win32_PhysicalMemory | gopsutil/mem |
+| BIOS/board/chassis | /sys/class/dmi, dmidecode | WMI Win32_BIOS/ComputerSystem/BaseBoard | kenv smbios.* |
+| Physical disks | lsblk | WMI Win32_DiskDrive | geom disk list |
+| Filesystems | gopsutil/disk | gopsutil/disk | gopsutil/disk (UFS/ZFS) |
+| LVM | lvs | — (n/a) | — (n/a) |
+| USB | /sys/bus/usb | WMI Win32_PnPEntity | usbconfig |
+| Network | gopsutil/net, /proc/net/route | gopsutil/net, WMI Win32_NetworkAdapter | gopsutil/net, route |
+| OS / distro | gopsutil/host, /etc/os-release | gopsutil/host, registry CurrentVersion | gopsutil/host, sysctl |
+| Hostname / domain | gopsutil/host, /etc | gopsutil/host | gopsutil/host, /etc |
+| Timezone | /etc/timezone, /etc/localtime | registry TimeZoneKeyName | /var/db/zoneinfo |
+| Users / groups | /etc/passwd, /etc/group, who, last | WMI Win32_UserAccount/Group | /etc/passwd, /etc/group, who, last |
+| Processes (`scan-processes=1`) | gopsutil/process | gopsutil/process | gopsutil/process |
+| Software | dpkg-query, rpm, pacman | registry Uninstall keys | pkg query |
 
 Junk identity values (a serial of `0`, `None`, `To be filled by O.E.M.`, …) are
-filtered out on both platforms, so they are not reported as real data. On Windows,
-installed software is read from the uninstall registry keys (not `Win32_Product`,
-which is slow and triggers MSI self-repair); under the SYSTEM Scheduled Task,
-machine-wide software is complete but other users' per-user `HKCU` installs are not
-enumerated.
+filtered out on every platform. On VirtualBox VMs, where the DMI/SMBIOS serial is
+`0`, the system UUID is used as the serial (matching glpi-agent), so the host still
+gets a stable identity in GLPI. On Windows, installed software is read from the
+uninstall registry keys (not `Win32_Product`, which is slow and triggers MSI
+self-repair); under the SYSTEM Scheduled Task, machine-wide software is complete but
+other users' per-user `HKCU` installs are not enumerated.
 
 ### Gaps vs the Perl agent
 

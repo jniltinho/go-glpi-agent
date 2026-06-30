@@ -38,6 +38,9 @@ jobs:
       - name: Build Windows zip
         run: make package-windows VERSION="$VERSION"   # dist/go-glpi-agent_<version>_windows_amd64.zip
 
+      - name: Build FreeBSD tarball
+        run: make package-freebsd VERSION="$VERSION"   # dist/go-glpi-agent_<version>_freebsd_amd64.tar.gz
+
       - name: Build packages, tarball and checksums
         run: |
           export PATH="$PATH:$(go env GOPATH)/bin"

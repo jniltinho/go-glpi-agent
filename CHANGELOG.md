@@ -9,6 +9,36 @@ each release's notes are this file's section for that version (published by CI).
 
 —
 
+## [0.3.0] — 2026-06-30
+
+**FreeBSD inventory support + VirtualBox serial parity.** A single codebase now
+builds for Linux, Windows and FreeBSD. Validated end-to-end on FreeBSD 14.1 against
+a real GLPI 10 (native JSON schema-valid, asset created), and the Linux build
+cross-checked on Debian 12 against the official glpi-agent (softwares 455/455).
+
+### ✨ New Features
+- feat(freebsd): FreeBSD inventory support — `go-glpi-agent` collects the same
+  categories on FreeBSD via `gopsutil` plus native sources: `kenv smbios.*`
+  (BIOS/board/chassis/UUID), `pkg query` (software), `geom`/`camcontrol` (disks),
+  sysctl (CPU/OS), `/var/db/zoneinfo` (timezone) and `usbconfig` (USB).
+- feat(freebsd): FreeBSD distribution — `make build-freebsd`/`package-freebsd`
+  produce a `.tar.gz` (binary + `agent.cfg` + `rc.d` service + `INSTALL.md`);
+  `release.yml` publishes it.
+
+### 🔧 Improvements
+- fix(bios): on VirtualBox VMs, where the DMI/SMBIOS serial is `0`, fall back to the
+  system UUID as the serial (matching glpi-agent's `Generic/Dmidecode/Bios.pm`), so
+  the host gets a stable identity in GLPI instead of an empty serial. Applies to
+  Linux, Windows and FreeBSD.
+- refactor: per-OS registration extended with `register_freebsd.go`; cross-platform
+  `generic` timezone gains a FreeBSD source (`/var/db/zoneinfo`).
+- ci: `go.yml` adds a `GOOS=freebsd` build/vet check.
+
+### 📚 Documentation
+- docs: README "FreeBSD" section + a FreeBSD column in the per-OS collector table;
+  AGENTS.md per-OS layout; `test/vagrant-freebsd/` end-to-end validation comparing
+  against the official `p5-FusionInventory-Agent`.
+
 ## [0.2.0] — 2026-06-30
 
 **Windows inventory support.** A single codebase now builds for Linux and Windows;

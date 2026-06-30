@@ -9,7 +9,7 @@ DESTDIR     ?=
 
 GLPI_AGENT_VERSION ?= 1.18
 
-.PHONY: all build build-all build-windows package-windows test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
+.PHONY: all build build-all build-windows package-windows build-freebsd package-freebsd test vet clean install package-deb package-rpm package-arch packages fetch-glpi-agent fetch-glpi-agent-win
 
 all: build
 
@@ -45,6 +45,19 @@ package-windows: build-windows
 	cp contrib/windows/install.ps1 dist/windows/
 	cp contrib/windows/uninstall.ps1 dist/windows/
 	cd dist/windows && zip -q -r ../$(BINARY)_$(VERSION)_windows_amd64.zip .
+
+# build estático para freebsd/amd64 (cross-compila a partir do Linux)
+build-freebsd:
+	CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o dist/$(BINARY)-freebsd $(PKG)
+
+# empacota o binário + agent.cfg + rc.d script + notas num .tar.gz
+package-freebsd: build-freebsd
+	mkdir -p dist/freebsd
+	cp dist/$(BINARY)-freebsd dist/freebsd/$(BINARY)
+	cp contrib/freebsd/agent.cfg dist/freebsd/
+	cp contrib/freebsd/go_glpi_agent dist/freebsd/
+	cp contrib/freebsd/INSTALL.md dist/freebsd/
+	tar -czf dist/$(BINARY)_$(VERSION)_freebsd_amd64.tar.gz -C dist/freebsd .
 
 test:
 	go test ./...

@@ -91,3 +91,15 @@ func CleanDMI(s string) string {
 	}
 	return s
 }
+
+// VirtualBoxSerial returns the serial to use on VirtualBox VMs, where the real
+// DMI/SMBIOS serial is "0" (filtered to empty by CleanDMI). It falls back to the
+// lowercased system UUID, matching glpi-agent's Generic/Dmidecode/Bios.pm: when
+// the board model is "VirtualBox" and neither the system nor board serial is set
+// but a UUID exists, the UUID becomes the serial. Returns "" when not applicable.
+func VirtualBoxSerial(ssn, msn, boardModel, uuid string) string {
+	if ssn == "" && msn == "" && uuid != "" && boardModel == "VirtualBox" {
+		return strings.ToLower(uuid)
+	}
+	return ""
+}

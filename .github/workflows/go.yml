@@ -44,6 +44,12 @@ jobs:
       - name: Vet (windows/amd64)
         run: GOOS=windows GOARCH=amd64 go vet ./...
 
+      - name: Compile check (freebsd/amd64)
+        run: CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build ./...
+
+      - name: Vet (freebsd/amd64)
+        run: GOOS=freebsd GOARCH=amd64 go vet ./...
+
   # Runs the agent on a real Windows host (WMI + registry) and validates the
   # native JSON against GLPI's schema — no Vagrant box / remote access needed.
   windows-smoke:

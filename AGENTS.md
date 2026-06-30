@@ -4,9 +4,9 @@ Guidance for AI agents (and humans) working on **go-glpi-agent**.
 
 ## What this is
 
-A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux and
-Windows**. It produces a single static binary (`go-glpi-agent` / `.exe`) that
-collects local hardware/software inventory and sends it to a **GLPI 10+** server
+A Go reimplementation of the FusionInventory/GLPI inventory agent for **Linux,
+Windows and FreeBSD**. It produces a single static binary (`go-glpi-agent` / `.exe`)
+that collects local hardware/software inventory and sends it to a **GLPI 10+** server
 using the native JSON protocol, with automatic fallback to the legacy
 OCS/FusionInventory XML protocol. It can also write the inventory to a local XML file.
 
@@ -42,7 +42,11 @@ and adding macOS/BSD later is "drop in a package + a registration file":
 - `internal/collector/windows/` — `//go:build windows`, reads WMI (`Win32_*`) and the registry.
   Pure parsing helpers live in `windows/parse.go` (**no** build tag, no Windows-only
   imports) so they are unit-tested on any platform (`windows/parse_test.go`).
-- `internal/collector/generic/` — cross-platform; `users.go` is `//go:build !windows`.
+- `internal/collector/freebsd/` — `//go:build freebsd`, reads kenv (`smbios.*`), `pkg`,
+  `geom`/`camcontrol`, sysctl and `usbconfig`. Pure parsers in `freebsd/parse.go`
+  (no build tag) are unit-tested on any platform (`freebsd/parse_test.go`).
+- `internal/collector/generic/` — cross-platform; `users.go` is `//go:build !windows`,
+  and timezone has a FreeBSD source (`timezone_freebsd.go`, reads `/var/db/zoneinfo`).
 - Registration: `internal/agent/register_<goos>.go` blank-imports that OS's package.
 - `internal/logger/logger_unix.go` (syslog) vs `logger_windows.go` (stub); OS-aware
   default paths in `internal/config/paths_<unix|windows>.go`.
@@ -79,6 +83,9 @@ make test            # go test ./...
 go vet ./...
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build ./...   # Windows compile check
 GOOS=windows go vet ./...
+CGO_ENABLED=0 GOOS=freebsd GOARCH=amd64 go build ./...   # FreeBSD compile check
+GOOS=freebsd go vet ./...
+make build-freebsd   # static freebsd/amd64; package-freebsd → tarball + rc.d
 
 ./go-glpi-agent run --local /tmp/inv          # write XML locally
 ./go-glpi-agent run --server http://glpi/front/inventory.php
@@ -104,6 +111,9 @@ the file.
 - `test/vagrant-windows/` — a Windows Server 2022 box (WinRM-provisioned). Run
   `make build-windows` first; `provision.ps1` installs the agent and sends a
   native inventory to the GLPI stack in `test/glpi/`.
+- `test/vagrant-freebsd/` — a FreeBSD 14 box. Run `make build-freebsd` first;
+  `provision.sh` installs the agent, compares with the official
+  `p5-FusionInventory-Agent` (`pkg`), and sends to the GLPI stack.
 
 When validating the native protocol, GLPI's strict `inventory.schema.json`
 (in the GLPI container under `vendor/glpi-project/inventory_format/`) is the

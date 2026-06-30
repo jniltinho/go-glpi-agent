@@ -118,7 +118,30 @@ the VirtualBox NAT gateway to the host).
 ## Notes
 
 - On VirtualBox VMs the BIOS serial comes from the box image (often `0`, which
-  the agent filters as junk); on real hardware the true serial is read.
+  the agent filters as junk); the system UUID is then used as the serial (matching
+  glpi-agent). On real hardware the true serial is read.
 - `centos/stream10` may have a transient NAT networking issue reaching the host.
 - The Windows Scheduled Task runs as SYSTEM, so per-user `HKCU` software (other
   users' installs) is not enumerated in v1 — machine-wide software is complete.
+
+## 4. FreeBSD (Vagrant)
+
+Validates the FreeBSD build (kenv/pkg/geom collectors) against the same GLPI 10
+stack, comparing with the official FusionInventory agent. Requires Vagrant +
+VirtualBox and the `freebsd/FreeBSD-14.1-RELEASE` box.
+
+```sh
+cd ../..                                  # repo root
+make build-freebsd                        # produces dist/go-glpi-agent-freebsd
+cd test/vagrant-freebsd
+GLPI_SERVER=http://10.0.2.2:8080/front/inventory.php vagrant up
+vagrant provision                         # re-run the agent
+vagrant destroy -f                        # clean up
+```
+
+The binary is copied via the file provisioner (FreeBSD boxes have no vboxsf). The
+POSIX-`sh` `provision.sh`:
+
+1. runs our agent `run --local` (XML + `GFI_DUMP_JSON` native JSON) and `run --server`;
+2. installs `p5-FusionInventory-Agent` via `pkg` and runs it (`--config=none`) as a reference;
+3. prints a per-section count comparison (Go vs FusionInventory).

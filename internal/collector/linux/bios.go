@@ -58,6 +58,12 @@ func (biosCollector) Collect(ctx context.Context, inv *inventory.Inventory) erro
 		return nil // system without DMI (e.g. VM without passthrough)
 	}
 
+	// On VirtualBox the DMI serial is "0" (filtered above); fall back to the UUID,
+	// matching glpi-agent, so the host still gets a stable serial in GLPI.
+	if ssn := sysutil.VirtualBoxSerial(b.SSN, b.MSN, b.MModel, uuid); ssn != "" {
+		b.SSN = ssn
+	}
+
 	inv.SetBIOS(func(dst *inventory.BIOS) { *dst = b })
 	if uuid != "" {
 		inv.SetHardware(func(h *inventory.Hardware) { h.UUID = uuid })

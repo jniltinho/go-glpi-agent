@@ -1,0 +1,32 @@
+# Vagrantfile to validate go-glpi-agent on FreeBSD against the GLPI 10 docker
+# stack in ../glpi, comparing with the official FusionInventory agent.
+#
+# Prerequisite on the host (run before `vagrant up`):
+#   cd ../..              # repo root
+#   make build-freebsd    # produces dist/go-glpi-agent-freebsd
+#
+#   GLPI_SERVER=http://10.0.2.2:8080/front/inventory.php vagrant up
+#   vagrant provision     # re-run the agent
+#   vagrant destroy -f    # clean up
+
+GLPI_SERVER = ENV.fetch("GLPI_SERVER", "http://10.0.2.2:8080/front/inventory.php")
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "freebsd/FreeBSD-14.1-RELEASE"
+  config.vm.guest = :freebsd
+  config.ssh.shell = "sh"
+  config.vm.boot_timeout = 600
+
+  # FreeBSD boxes have no VirtualBox guest additions / vboxsf; the default rsync
+  # synced folder needs rsync. Disable it and copy via the file provisioner (scp).
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+    v.cpus = 2
+  end
+
+  config.vm.provision "file", source: "../../dist/go-glpi-agent-freebsd",
+                              destination: "/tmp/go-glpi-agent"
+  config.vm.provision "shell", path: "provision.sh", args: [GLPI_SERVER]
+end
