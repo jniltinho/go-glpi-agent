@@ -38,10 +38,9 @@ comparison.
 | Mono (single-ink) | White (for dark backgrounds) |
 |---|---|
 | ![mono](gallery/logo-mono-card.png) | ![white](gallery/logo-white-card.png) |
-| `logo-mono.svg` · `logo-mono-horizontal.svg` | `logo-white.svg` · `logo-white-horizontal.svg` |
+| `logo-mono.svg` · `logo-mono-horizontal.svg` | `logo-white.svg` (mark; white text is invisible except on dark) |
 
 ![mono lockup](gallery/mono-horizontal.png)
-![white lockup](gallery/white-horizontal.png)
 
 ## Marks at a glance
 
