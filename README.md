@@ -89,4 +89,4 @@ install details, CLI/config reference, build instructions and architecture live 
 
 ## License
 
-GPL-2.0-or-later.
+License: GPLv2+.
