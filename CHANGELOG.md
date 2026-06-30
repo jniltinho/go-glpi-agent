@@ -7,6 +7,10 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
+—
+
+## [0.1.3] — 2026-06-30
+
 ### 📚 Documentation
 - docs: godoc comments on every function/method, type, and package (per the
   golang-documentation standard) — `go doc` now renders the full API.
