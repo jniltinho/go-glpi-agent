@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="170" viewBox="0 0 660 170" role="img" aria-label="go-glpi-agent" color="#243b53">
+  <svg x="8" y="13" width="144" height="144" viewBox="0 0 256 256" overflow="visible">
+
+  <!-- Single-ink version. Uses currentColor, so when embedded inline it takes the
+       surrounding text color; via <img> it defaults to the fill below. -->
+  <g fill="currentColor" color="#243b53">
+    <!-- antenna -->
+    <rect x="125" y="34" width="6" height="28" rx="3"/>
+    <circle cx="128" cy="28" r="10"/>
+    <!-- ears -->
+    <rect x="36" y="120" width="20" height="44" rx="8"/>
+    <rect x="200" y="120" width="20" height="44" rx="8"/>
+    <!-- head (filled, with a knocked-out visor) -->
+    <path fill-rule="evenodd" d="M86 60h84a34 34 0 0 1 34 34v82a34 34 0 0 1-34 34H86a34 34 0 0 1-34-34V94a34 34 0 0 1 34-34Zm-2 38a14 14 0 0 0-14 14v34a14 14 0 0 0 14 14h88a14 14 0 0 0 14-14v-34a14 14 0 0 0-14-14H84Z"/>
+    <!-- GO on the (knocked-out) visor -->
+    <text x="128" y="142" text-anchor="middle" font-family="Verdana, Arial, sans-serif" font-size="44" font-weight="bold" letter-spacing="1">GO</text>
+    <!-- mouth -->
+    <rect x="92" y="184" width="72" height="9" rx="4.5"/>
+  </g>
+
+  </svg>
+  <text x="176" y="105" font-family="Verdana, Arial, sans-serif" font-size="58" font-weight="bold" letter-spacing="-1" fill="currentColor">go-glpi-agent</text>
+</svg>

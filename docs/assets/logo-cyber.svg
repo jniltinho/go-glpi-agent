@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="go-glpi-agent cyberpunk logo">
+  <defs>
+    <linearGradient id="metal" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#16202c"/>
+      <stop offset="1" stop-color="#080b10"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#06281c"/>
+      <stop offset="1" stop-color="#02110c"/>
+    </linearGradient>
+    <filter id="neon" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <pattern id="scan" width="6" height="4" patternUnits="userSpaceOnUse">
+      <rect width="6" height="2" fill="#39ff14" opacity="0.07"/>
+    </pattern>
+  </defs>
+
+  <!-- antenna: angular, neon diamond tip -->
+  <path d="M128 56 V36" stroke="#00e5ff" stroke-width="5" filter="url(#neon)"/>
+  <path d="M128 18 l10 10 -10 10 -10 -10 z" fill="#39ff14" filter="url(#neon)"/>
+
+  <!-- side vents (ears) -->
+  <path d="M40 116 h16 v48 h-16 z" fill="url(#metal)" stroke="#00e5ff" stroke-width="2"/>
+  <path d="M200 116 h16 v48 h-16 z" fill="url(#metal)" stroke="#00e5ff" stroke-width="2"/>
+  <g stroke="#39ff14" stroke-width="2" opacity="0.8">
+    <path d="M44 126 h8"/><path d="M44 134 h8"/><path d="M44 142 h8"/>
+    <path d="M204 126 h8"/><path d="M204 134 h8"/><path d="M204 142 h8"/>
+  </g>
+
+  <!-- head: beveled square (cyberpunk) -->
+  <polygon points="72,56 184,56 204,76 204,188 184,208 72,208 52,188 52,76"
+           fill="url(#metal)" stroke="#39ff14" stroke-width="4" filter="url(#neon)"/>
+  <!-- inner chamfer accent -->
+  <polygon points="80,66 176,66 192,82 192,182 176,198 80,198 64,182 64,82"
+           fill="none" stroke="#00e5ff" stroke-width="1.5" opacity="0.55"/>
+
+  <!-- eye slits -->
+  <rect x="78" y="92" width="40" height="12" fill="#39ff14" filter="url(#neon)"/>
+  <rect x="138" y="92" width="40" height="12" fill="#39ff14" filter="url(#neon)"/>
+
+  <!-- visor with GO + scanlines -->
+  <rect x="80" y="118" width="96" height="50" fill="url(#screen)" stroke="#00e5ff" stroke-width="2"/>
+  <rect x="80" y="118" width="96" height="50" fill="url(#scan)"/>
+  <text x="128" y="154" text-anchor="middle" font-family="'Courier New', monospace" font-size="34" font-weight="bold" fill="#39ff14" letter-spacing="3" filter="url(#neon)">GO</text>
+
+  <!-- mouth grille -->
+  <g stroke="#00e5ff" stroke-width="3" opacity="0.9">
+    <path d="M104 184 h48"/>
+  </g>
+  <g stroke="#39ff14" stroke-width="2" opacity="0.5">
+    <path d="M112 178 v12"/><path d="M124 178 v12"/><path d="M136 178 v12"/><path d="M148 178 v12"/>
+  </g>
+</svg>

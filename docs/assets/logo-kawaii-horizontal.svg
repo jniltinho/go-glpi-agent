@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="660" height="170" viewBox="0 0 660 170" role="img" aria-label="go-glpi-agent">
+  <svg x="8" y="13" width="144" height="144" viewBox="0 0 256 256" overflow="visible">
+
+  <defs>
+    <linearGradient id="headGrad" x1="64" y1="40" x2="64" y2="200" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#33c4e8"/>
+      <stop offset="100%" stop-color="#00ADD8"/>
+    </linearGradient>
+    <linearGradient id="badgeGrad" x1="88" y1="168" x2="88" y2="212" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#a5d65a"/>
+      <stop offset="100%" stop-color="#8cc63f"/>
+    </linearGradient>
+    <linearGradient id="eyeGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#a8d65a"/>
+      <stop offset="100%" stop-color="#7ab832"/>
+    </linearGradient>
+    <linearGradient id="earGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00ADD8"/>
+      <stop offset="100%" stop-color="#0096be"/>
+    </linearGradient>
+  </defs>
+
+  <line x1="128" y1="52" x2="128" y2="30" stroke="#102a43" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="128" cy="22" r="11" fill="#8cc63f" stroke="#102a43" stroke-width="4"/>
+
+  <rect x="36" y="92" width="28" height="52" rx="14" fill="url(#earGrad)" stroke="#102a43" stroke-width="5"/>
+  <rect x="192" y="92" width="28" height="52" rx="14" fill="url(#earGrad)" stroke="#102a43" stroke-width="5"/>
+
+  <rect x="52" y="52" width="152" height="148" rx="44" fill="url(#headGrad)" stroke="#102a43" stroke-width="6"/>
+
+  <rect x="72" y="78" width="112" height="88" rx="28" fill="#102a43" opacity="0.12"/>
+
+  <ellipse cx="98" cy="118" rx="24" ry="28" fill="url(#eyeGrad)" stroke="#102a43" stroke-width="5"/>
+  <ellipse cx="158" cy="118" rx="24" ry="28" fill="url(#eyeGrad)" stroke="#102a43" stroke-width="5"/>
+  <circle cx="106" cy="108" r="7" fill="#ffffff" opacity="0.9"/>
+  <circle cx="166" cy="108" r="7" fill="#ffffff" opacity="0.9"/>
+  <circle cx="94" cy="126" r="4" fill="#102a43" opacity="0.25"/>
+  <circle cx="154" cy="126" r="4" fill="#102a43" opacity="0.25"/>
+
+  <path d="M 106 150 Q 128 168 150 150" fill="none" stroke="#102a43" stroke-width="5" stroke-linecap="round"/>
+
+  <rect x="84" y="168" width="88" height="40" rx="14" fill="url(#badgeGrad)" stroke="#102a43" stroke-width="5"/>
+  <text x="128" y="196" text-anchor="middle" font-family="system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="24" letter-spacing="2" fill="#102a43">GO</text>
+
+  <rect x="96" y="214" width="64" height="18" rx="9" fill="#00ADD8" stroke="#102a43" stroke-width="4"/>
+
+  </svg>
+  <text x="176" y="105" font-family="Verdana, Arial, sans-serif" font-size="58" font-weight="bold" letter-spacing="-1"><tspan fill="#00add8">go</tspan><tspan fill="#6aa329">-glpi-agent</tspan></text>
+</svg>
