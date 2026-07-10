@@ -148,27 +148,33 @@ jobs:
         with:
           global-json-file: dotnet-glpi-agent/global.json
 
-      - name: Restore / build / test
-        run: |
-          dotnet restore DotnetGlpiAgent.sln
-          dotnet build DotnetGlpiAgent.sln -c Release --no-restore -p:Version=$env:VERSION -p:VersionPrefix=$env:VERSION
-          dotnet test DotnetGlpiAgent.sln -c Release --no-build --no-restore
+      - name: Restore
+        run: dotnet restore DotnetGlpiAgent.sln
+
+      - name: Build
+        run: >
+          dotnet build DotnetGlpiAgent.sln -c Release --no-restore
+          -p:Version=${{ env.VERSION }}
+          -p:VersionPrefix=${{ env.VERSION }}
+
+      - name: Test
+        run: dotnet test DotnetGlpiAgent.sln -c Release --no-build --no-restore
 
       - name: Publish self-contained win-x64
         run: >
           dotnet publish src/DotnetGlpiAgent.App/DotnetGlpiAgent.App.csproj
           -c Release -r win-x64 --self-contained true
           -o artifacts/publish/win-x64
-          -p:Version=$env:VERSION
-          -p:VersionPrefix=$env:VERSION
+          -p:Version=${{ env.VERSION }}
+          -p:VersionPrefix=${{ env.VERSION }}
 
       - name: Build MSI
         run: >
           dotnet build packaging/wix/DotnetGlpiAgent.Package.wixproj
           -c Release
-          -p:ProductVersion=$env:VERSION
+          -p:ProductVersion=${{ env.VERSION }}
           -p:SkipPublishAgent=true
-          -p:VersionPrefix=$env:VERSION
+          -p:VersionPrefix=${{ env.VERSION }}
 
       - name: Assemble package layout
         shell: bash
