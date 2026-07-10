@@ -9,6 +9,31 @@ each release's notes are this file's section for that version (published by CI).
 
 —
 
+## [0.5.1] — 2026-07-10
+
+**Native GLPI 11 protocol fix (Go + .NET agents).** The native inventory flow now
+works against GLPI 11, which rejected it with `400 "JSON not well formed!"`
+(CONTACT) and `500 "keys ignored: accountinfo"` (inventory). Fixed and validated
+against a live GLPI 11 server.
+
+### 🔧 Improvements
+- fix(server): send the native protocol as plain `application/json` — GLPI 11
+  does not inflate a zlib CONTACT/inventory body; zlib stays on the legacy
+  XML/PROLOG flow. CONTACT now includes the required `version` field.
+- fix(server): send the entity `tag` at the envelope root and drop
+  `content.accountinfo` (not in the native schema); do not fall back to the
+  legacy protocol when the server answers with a native JSON error — surface the
+  real GLPI message instead.
+- fix(dotnet): mirror the same fixes in the .NET agent — CONTACT `version` and an
+  uncompressed native path by default (`Compression = Auto` no longer applies zlib
+  to the native flow); regression tests for `tag`-at-root/no-`accountinfo`.
+- test(glpi): pin the Go test compose to GLPI 11.0.8 so the native-protocol
+  regressions reproduce locally.
+
+### 📚 Documentation
+- docs: OpenSpec change `fix-glpi11-native-protocol` documenting the fix across
+  the Go (linux/mac/windows) and .NET agents.
+
 ## [0.5.0] — 2026-07-10
 
 **Dotnet GLPI Agent (Windows).** Independent .NET 10 Windows inventory agent with
