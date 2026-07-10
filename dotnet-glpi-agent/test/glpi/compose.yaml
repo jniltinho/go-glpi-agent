@@ -1,0 +1,96 @@
+name: dotnet-glpi-agent-lab
+
+services:
+  glpi10:
+    image: glpi/glpi:10.0.26@sha256:88b10c4b2d6b9eb98c947cd2a6a3911461c2f3fce8cdb4eee14658babffe028f
+    profiles: [glpi10]
+    restart: unless-stopped
+    depends_on:
+      db10:
+        condition: service_healthy
+    environment:
+      GLPI_DB_HOST: db10
+      GLPI_DB_PORT: "3306"
+      GLPI_DB_NAME: glpi
+      GLPI_DB_USER: glpi
+      GLPI_DB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi-test-only}
+      TIMEZONE: ${TIMEZONE:-America/Sao_Paulo}
+    ports:
+      - "${GLPI10_PORT:-8180}:80"
+    volumes:
+      - glpi10_data:/var/glpi
+    healthcheck:
+      test: [CMD-SHELL, "php -r '$$socket=@fsockopen(\"127.0.0.1\",80); exit($$socket ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  db10:
+    image: mariadb:11.4.12@sha256:a794d9eb009e20de605858a11f32f63b4075cbd197c650436f0e3b457e4caed7
+    profiles: [glpi10]
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-test-only}
+      MARIADB_DATABASE: glpi
+      MARIADB_USER: glpi
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi-test-only}
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci]
+    volumes:
+      - db10_data:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  glpi11:
+    image: glpi/glpi:11.0.8@sha256:44dcd0dfac3117f5d4b619e892382c409ffd28559681fbc856a2ad0c4a263524
+    profiles: [glpi11]
+    restart: unless-stopped
+    depends_on:
+      db11:
+        condition: service_healthy
+    environment:
+      GLPI_DB_HOST: db11
+      GLPI_DB_PORT: "3306"
+      GLPI_DB_NAME: glpi
+      GLPI_DB_USER: glpi
+      GLPI_DB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi-test-only}
+      TIMEZONE: ${TIMEZONE:-America/Sao_Paulo}
+    ports:
+      - "${GLPI11_PORT:-8181}:80"
+    volumes:
+      - glpi11_data:/var/glpi
+    healthcheck:
+      test: [CMD-SHELL, "php -r '$$socket=@fsockopen(\"127.0.0.1\",80); exit($$socket ? 0 : 1);'"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 60s
+
+  db11:
+    image: mariadb:11.4.12@sha256:a794d9eb009e20de605858a11f32f63b4075cbd197c650436f0e3b457e4caed7
+    profiles: [glpi11]
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-root-test-only}
+      MARIADB_DATABASE: glpi
+      MARIADB_USER: glpi
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD:-glpi-test-only}
+    command: [--character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci]
+    volumes:
+      - db11_data:/var/lib/mysql
+    healthcheck:
+      test: [CMD, healthcheck.sh, --connect, --innodb_initialized]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+volumes:
+  glpi10_data:
+  db10_data:
+  glpi11_data:
+  db11_data:

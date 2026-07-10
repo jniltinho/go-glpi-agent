@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <DebugType>embedded</DebugType>
+    <PublishTrimmed>false</PublishTrimmed>
+    <PublishAot>false</PublishAot>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Authors>Nilton Oliveira</Authors>
+    <Company>JNiltinho</Company>
+    <Product>Dotnet GLPI Agent</Product>
+    <Copyright>Copyright (c) 2026 Nilton Oliveira</Copyright>
+    <RepositoryUrl>https://github.com/jniltinho/go-glpi-agent</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

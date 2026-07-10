@@ -1,0 +1,191 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Package
+      Name="Dotnet GLPI Agent"
+      Manufacturer="JNiltinho"
+      Version="$(var.ProductVersion)"
+      UpgradeCode="{474BE2D1-1A58-47E6-B9FE-700411A9E1B3}"
+      Language="1033"
+      Scope="perMachine"
+      InstallerVersion="500">
+    <SummaryInformation Description="Dotnet GLPI Agent for Windows" Manufacturer="JNiltinho" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Dotnet GLPI Agent is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Property Id="SERVER" Secure="yes" />
+    <Property Id="TAG" Secure="yes" />
+    <Property Id="STARTSERVICE" Value="1" Secure="yes" />
+    <Property Id="RUNNOW" Value="0" Secure="yes" />
+    <Property Id="PURGE" Value="0" Secure="yes" />
+    <Property Id="PURGEDATADIR" Secure="yes">
+      <RegistrySearch
+          Id="FindRetainedDataDirectory"
+          Root="HKLM"
+          Key="Software\JNiltinho\DotnetGlpiAgent"
+          Name="DataDirectory"
+          Type="raw" />
+    </Property>
+
+    <Launch Condition="VersionNT64">Dotnet GLPI Agent requires a 64-bit version of Windows.</Launch>
+    <Launch Condition="SERVER = &quot;&quot; OR SERVER &gt;&lt; &quot;http://&quot; OR SERVER &gt;&lt; &quot;https://&quot;">
+      SERVER must be an HTTP or HTTPS URL.
+    </Launch>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="DotnetGlpiAgent">
+        <Component Id="AgentService" Guid="{B854DCC5-C6FB-4071-BBE6-0ED43148DF44}" Bitness="always64">
+          <File Id="AgentExecutable" Source="$(var.PublishDir)\dotnet-glpi-agent.exe" KeyPath="yes" Checksum="yes" />
+          <ServiceInstall
+              Id="InstallAgentService"
+              Name="DotnetGlpiAgent"
+              DisplayName="Dotnet GLPI Agent"
+              Description="Collects Windows hardware and software inventory for GLPI."
+              Type="ownProcess"
+              Start="auto"
+              ErrorControl="normal"
+              Account="LocalSystem"
+              Arguments="service --config &quot;[CommonAppDataFolder]DotnetGlpiAgent\agent.cfg&quot;">
+            <ServiceDependency Id="Tcpip" />
+            <ServiceDependency Id="Dnscache" />
+            <ServiceConfig DelayedAutoStart="yes" OnInstall="yes" OnReinstall="yes" PreShutdownDelay="30000" />
+            <util:ServiceConfig
+                FirstFailureActionType="restart"
+                SecondFailureActionType="restart"
+                ThirdFailureActionType="none"
+                RestartServiceDelayInSeconds="30"
+                ResetPeriodInDays="1" />
+          </ServiceInstall>
+          <ServiceControl
+              Id="ControlAgentService"
+              Name="DotnetGlpiAgent"
+              Stop="both"
+              Remove="uninstall"
+              Wait="yes" />
+        </Component>
+
+        <Component Id="StartAgentService" Guid="{69D57557-3EE4-4F14-AD81-4C8421C78C60}" Bitness="always64" Condition="STARTSERVICE = 1">
+          <RegistryValue
+              Root="HKLM"
+              Key="Software\JNiltinho\DotnetGlpiAgent"
+              Name="StartService"
+              Type="integer"
+              Value="1"
+              KeyPath="yes" />
+          <ServiceControl Id="StartAgentServiceControl" Name="DotnetGlpiAgent" Start="install" Wait="yes" />
+        </Component>
+
+        <Component Id="SecretProvisioningScript" Guid="{965F02AD-757E-429F-9E24-17E7942C0732}" Bitness="always64">
+          <File
+              Id="SecretProvisioningScriptFile"
+              Source="$(sys.SOURCEFILEDIR)..\scripts\Set-AgentSecret.ps1"
+              KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="DATADIR" Name="DotnetGlpiAgent">
+        <Component Id="ProtectedDataDirectory" Guid="{007A5879-D67A-404E-9DD5-B99EE3F97F11}" Bitness="always64" Permanent="yes">
+          <CreateFolder>
+            <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+            <util:PermissionEx User="Administrators" GenericAll="yes" />
+          </CreateFolder>
+          <RegistryValue
+              Root="HKLM"
+              Key="Software\JNiltinho\DotnetGlpiAgent"
+              Name="DataDirectory"
+              Type="string"
+              Value="[DATADIR]"
+              KeyPath="yes" />
+        </Component>
+
+        <Component Id="DefaultConfiguration" Guid="{ED8CB93A-A769-4A29-9EC1-0957528085BE}" Bitness="always64" Permanent="yes" NeverOverwrite="yes">
+          <File Id="AgentConfigurationFile" Source="$(sys.SOURCEFILEDIR)agent.cfg" Name="agent.cfg" KeyPath="yes" />
+        </Component>
+
+        <Component Id="ServerConfiguration" Guid="{D2CDE32A-D64E-4924-8CFE-FACDC2C979AD}" Bitness="always64" Permanent="yes" Condition="SERVER &lt;&gt; &quot;&quot;">
+          <IniFile
+              Id="WriteServerConfiguration"
+              Action="createLine"
+              Directory="DATADIR"
+              Name="agent.cfg"
+              Section="agent"
+              Key="server"
+              Value="[SERVER]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerConfigured" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+
+        <Component Id="TagConfiguration" Guid="{361898F0-DFC6-475F-B719-EDB2F727A10E}" Bitness="always64" Permanent="yes" Condition="TAG &lt;&gt; &quot;&quot;">
+          <IniFile
+              Id="WriteTagConfiguration"
+              Action="createLine"
+              Directory="DATADIR"
+              Name="agent.cfg"
+              Section="agent"
+              Key="tag"
+              Value="[TAG]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagConfigured" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+
+        <Directory Id="STATEDIR" Name="state">
+          <Component Id="ProtectedStateDirectory" Guid="{343229B4-4B3F-4840-94A7-05C5A60AB809}" Bitness="always64" Permanent="yes">
+            <CreateFolder>
+              <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+              <util:PermissionEx User="Administrators" GenericAll="yes" />
+            </CreateFolder>
+            <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="StateDirectory" Type="string" Value="[STATEDIR]" KeyPath="yes" />
+          </Component>
+        </Directory>
+
+        <Directory Id="LOGDIR" Name="logs">
+          <Component Id="ProtectedLogDirectory" Guid="{B9ACDF66-9430-49B9-86D1-3CB04F726698}" Bitness="always64" Permanent="yes">
+            <CreateFolder>
+              <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+              <util:PermissionEx User="Administrators" GenericAll="yes" />
+            </CreateFolder>
+            <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="LogDirectory" Type="string" Value="[LOGDIR]" KeyPath="yes" />
+          </Component>
+        </Directory>
+
+        <Component Id="PurgeRetainedData" Guid="{786FF209-A1F9-49E8-A30F-F6083848D5CB}" Bitness="always64">
+          <util:RemoveFolderEx Id="RemoveRetainedData" Property="PURGEDATADIR" On="uninstall" Condition="PURGE = 1" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="PurgeSupport" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <ComponentGroup Id="PublishedAgentFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.PublishDir)\**">
+        <Exclude Files="$(var.PublishDir)\dotnet-glpi-agent.exe" />
+        <Exclude Files="$(var.PublishDir)\*.pdb" />
+      </Files>
+    </ComponentGroup>
+
+    <Feature Id="Complete" Title="Dotnet GLPI Agent" Level="1">
+      <ComponentGroupRef Id="PublishedAgentFiles" />
+      <ComponentRef Id="AgentService" />
+      <ComponentRef Id="StartAgentService" />
+      <ComponentRef Id="SecretProvisioningScript" />
+      <ComponentRef Id="ProtectedDataDirectory" />
+      <ComponentRef Id="DefaultConfiguration" />
+      <ComponentRef Id="ServerConfiguration" />
+      <ComponentRef Id="TagConfiguration" />
+      <ComponentRef Id="ProtectedStateDirectory" />
+      <ComponentRef Id="ProtectedLogDirectory" />
+      <ComponentRef Id="PurgeRetainedData" />
+    </Feature>
+
+    <CustomAction
+        Id="RunAgentAfterInstall"
+        FileRef="AgentExecutable"
+        ExeCommand="run --config &quot;[DATADIR]agent.cfg&quot; --force"
+        Execute="commit"
+        Impersonate="no"
+        Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="RunAgentAfterInstall" Before="InstallFinalize" Condition="NOT Installed AND RUNNOW = 1" />
+    </InstallExecuteSequence>
+
+    <util:FailWhenDeferred />
+  </Package>
+</Wix>

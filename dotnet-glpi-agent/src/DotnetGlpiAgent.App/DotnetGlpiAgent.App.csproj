@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotnetGlpiAgent.Core\DotnetGlpiAgent.Core.csproj" />
+    <ProjectReference Include="..\DotnetGlpiAgent.Windows\DotnetGlpiAgent.Windows.csproj" />
+    <ProjectReference Include="..\DotnetGlpiAgent.Protocol\DotnetGlpiAgent.Protocol.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.17763.0</TargetFramework>
+    <AssemblyName>dotnet-glpi-agent</AssemblyName>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+</Project>

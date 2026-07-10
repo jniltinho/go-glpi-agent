@@ -1,0 +1,149 @@
+{
+  "normal": {
+    "host": {
+      "machineName": "WIN2022-LAB",
+      "domainName": "lab.example",
+      "operatingSystemDescription": "Microsoft Windows Server 2022 Standard",
+      "operatingSystemArchitecture": "X64",
+      "processArchitecture": "X64",
+      "bootTimeUtc": "2026-07-09T20:00:00Z",
+      "timeZoneId": "E. South America Standard Time"
+    },
+    "registry": {
+      "ProductName": "Windows Server 2022 Standard",
+      "EditionID": "ServerStandard",
+      "DisplayVersion": "21H2",
+      "CurrentBuildNumber": "20348",
+      "UBR": 4052
+    },
+    "wmi": {
+      "Win32_OperatingSystem": [
+        {
+          "Caption": "Microsoft Windows Server 2022 Standard",
+          "Version": "10.0.20348",
+          "BuildNumber": "20348",
+          "OSArchitecture": "64-bit",
+          "LastBootUpTime": "20260709200000.000000-180",
+          "InstallDate": "20260102112233.000000-180",
+          "TotalVisibleMemorySize": 8388608,
+          "TotalVirtualMemorySize": 12582912
+        }
+      ],
+      "Win32_ComputerSystem": [
+        {
+          "Manufacturer": "Microsoft Corporation",
+          "Model": "Virtual Machine",
+          "TotalPhysicalMemory": 8589934592
+        }
+      ],
+      "Win32_ComputerSystemProduct": [
+        {
+          "Vendor": "Microsoft Corporation",
+          "Name": "Virtual Machine",
+          "IdentifyingNumber": "LAB-SERIAL-001",
+          "UUID": "4DB2772D-97D0-47C3-BFE1-597E4E65BCAF"
+        }
+      ],
+      "Win32_BaseBoard": [
+        {
+          "Manufacturer": "Microsoft Corporation",
+          "Product": "Virtual Machine",
+          "SerialNumber": "BOARD-001"
+        }
+      ],
+      "Win32_SystemEnclosure": [
+        {
+          "SerialNumber": "ENCLOSURE-001",
+          "SMBIOSAssetTag": "LAB-ASSET-001",
+          "ChassisTypes": [ 23 ]
+        }
+      ],
+      "Win32_BIOS": [
+        {
+          "Manufacturer": "Microsoft Corporation",
+          "Name": "Hyper-V UEFI Release v4.1",
+          "Version": "Hyper-V UEFI Release v4.1",
+          "SMBIOSBIOSVersion": "Hyper-V UEFI Release v4.1",
+          "SerialNumber": "LAB-SERIAL-001",
+          "ReleaseDate": "20250101000000.000000+000",
+          "SMBIOSMajorVersion": 3,
+          "SMBIOSMinorVersion": 4
+        }
+      ],
+      "Win32_Processor": [
+        {
+          "DeviceID": "CPU0",
+          "ProcessorId": "BFEBFBFF000806F8",
+          "Name": "Intel(R) Xeon(R)",
+          "Manufacturer": "GenuineIntel",
+          "Architecture": 9,
+          "SocketDesignation": "None",
+          "NumberOfCores": 2,
+          "NumberOfLogicalProcessors": 2,
+          "CurrentClockSpeed": 2300,
+          "MaxClockSpeed": 2300,
+          "SerialNumber": "To Be Filled By O.E.M."
+        }
+      ],
+      "Win32_PhysicalMemory": [
+        {
+          "BankLabel": "BANK 0",
+          "DeviceLocator": "DIMM 0",
+          "Capacity": 4294967296,
+          "ConfiguredClockSpeed": 3200,
+          "Speed": 3200,
+          "SMBIOSMemoryType": 26,
+          "Manufacturer": "Example Memory",
+          "PartNumber": "MEM-4G",
+          "SerialNumber": "MEM-001"
+        }
+      ],
+      "Win32_PhysicalMemoryArray": [
+        { "MemoryDevices": 2 }
+      ]
+    }
+  },
+  "virtualBoxPlaceholders": {
+    "system": {
+      "Manufacturer": "innotek GmbH",
+      "Model": "VirtualBox",
+      "TotalPhysicalMemory": 4294967296
+    },
+    "product": {
+      "Vendor": "innotek GmbH",
+      "Name": "VirtualBox",
+      "IdentifyingNumber": "To Be Filled By O.E.M.",
+      "UUID": "00000000-0000-0000-0000-000000000000"
+    },
+    "board": {
+      "Manufacturer": "Oracle Corporation",
+      "Product": "VirtualBox",
+      "SerialNumber": "Default string"
+    },
+    "enclosure": {
+      "SerialNumber": "System Serial Number",
+      "SMBIOSAssetTag": "No Asset Tag",
+      "ChassisTypes": [ 3 ]
+    }
+  },
+  "malformed": {
+    "cpu": {
+      "DeviceID": "CPU0",
+      "Architecture": "invalid",
+      "NumberOfCores": "not-a-number",
+      "NumberOfLogicalProcessors": -1,
+      "CurrentClockSpeed": "fast"
+    },
+    "memory": {
+      "BankLabel": "BANK X",
+      "DeviceLocator": "DIMM X",
+      "Capacity": "unknown",
+      "ConfiguredClockSpeed": "unknown",
+      "SMBIOSMemoryType": 999
+    }
+  },
+  "serverCoreOmissions": {
+    "Win32_DesktopMonitor": [],
+    "AntiVirusProduct": []
+  }
+}

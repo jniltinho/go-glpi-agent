@@ -1,0 +1,29 @@
+<Project Sdk="WixToolset.Sdk/4.0.6">
+  <PropertyGroup>
+    <OutputType>Package</OutputType>
+    <Platform>x64</Platform>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">$(Version)</ProductVersion>
+    <PublishDir>$(MSBuildThisFileDirectory)..\..\artifacts\publish\win-x64</PublishDir>
+    <OutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\msi\</OutputPath>
+    <OutputName>dotnet-glpi-agent-$(ProductVersion)-win-x64</OutputName>
+    <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
+    <SuppressValidation>false</SuppressValidation>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Util.wixext" />
+  </ItemGroup>
+
+  <Target Name="PublishAgent" BeforeTargets="BeforeBuild" Condition="'$(SkipPublishAgent)' != 'true'">
+    <MSBuild
+      Projects="$(MSBuildThisFileDirectory)..\..\src\DotnetGlpiAgent.App\DotnetGlpiAgent.App.csproj"
+      Targets="Publish"
+      Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(PublishDir)\" />
+  </Target>
+
+  <Target Name="SignMsi" AfterTargets="Build" Condition="'$(SignToolPath)' != '' and '$(SigningCertificateThumbprint)' != ''">
+    <Exec Command="&quot;$(SignToolPath)&quot; sign /sha1 &quot;$(SigningCertificateThumbprint)&quot; /fd SHA256 /tr &quot;$(TimestampUrl)&quot; /td SHA256 &quot;$(TargetPath)&quot;" />
+  </Target>
+</Project>

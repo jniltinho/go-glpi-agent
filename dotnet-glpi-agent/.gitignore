@@ -1,0 +1,13 @@
+artifacts/
+bin/
+obj/
+TestResults/
+.vs/
+*.user
+*.suo
+*.nupkg
+*.snupkg
+*.msi
+test/results/
+test/glpi/.env
+test/vagrant-windows/.vagrant/
