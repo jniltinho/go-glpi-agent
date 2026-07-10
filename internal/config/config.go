@@ -11,9 +11,10 @@ import (
 	"strings"
 )
 
-// DefaultConfFile is the default path of the configuration file. It is derived
-// from the OS-specific base directory (see paths_unix.go / paths_windows.go).
-var DefaultConfFile = filepath.Join(defaultBaseDir(), "agent.cfg")
+// DefaultConfFile is the default path of the configuration file. On Unix-like
+// platforms it sits in the OS-specific base directory; on Windows it sits next
+// to the binary (see paths_unix.go / paths_darwin.go / paths_windows.go).
+var DefaultConfFile = defaultConfFile()
 
 // Config holds the parameters supported in v1. Unmapped fields from agent.cfg
 // are ignored (with a debug warning) — see design.md D7.

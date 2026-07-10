@@ -9,11 +9,11 @@
   Kept WiX v3-schema clean (and within wixl's supported subset — custom actions
   use FileKey, not Directory) so it also builds with WiX (`wix build`) on Windows.
 
-  The installer lays down the .exe + agent.cfg, writes the SERVER/TAG install
-  properties to HKLM, and runs the bundled exe's hidden `service` subcommands via
-  deferred (SYSTEM, elevated) custom actions to register the Scheduled Task and
-  seed the config. The exe self-locates with os.Executable(), so no install path
-  needs to survive into a deferred action.
+  The installer lays down the .exe, writes the SERVER/TAG install properties to
+  HKLM, and runs the bundled exe's hidden `service` subcommands via deferred
+  (SYSTEM, elevated) custom actions to register the Windows Service and seed
+  agent.cfg next to the binary. The exe self-locates with os.Executable(), so no
+  install path needs to survive into a deferred action.
 
   GUIDs: UpgradeCode is FIXED forever (it drives in-place upgrades). Component
   GUIDs are stable per install path. Product/@Id is "*" (auto per build).

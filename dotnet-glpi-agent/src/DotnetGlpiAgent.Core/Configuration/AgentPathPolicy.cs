@@ -28,23 +28,26 @@ public static class AgentPathPolicy
 public sealed record AgentPaths(
     string InstallationDirectory,
     string ConfigurationDirectory,
+    string DataDirectory,
     string StateDirectory,
     string LogDirectory,
     string MainConfigFile)
 {
-    public static AgentPaths FromWindowsRoots(string programFiles, string programData)
+    // agent.cfg lives next to the binary; mutable state/logs live under
+    // ProgramData so the installation directory stays read-only at runtime.
+    public static AgentPaths FromWindowsRoots(string installationDirectory, string programData)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(programFiles);
+        ArgumentException.ThrowIfNullOrWhiteSpace(installationDirectory);
         ArgumentException.ThrowIfNullOrWhiteSpace(programData);
 
-        string installation = Path.Combine(programFiles, "DotnetGlpiAgent");
-        string configuration = Path.Combine(programData, "DotnetGlpiAgent");
+        string data = Path.Combine(programData, "DotnetGlpiAgent");
         return new AgentPaths(
-            installation,
-            configuration,
-            Path.Combine(configuration, "state"),
-            Path.Combine(configuration, "logs"),
-            Path.Combine(configuration, "agent.cfg"));
+            installationDirectory,
+            installationDirectory,
+            data,
+            Path.Combine(data, "state"),
+            Path.Combine(data, "logs"),
+            Path.Combine(installationDirectory, "agent.cfg"));
     }
 
     public static AgentPaths ForCurrentWindowsHost()
@@ -54,8 +57,10 @@ public sealed record AgentPaths(
             throw new PlatformNotSupportedException("Windows default paths are available only on Windows.");
         }
 
-        string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        string installation = AppContext.BaseDirectory.TrimEnd(
+            Path.DirectorySeparatorChar,
+            Path.AltDirectorySeparatorChar);
         string programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        return FromWindowsRoots(programFiles, programData);
+        return FromWindowsRoots(installation, programData);
     }
 }

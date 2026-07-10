@@ -31,7 +31,8 @@ $ErrorActionPreference = 'Stop'
 $serviceName = 'DotnetGlpiAgent'
 $dataDir = Join-Path $env:ProgramData 'DotnetGlpiAgent'
 $installDir = Join-Path ${env:ProgramFiles} 'DotnetGlpiAgent'
-$cfg = Join-Path $dataDir 'agent.cfg'
+# agent.cfg lives next to the binary since the single-file packaging change.
+$cfg = Join-Path $installDir 'agent.cfg'
 $stateDir = Join-Path $dataDir 'state'
 
 function Invoke-Msi {
@@ -135,6 +136,7 @@ if (-not $SkipPurge) {
     # WARNING: destructive removal of ProgramData for this product.
     Invoke-Msi -ArgumentList @('/x', $productCode, 'PURGE=1') -LogName '07-purge.log' | Out-Null
     Assert-True (-not (Test-Path $dataDir)) 'PURGE=1 left ProgramData behind'
+    Assert-True (-not (Test-Path $cfg)) 'PURGE=1 left agent.cfg behind'
     $results.purge = 'ok'
 } else {
     $results.purge = 'skipped'

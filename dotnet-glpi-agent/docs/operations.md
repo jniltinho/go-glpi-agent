@@ -13,7 +13,7 @@
 
 ```text
 dotnet-glpi-agent version
-dotnet-glpi-agent validate-config --config C:\ProgramData\DotnetGlpiAgent\agent.cfg
+dotnet-glpi-agent validate-config --config C:\Program Files\DotnetGlpiAgent\agent.cfg
 dotnet-glpi-agent run --local C:\temp\inv
 dotnet-glpi-agent run --server https://glpi.example/front/inventory.php --force
 ```

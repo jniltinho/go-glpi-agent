@@ -8,8 +8,9 @@
   - RunAgentAfterInstall custom action (commit, elevated, FileRef-bounded): optional
     first-install inventory when RUNNOW=1.
 
-  Mutable configuration and identity live under ProgramData and are Permanent /
-  NeverOverwrite so major upgrades and normal uninstalls preserve them.
+  agent.cfg lives next to the binary (INSTALLFOLDER) and is Permanent /
+  NeverOverwrite so major upgrades and normal uninstalls preserve it. Mutable
+  state (state/logs/inventories) lives under ProgramData.
 
   Published payload files are listed in HarvestedFiles.wxs (generated at build time).
 -->
@@ -67,6 +68,14 @@
           Name="DataDirectory"
           Type="raw" />
     </Property>
+    <Property Id="PURGEINSTALLDIR" Secure="yes">
+      <RegistrySearch
+          Id="FindRetainedInstallDirectory"
+          Root="HKLM"
+          Key="Software\JNiltinho\DotnetGlpiAgent"
+          Name="InstallDirectory"
+          Type="raw" />
+    </Property>
 
     <Launch Condition="VersionNT64" Message="Dotnet GLPI Agent requires a 64-bit version of Windows." />
     <Launch Condition="SERVER = &quot;&quot; OR SERVER &gt;&lt; &quot;http://&quot; OR SERVER &gt;&lt; &quot;https://&quot;" Message="SERVER must be empty or an HTTP or HTTPS URL." />
@@ -89,7 +98,7 @@
               Start="auto"
               ErrorControl="normal"
               Account="LocalSystem"
-              Arguments="service --config &quot;[CommonAppDataFolder]DotnetGlpiAgent\agent.cfg&quot;">
+              Arguments="service --config &quot;[INSTALLFOLDER]agent.cfg&quot;">
             <ServiceDependency Id="Tcpip" />
             <ServiceDependency Id="Dnscache" />
             <util:ServiceConfig
@@ -143,6 +152,38 @@
               Source="$(sys.SOURCEFILEDIR)..\scripts\Set-AgentSecret.ps1"
               KeyPath="yes" />
         </Component>
+
+        <!-- agent.cfg sits in the same folder as the binary. Permanent +
+             NeverOverwrite: user edits survive upgrades and normal uninstalls. -->
+        <Component Id="DefaultConfiguration" Guid="{ED8CB93A-A769-4A29-9EC1-0957528085BE}" Bitness="always64" Permanent="yes" NeverOverwrite="yes">
+          <File Id="AgentConfigurationFile" Source="$(sys.SOURCEFILEDIR)agent.cfg" Name="agent.cfg" KeyPath="yes" />
+        </Component>
+
+        <Component Id="ServerConfiguration" Guid="{D2CDE32A-D64E-4924-8CFE-FACDC2C979AD}" Bitness="always64" Permanent="yes" Condition="SERVER &lt;&gt; &quot;&quot;">
+          <IniFile
+              Id="WriteServerConfiguration"
+              Action="addLine"
+              Directory="INSTALLFOLDER"
+              Name="agent.cfg"
+              Section="agent"
+              Key="server"
+              Value="[SERVER]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerValue" Type="string" Value="[SERVER]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerConfigured" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+
+        <Component Id="TagConfiguration" Guid="{361898F0-DFC6-475F-B719-EDB2F727A10E}" Bitness="always64" Permanent="yes" Condition="TAG &lt;&gt; &quot;&quot;">
+          <IniFile
+              Id="WriteTagConfiguration"
+              Action="addLine"
+              Directory="INSTALLFOLDER"
+              Name="agent.cfg"
+              Section="agent"
+              Key="tag"
+              Value="[TAG]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagValue" Type="string" Value="[TAG]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagConfigured" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
       </Directory>
     </StandardDirectory>
 
@@ -160,36 +201,6 @@
               Type="string"
               Value="[DATADIR]"
               KeyPath="yes" />
-        </Component>
-
-        <Component Id="DefaultConfiguration" Guid="{ED8CB93A-A769-4A29-9EC1-0957528085BE}" Bitness="always64" Permanent="yes" NeverOverwrite="yes">
-          <File Id="AgentConfigurationFile" Source="$(sys.SOURCEFILEDIR)agent.cfg" Name="agent.cfg" KeyPath="yes" />
-        </Component>
-
-        <Component Id="ServerConfiguration" Guid="{D2CDE32A-D64E-4924-8CFE-FACDC2C979AD}" Bitness="always64" Permanent="yes" Condition="SERVER &lt;&gt; &quot;&quot;">
-          <IniFile
-              Id="WriteServerConfiguration"
-              Action="addLine"
-              Directory="DATADIR"
-              Name="agent.cfg"
-              Section="agent"
-              Key="server"
-              Value="[SERVER]" />
-          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerValue" Type="string" Value="[SERVER]" />
-          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerConfigured" Type="integer" Value="1" KeyPath="yes" />
-        </Component>
-
-        <Component Id="TagConfiguration" Guid="{361898F0-DFC6-475F-B719-EDB2F727A10E}" Bitness="always64" Permanent="yes" Condition="TAG &lt;&gt; &quot;&quot;">
-          <IniFile
-              Id="WriteTagConfiguration"
-              Action="addLine"
-              Directory="DATADIR"
-              Name="agent.cfg"
-              Section="agent"
-              Key="tag"
-              Value="[TAG]" />
-          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagValue" Type="string" Value="[TAG]" />
-          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagConfigured" Type="integer" Value="1" KeyPath="yes" />
         </Component>
 
         <Directory Id="STATEDIR" Name="state">
@@ -224,6 +235,8 @@
 
         <Component Id="PurgeRetainedData" Guid="{786FF209-A1F9-49E8-A30F-F6083848D5CB}" Bitness="always64">
           <util:RemoveFolderEx Id="RemoveRetainedData" Property="PURGEDATADIR" On="uninstall" Condition="PURGE = 1" />
+          <!-- Also drop the retained agent.cfg in the install folder on PURGE=1. -->
+          <util:RemoveFolderEx Id="RemoveRetainedInstallDir" Property="PURGEINSTALLDIR" On="uninstall" Condition="PURGE = 1" />
           <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="PurgeSupport" Type="integer" Value="1" KeyPath="yes" />
         </Component>
       </Directory>
@@ -247,7 +260,7 @@
     <CustomAction
         Id="RunAgentAfterInstall"
         FileRef="AgentExecutable"
-        ExeCommand="run --config &quot;[DATADIR]agent.cfg&quot; --force"
+        ExeCommand="run --config &quot;[INSTALLFOLDER]agent.cfg&quot; --force"
         Execute="commit"
         Impersonate="no"
         Return="ignore" />

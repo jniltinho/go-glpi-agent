@@ -3,7 +3,7 @@
 The MSI installs the same `dotnet-glpi-agent.exe` used by the CLI as the `DotnetGlpiAgent` Windows Service. Its service command line is:
 
 ```text
-"C:\Program Files\DotnetGlpiAgent\dotnet-glpi-agent.exe" service --config "C:\ProgramData\DotnetGlpiAgent\agent.cfg"
+"C:\Program Files\DotnetGlpiAgent\dotnet-glpi-agent.exe" service --config "C:\Program Files\DotnetGlpiAgent\agent.cfg"
 ```
 
 The service runs as LocalSystem so it can read machine WMI, HKLM/HKU inventory, load explicitly enabled offline profile hives, and use the machine certificate store. It does not require interactive logon, desktop access, network shares, local administrator credentials in configuration, or write access outside its protected ProgramData tree.

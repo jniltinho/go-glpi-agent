@@ -121,19 +121,20 @@ The Windows build covers the same collector set, sourcing data from `gopsutil` p
 
 ```powershell
 # extract go-glpi-agent_*_windows_amd64.zip, then in that folder:
-.\install.ps1                    # copies the binary, seeds the config, schedules an hourly run
-notepad C:\ProgramData\go-glpi-agent\agent.cfg   # set the `server` line
+.\install.ps1                    # copies the binary, seeds the config, registers the service
+notepad "C:\Program Files\go-glpi-agent\agent.cfg"   # set the `server` line
 .\go-glpi-agent.exe run --debug  # send once now
 
 .\uninstall.ps1                  # remove (keeps config/state; -Purge to wipe)
 ```
 
-The installer registers a **Scheduled Task** (hourly, as SYSTEM) — the Windows analog of
-the Linux systemd timer. The binary, config and state live under
-`C:\Program Files\go-glpi-agent` and `C:\ProgramData\go-glpi-agent`.
+The installer registers a **Windows Service** (`go-glpi-agent`, auto start, LocalSystem)
+running the daemon loop — the Windows analog of the Linux systemd service. The binary and
+config live in `C:\Program Files\go-glpi-agent` (agent.cfg next to the exe); state and the
+log file live under `C:\ProgramData\go-glpi-agent`.
 
 Installed software is read from the uninstall registry keys (not `Win32_Product`, which is
-slow and triggers MSI self-repair). Under the SYSTEM Scheduled Task, machine-wide software
+slow and triggers MSI self-repair). Under the LocalSystem service, machine-wide software
 is complete but other users' per-user `HKCU` installs are not enumerated.
 
 ## FreeBSD

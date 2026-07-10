@@ -5,3 +5,6 @@ package config
 // defaultBaseDir is the install/state root on Unix-like platforms (Linux and the
 // BSDs). macOS overrides it in paths_darwin.go with a macOS-appropriate prefix.
 func defaultBaseDir() string { return "/opt/go-glpi-agent" }
+
+// defaultConfFile on Unix-like platforms sits in the base directory.
+func defaultConfFile() string { return defaultBaseDir() + "/agent.cfg" }
