@@ -6,3 +6,6 @@ package config
 // the binary and agent.cfg here (writable and outside SIP-protected locations),
 // with a LaunchDaemon under /Library/LaunchDaemons driving periodic runs.
 func defaultBaseDir() string { return "/usr/local/go-glpi-agent" }
+
+// defaultConfFile on macOS sits in the base directory.
+func defaultConfFile() string { return defaultBaseDir() + "/agent.cfg" }

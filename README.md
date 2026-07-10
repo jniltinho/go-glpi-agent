@@ -31,7 +31,7 @@ it to a local file.
   existing device IDs, so hosts aren't re-created as new assets.
 - **📦 Native packages** — `.deb`, `.rpm`, Arch `.pkg.tar.zst`, a Windows `.zip` and `.msi`
   (GPO/Intune-ready), a FreeBSD tarball, and a macOS `.pkg`/`.dmg` (Apple Silicon) — published on every release.
-- **🪶 Lightweight & quiet** — runs on a schedule (systemd timer / Scheduled Task / cron),
+- **🪶 Lightweight & quiet** — runs on a schedule (systemd timer / Windows Service / cron),
   collects in parallel, and stays out of the way.
 
 ## Quick start
@@ -62,7 +62,7 @@ tag    = datacenter-1
 
 ```sh
 sudo systemctl enable --now go-glpi-agent.timer     # Linux
-# Windows: install.ps1 already registered a Scheduled Task
+# Windows: install.ps1 already registered the Windows Service
 # FreeBSD: enable the rc.d service or add a cron entry (see INSTALL.md)
 ```
 

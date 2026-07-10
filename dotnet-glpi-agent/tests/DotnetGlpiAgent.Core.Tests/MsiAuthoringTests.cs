@@ -150,9 +150,19 @@ public sealed class MsiAuthoringTests
         Assert.Equal("yes", (string?)configuration.Attribute("Permanent"));
         Assert.Equal("yes", (string?)configuration.Attribute("NeverOverwrite"));
 
-        XElement purge = Assert.Single(document.Descendants(Util + "RemoveFolderEx"));
-        Assert.Equal("uninstall", (string?)purge.Attribute("On"));
-        Assert.Equal("PURGE = 1", (string?)purge.Attribute("Condition"));
+        // PURGE=1 removes both the ProgramData root and the retained agent.cfg
+        // in the install folder.
+        var purgeTargets = document.Descendants(Util + "RemoveFolderEx").ToList();
+        Assert.Equal(2, purgeTargets.Count);
+        foreach (XElement purge in purgeTargets)
+        {
+            Assert.Equal("uninstall", (string?)purge.Attribute("On"));
+            Assert.Equal("PURGE = 1", (string?)purge.Attribute("Condition"));
+        }
+
+        Assert.Equal(
+            new[] { "PURGEDATADIR", "PURGEINSTALLDIR" },
+            purgeTargets.Select(element => (string?)element.Attribute("Property")).Order().ToArray());
 
         XElement runNow = Assert.Single(
             document.Descendants(Wxs + "CustomAction"),

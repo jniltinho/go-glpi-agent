@@ -2,7 +2,7 @@
 
 An `.msi` for deploying go-glpi-agent through **GPO software installation, Intune,
 SCCM/ConfigMgr or PDQ** — the formats managed Windows estates expect. The agent is
-a single static `.exe`, so the MSI is the minimal case: one file + a Scheduled Task,
+a single static `.exe`, so the MSI is the minimal case: one file + a Windows Service,
 built **on Linux** (no Windows host) with `wixl`.
 
 ## What it does
@@ -12,13 +12,13 @@ Installing the `.msi`:
 - copies `go-glpi-agent.exe` to `C:\Program Files\go-glpi-agent\`;
 - writes the `SERVER`/`TAG` install properties to `HKLM\Software\go-glpi-agent`;
 - runs the bundled exe's hidden `service` subcommands (deferred, as SYSTEM) to:
-  - seed `C:\ProgramData\go-glpi-agent\agent.cfg` (only if absent — upgrade-safe),
+  - seed `agent.cfg` next to the exe (only if absent — upgrade-safe),
   - append `server`/`tag` from the install properties,
-  - register the hourly `go-glpi-agent` Scheduled Task (SYSTEM, the analog of the
-    systemd timer).
+  - register and start the `go-glpi-agent` Windows Service (LocalSystem, auto start,
+    runs the daemon loop — the analog of the systemd service).
 
 A stable `UpgradeCode` + `<Upgrade>` give in-place upgrades; uninstall removes the
-task and binary; `PURGE=1` also deletes the config/state.
+service and binary; `PURGE=1` also deletes the config/state.
 
 ## Install / upgrade / uninstall
 

@@ -89,7 +89,7 @@ public static class WindowsServiceProgram
         policy.ValidateTrustedPath(configuration, paths.ConfigurationDirectory, "service configuration");
         if (!string.IsNullOrWhiteSpace(options.StateDirectory))
         {
-            policy.ValidateTrustedPath(options.StateDirectory, paths.ConfigurationDirectory, "service state");
+            policy.ValidateTrustedPath(options.StateDirectory, paths.DataDirectory, "service state");
         }
     }
 }

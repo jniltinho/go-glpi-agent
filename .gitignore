@@ -48,3 +48,4 @@ base/**/etc/*.pem
 test/vagrant-windows/_winkey.pub
 test/vagrant-windows/_out/
 test/vagrant-windows/_openssh.zip
+.agents/

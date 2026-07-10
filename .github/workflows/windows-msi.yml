@@ -89,21 +89,23 @@ jobs:
           path: '*.log'
           if-no-files-found: ignore
 
-      - name: Assert install (binary, task, config)
+      - name: Assert install (binary, service, config)
         shell: pwsh
         run: |
           $exe = "C:\Program Files\go-glpi-agent\go-glpi-agent.exe"
           if (-not (Test-Path $exe)) { throw "binary missing: $exe" }
-          schtasks /Query /TN go-glpi-agent | Out-Null
-          if ($LASTEXITCODE -ne 0) { throw "Scheduled Task not registered" }
-          $cfg = "C:\ProgramData\go-glpi-agent\agent.cfg"
+          $svc = Get-Service -Name go-glpi-agent -ErrorAction SilentlyContinue
+          if (-not $svc) { throw "Windows Service not registered" }
+          Write-Host "service status: $($svc.Status)"
+          # Config lives next to the binary since v0.6.
+          $cfg = "C:\Program Files\go-glpi-agent\agent.cfg"
           if (-not (Test-Path $cfg)) { throw "config missing: $cfg" }
           $content = Get-Content $cfg -Raw
           if ($content -notmatch 'server\s*=\s*http://glpi\.example\.com') {
             Write-Host $content
             throw "SERVER property was not written into agent.cfg"
           }
-          Write-Host "OK: binary, Scheduled Task and configured agent.cfg present"
+          Write-Host "OK: binary, Windows Service and configured agent.cfg present"
 
       - name: Run inventory + dump native JSON
         shell: pwsh
@@ -133,8 +135,6 @@ jobs:
           if (Test-Path "C:\Program Files\go-glpi-agent\go-glpi-agent.exe") {
             throw "binary still present after uninstall"
           }
-          schtasks /Query /TN go-glpi-agent 2>$null | Out-Null
-          $taskGone = ($LASTEXITCODE -ne 0)
-          if (-not $taskGone) { throw "Scheduled Task still present after uninstall" }
-          Write-Host "OK: binary and Scheduled Task removed"
-          exit 0   # schtasks /Query set a non-zero $LASTEXITCODE; the assertions passed
+          $svc = Get-Service -Name go-glpi-agent -ErrorAction SilentlyContinue
+          if ($svc) { throw "Windows Service still present after uninstall" }
+          Write-Host "OK: binary and Windows Service removed"

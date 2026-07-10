@@ -7,7 +7,27 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
-—
+**Windows packaging overhaul (Go + .NET agents).** Both Windows packages now ship
+a single binary with `agent.cfg` in the same folder as the executable, and both
+run as a real Windows Service.
+
+### ✨ New Features
+- feat(windows): the Go agent now installs a **Windows Service** (`go-glpi-agent`,
+  auto start, LocalSystem, runs the daemon loop with restart-on-failure) instead
+  of an hourly Scheduled Task. The MSI, `install.ps1` and `uninstall.ps1` manage
+  the service; upgrades from ≤ 0.5.x remove the legacy Scheduled Task.
+
+### 🔧 Improvements
+- feat(windows): `agent.cfg` now lives **next to the binary** for both agents
+  (`C:\Program Files\go-glpi-agent\agent.cfg` and
+  `C:\Program Files\DotnetGlpiAgent\agent.cfg`); state and logs remain under
+  `C:\ProgramData`. Existing configs are preserved on upgrade; `PURGE=1` removes
+  them.
+- feat(dotnet): the .NET MSI and portable zip now ship a **single self-contained
+  executable** (`PublishSingleFile`) instead of the multi-DLL publish layout.
+- ci(dotnet): drop the "Schema fixtures present" gate that asserted gitignored,
+  lab-generated files and made every CI run fail; assert the single-binary
+  publish output instead.
 
 ## [0.5.1] — 2026-07-10
 

@@ -8,7 +8,7 @@ param(
     [ValidateScript({ Test-Path -LiteralPath $_ -PathType Leaf })]
     [string]$SecretFile,
 
-    [string]$Configuration = "$env:ProgramData\DotnetGlpiAgent\agent.cfg"
+    [string]$Configuration = "$env:ProgramFiles\DotnetGlpiAgent\agent.cfg"
 )
 
 $ErrorActionPreference = 'Stop'

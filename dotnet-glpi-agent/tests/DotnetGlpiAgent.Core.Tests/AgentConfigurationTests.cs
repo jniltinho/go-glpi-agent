@@ -151,15 +151,17 @@ public sealed class AgentConfigurationTests
     }
 
     [Fact]
-    public void FromWindowsRoots_UsesProgramFilesAndProgramData()
+    public void FromWindowsRoots_PutsConfigBesideBinaryAndStateUnderProgramData()
     {
-        string programFiles = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "Program Files");
+        string installation = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "Program Files", "DotnetGlpiAgent");
         string programData = Path.Combine(Path.GetPathRoot(Environment.CurrentDirectory)!, "ProgramData");
 
-        AgentPaths paths = AgentPaths.FromWindowsRoots(programFiles, programData);
+        AgentPaths paths = AgentPaths.FromWindowsRoots(installation, programData);
 
-        Assert.Equal(Path.Combine(programFiles, "DotnetGlpiAgent"), paths.InstallationDirectory);
-        Assert.Equal(Path.Combine(programData, "DotnetGlpiAgent", "agent.cfg"), paths.MainConfigFile);
+        Assert.Equal(installation, paths.InstallationDirectory);
+        Assert.Equal(installation, paths.ConfigurationDirectory);
+        Assert.Equal(Path.Combine(installation, "agent.cfg"), paths.MainConfigFile);
+        Assert.Equal(Path.Combine(programData, "DotnetGlpiAgent"), paths.DataDirectory);
         Assert.Equal(Path.Combine(programData, "DotnetGlpiAgent", "state"), paths.StateDirectory);
         Assert.Equal(Path.Combine(programData, "DotnetGlpiAgent", "logs"), paths.LogDirectory);
     }
