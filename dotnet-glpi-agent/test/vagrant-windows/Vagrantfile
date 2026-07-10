@@ -1,0 +1,118 @@
+# Full E2E: build MSI on guest (WiX via NuGet) + inventory + GLPI 10/11 + lifecycle.
+# Host prerequisites: Docker GLPI lab on 8180/8181, VirtualBox, this box installed.
+
+# Prefer explicit GLPI10/GLPI11; fall back to GLPI_SERVER for single-endpoint labs
+# (Hyper-V must override the VirtualBox NAT default 10.0.2.2).
+DEFAULT_GLPI10 = "http://10.0.2.2:8180/front/inventory.php"
+DEFAULT_GLPI11 = "http://10.0.2.2:8181/front/inventory.php"
+GLPI_SERVER = ENV["GLPI_SERVER"]
+GLPI10 = ENV.fetch("GLPI10", GLPI_SERVER || DEFAULT_GLPI10)
+GLPI11 = ENV.fetch("GLPI11", GLPI_SERVER ? GLPI_SERVER.sub(":8180", ":8181") : DEFAULT_GLPI11)
+VERSION = ENV.fetch("VERSION", "0.1.0")
+KEEP_RESOURCES = ENV.fetch("KEEP_RESOURCES", "0")
+BOX = ENV.fetch("VAGRANT_BOX", "gusztavvargadr/windows-server-2022-standard")
+MEMORY = Integer(ENV.fetch("VB_MEMORY", "6144"))
+CPUS = Integer(ENV.fetch("VB_CPUS", "4"))
+
+ROOT = File.expand_path("../..", __dir__)
+ARTIFACTS = File.expand_path("artifacts", __dir__)
+
+def require_path!(path, hint)
+  abort "Missing #{path} (#{hint})" unless File.exist?(path)
+end
+
+require_path!(File.join(ROOT, "artifacts/publish/win-x64/dotnet-glpi-agent.exe"), "run: make publish")
+require_path!(File.join(ROOT, "packaging/wix/Package.wxs"), "packaging sources")
+require_path!(File.join(ROOT, "test/glpi/artifacts/glpi10/inventory.schema.json"), "run: test/glpi/lab.sh schema 10")
+require_path!(File.join(ROOT, "test/glpi/artifacts/glpi11/inventory.schema.json"), "run: test/glpi/lab.sh schema 11")
+
+Vagrant.configure("2") do |config|
+  config.vm.box = BOX
+  config.vm.hostname = "win-dotnet-glpi-e2e"
+  config.vm.communicator = "winrm"
+  config.winrm.username = "vagrant"
+  config.winrm.password = "vagrant"
+  config.winrm.timeout = 3600
+  config.winrm.retry_limit = 60
+  config.vm.boot_timeout = 3600
+
+  config.vm.provider "virtualbox" do |v|
+    v.memory = MEMORY
+    v.cpus = CPUS
+    v.name = "dotnet-glpi-agent-e2e-win2022"
+    v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    v.customize ["modifyvm", :id, "--natdnsproxy1", "on"]
+  end
+
+  config.vm.provider "hyperv" do |v|
+    v.memory = MEMORY
+    v.cpus = CPUS
+  end
+
+  # Prebuilt MSI if host already produced one.
+  prebuilt = Dir.glob(File.join(ARTIFACTS, "dotnet-glpi-agent-*-win-x64.msi")).max
+  if prebuilt
+    config.vm.provision "file", source: prebuilt,
+                                destination: "C:\\dotnet-glpi-agent-test\\package\\agent.msi"
+  end
+
+  # Staged publish + packaging sources for guest MSI build.
+  config.vm.provision "file", source: File.join(ROOT, "artifacts/publish/win-x64"),
+                              destination: "C:\\dotnet-glpi-agent-test\\src\\artifacts\\publish\\win-x64"
+  config.vm.provision "file", source: File.join(ROOT, "packaging"),
+                              destination: "C:\\dotnet-glpi-agent-test\\src\\packaging"
+  config.vm.provision "file", source: File.join(ROOT, "Directory.Build.props"),
+                              destination: "C:\\dotnet-glpi-agent-test\\src\\Directory.Build.props"
+  config.vm.provision "file", source: File.join(ROOT, "Directory.Packages.props"),
+                              destination: "C:\\dotnet-glpi-agent-test\\src\\Directory.Packages.props"
+  config.vm.provision "file", source: File.join(ROOT, "global.json"),
+                              destination: "C:\\dotnet-glpi-agent-test\\src\\global.json"
+
+  # Schemas
+  config.vm.provision "file", source: File.join(ROOT, "test/glpi/artifacts/glpi10/inventory.schema.json"),
+                              destination: "C:\\dotnet-glpi-agent-test\\schema\\glpi10\\inventory.schema.json"
+  config.vm.provision "file", source: File.join(ROOT, "test/glpi/artifacts/glpi11/inventory.schema.json"),
+                              destination: "C:\\dotnet-glpi-agent-test\\schema\\glpi11\\inventory.schema.json"
+
+  # Schema validator self-contained
+  if File.exist?(File.join(ROOT, "artifacts/tools/glpi-schema-validator/glpi-schema-validator.exe"))
+    config.vm.provision "file", source: File.join(ROOT, "artifacts/tools/glpi-schema-validator"),
+                                destination: "C:\\dotnet-glpi-agent-test\\tools\\glpi-schema-validator"
+  end
+
+  # Optional Go reference
+  go_exe = File.join(ROOT, "../dist/go-glpi-agent.exe")
+  if File.exist?(go_exe)
+    config.vm.provision "file", source: go_exe,
+                                destination: "C:\\dotnet-glpi-agent-test\\ref\\go-glpi-agent.exe"
+  end
+
+  # Scripts
+  %w[
+    Build-MsiOnGuest.ps1
+    Run-FullE2E.ps1
+    provision.ps1
+    Compare-Inventories.ps1
+    Assert-GlpiAsset.ps1
+  ].each do |script|
+    config.vm.provision "file", source: File.join(__dir__, "scripts", script),
+                                destination: "C:\\dotnet-glpi-agent-test\\scripts\\#{script}"
+  end
+  config.vm.provision "file", source: File.join(ROOT, "packaging/scripts/Test-MsiLifecycle.ps1"),
+                              destination: "C:\\dotnet-glpi-agent-test\\scripts\\Test-MsiLifecycle.ps1"
+  config.vm.provision "file", source: File.join(ROOT, "packaging/scripts/Set-AgentSecret.ps1"),
+                              destination: "C:\\dotnet-glpi-agent-test\\scripts\\Set-AgentSecret.ps1"
+
+  config.vm.provision "shell",
+                      privileged: true,
+                      inline: <<-PS
+                        $ErrorActionPreference = 'Stop'
+                        $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
+                        & 'C:\\dotnet-glpi-agent-test\\scripts\\Run-FullE2E.ps1' `
+                          -Glpi10 '#{GLPI10}' `
+                          -Glpi11 '#{GLPI11}' `
+                          -Version '#{VERSION}' `
+                          -SkipPurge
+                        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                      PS
+end

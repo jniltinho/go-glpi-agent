@@ -63,6 +63,25 @@ public sealed class InventoryCollectorOrchestratorTests
     }
 
     [Fact]
+    public async Task CollectAsync_IsolatesThrowingSupportCheck()
+    {
+        CollectionRunResult result = await new InventoryCollectorOrchestrator(2).CollectAsync(
+            [new ThrowingSupportCollector(), FakeCollector.Success("success")],
+            Options(),
+            "cycle-support");
+
+        Assert.Collection(
+            result.Results,
+            item =>
+            {
+                Assert.Equal(CollectionState.Failed, item.State);
+                Assert.Equal("support-check-failed", item.DiagnosticCode);
+            },
+            item => Assert.Equal(CollectionState.Success, item.State));
+        Assert.Single(result.Contributions);
+    }
+
+    [Fact]
     public async Task CollectAsync_BoundsConcurrentCollectors()
     {
         var concurrency = new ConcurrencyTracker();
@@ -251,6 +270,27 @@ public sealed class InventoryCollectorOrchestratorTests
                         tracker.Exit();
                     }
                 });
+        }
+    }
+
+    private sealed class ThrowingSupportCollector : IInventoryCollector
+    {
+        public string Name => "broken-support";
+
+        public InventoryCategory Category => InventoryCategory.Hardware;
+
+        public TimeSpan Timeout => TimeSpan.FromSeconds(1);
+
+        public ValueTask<CollectorSupport> GetSupportAsync(CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException("The support probe failed.");
+        }
+
+        public ValueTask<InventoryContribution> CollectAsync(
+            CollectorContext context,
+            CancellationToken cancellationToken)
+        {
+            throw new UnreachableException();
         }
     }
 

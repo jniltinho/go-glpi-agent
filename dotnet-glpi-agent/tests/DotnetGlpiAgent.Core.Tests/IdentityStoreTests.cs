@@ -114,7 +114,7 @@ public sealed class IdentityStoreTests
     }
 
     [Fact]
-    public async Task LoadOrCreateAsync_RejectsMigrationWithoutValidIdentifiers()
+    public async Task LoadOrCreateAsync_DegradesToGeneratedIdentityWhenMigrationIsInvalid()
     {
         using var directory = new TemporaryDirectory();
         string migrationFile = Path.Combine(directory.Path, "migration.json");
@@ -123,13 +123,20 @@ public sealed class IdentityStoreTests
             "{\"agentid\":\"not-a-guid\",\"deviceid\":\"invalid device id\"}",
             CancellationToken.None);
 
-        await Assert.ThrowsAsync<IdentityStateException>(async () =>
-            await new IdentityStore().LoadOrCreateAsync(
-                Path.Combine(directory.Path, "state"),
-                "HOST",
-                DateTimeOffset.UtcNow,
-                migrationFile,
-                CancellationToken.None));
+        // A malformed migration file must not block identity creation
+        // (the file may remain in the state directory across runs).
+        IdentityLoadResult result = await new IdentityStore().LoadOrCreateAsync(
+            Path.Combine(directory.Path, "state"),
+            "HOST",
+            DateTimeOffset.UtcNow,
+            migrationFile,
+            CancellationToken.None);
+
+        Assert.True(result.WasCreated);
+        Assert.False(result.WasMigrated);
+        Assert.NotEqual(Guid.Empty, result.Identity.AgentId);
+        Assert.Contains(result.Warnings, static warning =>
+            warning.Contains("migration", StringComparison.OrdinalIgnoreCase));
     }
 
     private sealed class TemporaryDirectory : IDisposable

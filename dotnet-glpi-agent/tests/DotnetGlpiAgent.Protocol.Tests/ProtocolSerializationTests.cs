@@ -59,6 +59,25 @@ public sealed class ProtocolSerializationTests
         Assert.Equal("PROLOG", prolog.Root!.Element("QUERY")!.Value);
     }
 
+    [Fact]
+    public void XmlSerializer_StripsIllegalControlCharacters()
+    {
+        string dirty = "hello\u001Fworld\u0000!";
+        string clean = LegacyXmlSerializer.SanitizeXmlText(dirty);
+        Assert.Equal("helloworld!", clean);
+
+        InventorySnapshot snapshot = CreateSnapshot() with
+        {
+            OperatingSystem = CreateSnapshot().OperatingSystem! with
+            {
+                Name = "Windows\u001FServer",
+            },
+        };
+        byte[] xml = LegacyXmlSerializer.SerializeInventory(snapshot);
+        XDocument document = XDocument.Parse(Encoding.UTF8.GetString(xml));
+        Assert.Contains("WindowsServer", document.ToString(), StringComparison.Ordinal);
+    }
+
     [Theory]
     [InlineData("{\"status\":\"ok\",\"tasks\":[\"inventory\"]}", true)]
     [InlineData("{\"status\":\"ok\",\"tasks\":[\"deploy\"]}", false)]

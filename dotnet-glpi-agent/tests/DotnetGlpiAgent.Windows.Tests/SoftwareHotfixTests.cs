@@ -111,7 +111,8 @@ public sealed class SoftwareHotfixTests
             ("HotFixID", "KB5000001"),
             ("Description", description),
             ("InstalledBy", @"NT AUTHORITY\SYSTEM"),
-            ("InstalledOn", "2026-07-01"));
+            // Win32_QuickFixEngineering reports InstalledOn as en-US M/d/yyyy.
+            ("InstalledOn", "7/1/2026"));
 
         HotfixInfo result = HotfixCollector.Map(row)!;
 
@@ -122,14 +123,11 @@ public sealed class SoftwareHotfixTests
     [Fact]
     public void SourceCode_DoesNotUseWin32Product()
     {
-        string collectorSource = File.ReadAllText(Path.Combine(
-            FindProjectRoot(),
-            "src",
-            "DotnetGlpiAgent.Windows",
-            "Collectors",
-            "SoftwareCollector.cs"));
-
-        Assert.DoesNotContain("Win32_Product", collectorSource, StringComparison.OrdinalIgnoreCase);
+        string sourceRoot = Path.Combine(FindProjectRoot(), "src");
+        foreach (string file in Directory.EnumerateFiles(sourceRoot, "*.cs", SearchOption.AllDirectories))
+        {
+            Assert.DoesNotContain("Win32_Product", File.ReadAllText(file), StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private static string FindProjectRoot()

@@ -35,8 +35,9 @@ public sealed class UserSessionProcessTests
         ];
         WmiRow[] loggedOn =
         [
+            // Real Win32_LoggedOnUser associations reference the Win32_Account base class.
             Row(
-                ("Antecedent", "\\\\HOST\\root\\cimv2:Win32_UserAccount.Domain=\"HOST\",Name=\"alice\""),
+                ("Antecedent", "\\\\HOST\\root\\cimv2:Win32_Account.Domain=\"HOST\",Name=\"alice\""),
                 ("Dependent", "\\\\HOST\\root\\cimv2:Win32_LogonSession.LogonId=\"42\"")),
         ];
 

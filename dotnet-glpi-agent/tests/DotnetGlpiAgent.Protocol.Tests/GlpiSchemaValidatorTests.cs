@@ -30,14 +30,19 @@ public sealed class GlpiSchemaValidatorTests
         }
     }
 
-    [Fact]
-    public async Task ValidateAsync_UsesExternallySuppliedGlpiSchemaWhenAvailable()
+    [Theory]
+    [InlineData("glpi10")]
+    [InlineData("glpi11")]
+    public async Task ValidateAsync_FixtureInventoryPassesPinnedGlpiSchemas(string glpiVersion)
     {
+        // GLPI_INVENTORY_SCHEMA overrides the committed container-extracted schemas.
         string? schemaPath = Environment.GetEnvironmentVariable("GLPI_INVENTORY_SCHEMA");
         if (string.IsNullOrWhiteSpace(schemaPath) || !File.Exists(schemaPath))
         {
-            return;
+            schemaPath = Path.Combine(FindProjectRoot(), "test", "glpi", "artifacts", glpiVersion, "inventory.schema.json");
         }
+
+        Assert.True(File.Exists(schemaPath), $"Missing pinned GLPI schema: {schemaPath}");
 
         byte[] inventory = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "native-inventory.json"));
         IReadOnlyList<string> result = await GlpiSchemaValidator.ValidateAsync(
@@ -46,5 +51,16 @@ public sealed class GlpiSchemaValidatorTests
             CancellationToken.None);
 
         Assert.True(result.Count == 0, string.Join(Environment.NewLine, result));
+    }
+
+    private static string FindProjectRoot()
+    {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "DotnetGlpiAgent.sln")))
+        {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName ?? throw new InvalidOperationException("Could not locate the .NET project root.");
     }
 }

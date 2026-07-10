@@ -22,6 +22,27 @@ public sealed class DiagnosticsTests
         Assert.Contains("<redacted>", result, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("password: hunter2")]
+    [InlineData("\"password\":\"hunter2\"")]
+    [InlineData("proxy-password = hunter2")]
+    public void Redact_RemovesColonAndJsonStyleSecrets(string message)
+    {
+        string result = new SecretRedactor().Redact(message);
+
+        Assert.DoesNotContain("hunter2", result, StringComparison.Ordinal);
+        Assert.Contains("<redacted>", result, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RedactProperties_MasksClientCertPasswordKey()
+    {
+        IReadOnlyDictionary<string, string> result = new SecretRedactor().RedactProperties(
+            new Dictionary<string, string> { ["client-cert-password"] = "hunter2" });
+
+        Assert.Equal("<redacted>", result["client-cert-password"]);
+    }
+
     [Fact]
     public void BeginScope_RestoresNestedCorrelationIds()
     {

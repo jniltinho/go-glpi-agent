@@ -14,7 +14,8 @@ public sealed class GlpiClientTests
     public async Task SubmitAsync_NativeSuccess_SendsIdentityAndCorrelationHeaders()
     {
         var handler = new ScriptedHandler(
-            JsonResponse("{\"status\":\"ok\",\"tasks\":[\"inventory\"]}"),
+            // Real GLPI 10/11 shape: expiration is hours string; tasks is an object map.
+            JsonResponse("{\"status\":\"ok\",\"expiration\":\"24\",\"tasks\":{\"inventory\":{\"server\":\"glpi\",\"version\":\"10.0.26\"}}}"),
             JsonResponse("{\"status\":\"ok\"}"));
         using var http = new HttpClient(handler);
         using var client = CreateClient(http);
@@ -96,6 +97,55 @@ public sealed class GlpiClientTests
             async () => await client.SubmitAsync(Snapshot(), CancellationToken.None));
 
         Assert.Equal(GlpiFailureKind.Tls, exception.Kind);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_TlsHandshakeFailureWithoutAuthenticationInner_IsClassifiedAsTls()
+    {
+        var handler = new ScriptedHandler(new HttpRequestException(
+            HttpRequestError.SecureConnectionError,
+            "Handshake reset.",
+            new IOException("Connection reset by peer.")));
+        using var http = new HttpClient(handler);
+        using var client = CreateClient(http);
+
+        GlpiProtocolException exception = await Assert.ThrowsAsync<GlpiProtocolException>(
+            async () => await client.SubmitAsync(Snapshot(), CancellationToken.None));
+
+        Assert.Equal(GlpiFailureKind.Tls, exception.Kind);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_MalformedSuccessHtmlBody_DoesNotFallbackToLegacy()
+    {
+        var handler = new ScriptedHandler(
+            Response(HttpStatusCode.OK, "<html><body>proxy login</body></html>", "text/html"));
+        using var http = new HttpClient(handler);
+        using var client = CreateClient(http);
+
+        GlpiProtocolException exception = await Assert.ThrowsAsync<GlpiProtocolException>(
+            async () => await client.SubmitAsync(Snapshot(), CancellationToken.None));
+
+        Assert.Equal("contact-invalid-json", exception.DiagnosticCode);
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task SubmitAsync_PendingExpirationHoursString_IsHonoredAsDeadline()
+    {
+        // "0" hours means the pending answer is already expired: polling must stop.
+        HttpResponseMessage pending = JsonResponse("{\"status\":\"pending\",\"expiration\":\"0\"}");
+        pending.Headers.Add("GLPI-Request-ID", "request-123");
+        var handler = new ScriptedHandler(pending);
+        using var http = new HttpClient(handler);
+        using var client = CreateClient(http, pollInterval: TimeSpan.Zero);
+
+        GlpiProtocolException exception = await Assert.ThrowsAsync<GlpiProtocolException>(
+            async () => await client.SubmitAsync(Snapshot(), CancellationToken.None));
+
+        Assert.Equal("pending-poll-limit", exception.DiagnosticCode);
         Assert.Single(handler.Requests);
     }
 

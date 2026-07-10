@@ -156,7 +156,7 @@ public sealed class ExtendedCollectorTests
     {
         var wmi = new UnavailableWmiAdapter();
         var antivirus = new AntivirusCollector(wmi, SupportedPlatform.Instance);
-        var firewall = new FirewallCollector(wmi, SupportedPlatform.Instance);
+        var firewall = new FirewallCollector(wmi, registry: null, SupportedPlatform.Instance);
         var monitor = new MonitorCollector(wmi, new EmptyEdidAdapter(), SupportedPlatform.Instance);
 
         InventoryContribution antivirusResult = await antivirus.CollectAsync(Context(), CancellationToken.None);
@@ -166,7 +166,7 @@ public sealed class ExtendedCollectorTests
         Assert.Empty(antivirusResult.AntivirusProducts);
         Assert.NotEmpty(antivirusResult.Diagnostics);
         Assert.Empty(firewallResult.FirewallProfiles);
-        Assert.Equal(CollectionState.Unavailable, Assert.Single(firewallResult.Diagnostics).State);
+        Assert.Contains(firewallResult.Diagnostics, static d => d.State == CollectionState.Unavailable);
         Assert.Empty(monitorResult.Monitors);
         Assert.Equal(CollectionState.Unavailable, Assert.Single(monitorResult.Diagnostics).State);
     }

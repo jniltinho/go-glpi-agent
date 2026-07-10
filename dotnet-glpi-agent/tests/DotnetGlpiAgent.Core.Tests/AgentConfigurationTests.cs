@@ -51,6 +51,25 @@ public sealed class AgentConfigurationTests
     }
 
     [Fact]
+    public void Build_RedactsCredentialBearingUrlsInEffectiveValues()
+    {
+        using var directory = new TemporaryDirectory();
+        var commandLine = new Dictionary<string, string?>
+        {
+            ["server"] = "https://user:pass@glpi.example/front/inventory.php",
+        };
+
+        EffectiveAgentConfiguration result = new AgentConfigurationBuilder().Build(
+            null,
+            new Dictionary<string, string?>(),
+            commandLine,
+            directory.Path);
+
+        Assert.DoesNotContain("user:pass", result.RedactedValues["server"], StringComparison.Ordinal);
+        Assert.Contains("glpi.example", result.RedactedValues["server"], StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Load_ProcessesIncludeDirectoryInDeterministicOrder()
     {
         using var directory = new TemporaryDirectory();
