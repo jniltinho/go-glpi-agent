@@ -58,7 +58,24 @@ public sealed class ProtocolSerializationTests
         Assert.Equal(snapshot.Identity.DeviceId, contact.RootElement.GetProperty("deviceid").GetString());
         Assert.Equal("contact", contact.RootElement.GetProperty("action").GetString());
         Assert.Equal("inventory", contact.RootElement.GetProperty("installed-tasks")[0].GetString());
+        // GLPI 11 rejects a CONTACT without a non-empty name/version.
+        Assert.Equal(snapshot.Identity.DeviceName, contact.RootElement.GetProperty("name").GetString());
+        Assert.Equal(snapshot.Identity.AgentVersion, contact.RootElement.GetProperty("version").GetString());
+        Assert.False(string.IsNullOrEmpty(contact.RootElement.GetProperty("version").GetString()));
         Assert.Equal("PROLOG", prolog.Root!.Element("QUERY")!.Value);
+    }
+
+    [Fact]
+    public void SerializeInventory_PutsTagAtRootAndOmitsAccountinfo()
+    {
+        InventorySnapshot snapshot = CreateSnapshot();
+        using JsonDocument document = JsonDocument.Parse(NativeJsonSerializer.SerializeInventory(snapshot));
+        JsonElement root = document.RootElement;
+
+        // The entity tag is a root-level field; content.accountinfo is not in the
+        // native schema and GLPI 11 rejects it with HTTP 500.
+        Assert.Equal(snapshot.Account.Tag, root.GetProperty("tag").GetString());
+        Assert.False(root.GetProperty("content").TryGetProperty("accountinfo", out _));
     }
 
     [Fact]
