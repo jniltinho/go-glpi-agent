@@ -35,6 +35,7 @@ public static class NativeJsonSerializer
                 "contact",
                 snapshot.Identity.DeviceName,
                 snapshot.Account.Tag,
+                snapshot.Identity.AgentVersion,
                 ["inventory"],
                 ["inventory"]),
             SerializerOptions);
@@ -53,13 +54,16 @@ public static class NativeJsonSerializer
         [property: JsonPropertyName("content"), JsonPropertyOrder(3)] IReadOnlyDictionary<string, object> Content,
         [property: JsonPropertyName("tag"), JsonPropertyOrder(4)] string? Tag);
 
+    // GLPI 11 rejects a CONTACT without "version" (400 "JSON not well formed!"),
+    // so it is always emitted alongside "name".
     private sealed record ContactMessage(
         [property: JsonPropertyName("deviceid"), JsonPropertyOrder(0)] string DeviceId,
         [property: JsonPropertyName("action"), JsonPropertyOrder(1)] string Action,
         [property: JsonPropertyName("name"), JsonPropertyOrder(2)] string Name,
         [property: JsonPropertyName("tag"), JsonPropertyOrder(3)] string? Tag,
-        [property: JsonPropertyName("installed-tasks"), JsonPropertyOrder(4)] IReadOnlyList<string> InstalledTasks,
-        [property: JsonPropertyName("enabled-tasks"), JsonPropertyOrder(5)] IReadOnlyList<string> EnabledTasks);
+        [property: JsonPropertyName("version"), JsonPropertyOrder(4)] string Version,
+        [property: JsonPropertyName("installed-tasks"), JsonPropertyOrder(5)] IReadOnlyList<string> InstalledTasks,
+        [property: JsonPropertyName("enabled-tasks"), JsonPropertyOrder(6)] IReadOnlyList<string> EnabledTasks);
 }
 
 // Expiration is either a duration string (e.g. "24" hours) or an absolute timestamp.

@@ -549,7 +549,13 @@ public sealed class GlpiClient : IDisposable
         CompressionKind compression,
         bool legacy)
     {
-        CompressionKind selected = legacy || compression == CompressionKind.Auto ? CompressionKind.Zlib : compression;
+        // The native protocol defaults to uncompressed application/json: GLPI 11
+        // does not inflate a zlib native body and answers 400 "JSON not well
+        // formed!". zlib stays on the legacy XML/PROLOG flow; an explicit
+        // Gzip/Zlib on the native path is still honored for servers that accept it.
+        CompressionKind selected = legacy
+            ? CompressionKind.Zlib
+            : compression == CompressionKind.Auto ? CompressionKind.None : compression;
         if (selected == CompressionKind.None)
         {
             return (body, legacy ? "application/xml" : "application/json");

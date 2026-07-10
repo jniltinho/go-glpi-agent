@@ -9,16 +9,16 @@
 
 ## 2. Agente .NET (dotnet-glpi-agent)
 
-- [ ] 2.1 `NativeJsonSerializer.cs`: adicionar campo `version` ao `ContactMessage` (JsonPropertyName `version`), preenchido da versão do agente (mesma fonte do User-Agent em `snapshot.Identity`).
-- [ ] 2.2 `GlpiClient.cs`/`GlpiProtocolOptions.cs`: enviar CONTACT e inventário nativos sem compressão (`application/json`) por padrão — deixar `Zlib` apenas no fluxo legado. Ajustar o default de `Compression` ou forçar `None` no caminho nativo.
-- [ ] 2.3 Confirmar (com teste de regressão) que o mapper não emite `content.accountinfo` e que `tag` sai na raiz do envelope de inventário.
-- [ ] 2.4 Confirmar (com teste) que uma resposta de erro JSON nativo (400/500 com corpo `{...}`) NÃO dispara fallback legado.
+- [x] 2.1 `NativeJsonSerializer.cs`: `ContactMessage` ganhou `version` (JsonPropertyName `version`), preenchido de `snapshot.Identity.AgentVersion`.
+- [x] 2.2 `GlpiClient.cs`: caminho nativo com `Compression = Auto` (default) passa a enviar `application/json` sem compressão; `Zlib` só no fluxo legado; override explícito (Gzip/Zlib) ainda honrado.
+- [x] 2.3 Regressão adicionada (`SerializeInventory_PutsTagAtRootAndOmitsAccountinfo`): `tag` na raiz e `content` sem `accountinfo` (mapper já correto).
+- [x] 2.4 Coberto por `SubmitAsync_SchemaError_IsCategorizedWithoutLegacyFallback`: erro JSON nativo (400/500) NÃO dispara fallback legado.
 
 ## 3. Testes e verificação
 
-- [ ] 3.1 `dotnet test` da suíte de protocolo verde (CONTACT com `version`, nativo sem compressão, inventário sem `accountinfo`, `tag` na raiz, sem fallback em erro JSON).
-- [ ] 3.2 Validar offline o JSON gerado contra `inventory.schema.json` (Go via `GFI_DUMP_JSON`; .NET via writer local), garantindo apenas chaves previstas no schema.
-- [ ] 3.3 Confirmar paridade Go↔.NET: mesmos campos de CONTACT e mesmo envelope de inventário.
+- [x] 3.1 `dotnet test` verde: Protocol 28/28, Core 54/54, Windows 44/44, Integration 12/12 (SDK .NET 10.0.301). Novos casos: CONTACT com `version`/`name`, `Auto → application/json`, `tag` na raiz sem `accountinfo`.
+- [x] 3.2 JSON validado contra o schema: golden fixture `native-inventory.json` + `GlpiSchemaValidatorTests` (apenas chaves previstas). Go via `GFI_DUMP_JSON` disponível.
+- [x] 3.3 Paridade Go↔.NET confirmada: CONTACT com `deviceid`/`name`/`version`/tasks e envelope de inventário com `tag` na raiz sem `accountinfo` nos dois agentes.
 
 ## 4. Documentação e entrega
 

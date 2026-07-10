@@ -201,6 +201,9 @@ public sealed class GlpiClientTests
     [InlineData(CompressionKind.Gzip, "application/x-compress-gzip")]
     [InlineData(CompressionKind.Zlib, "application/x-compress-zlib")]
     [InlineData(CompressionKind.None, "application/json")]
+    // Auto is the production default: the native protocol must go out uncompressed
+    // as application/json, since GLPI 11 does not inflate a zlib native body.
+    [InlineData(CompressionKind.Auto, "application/json")]
     public async Task SubmitAsync_UsesConfiguredCompression(CompressionKind compression, string expectedContentType)
     {
         var handler = new ScriptedHandler(
