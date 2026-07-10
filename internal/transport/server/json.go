@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go-glpi-agent/internal/inventory"
+	"go-glpi-agent/internal/version"
 )
 
 // jsonMessage is the native GLPI 10+ envelope (action=inventory). The
@@ -16,6 +17,7 @@ type jsonMessage struct {
 	DeviceID string      `json:"deviceid"`
 	Action   string      `json:"action"`
 	ItemType string      `json:"itemtype"`
+	Tag      string      `json:"tag,omitempty"`
 	Content  jsonContent `json:"content"`
 }
 
@@ -38,7 +40,6 @@ type jsonContent struct {
 	LocalGroups     []xmlLGroup   `json:"local_groups,omitempty"`
 	Users           []xmlUser     `json:"users,omitempty"`
 	Processes       []xmlProcess  `json:"processes,omitempty"`
-	AccountInfo     []xmlAccount  `json:"accountinfo,omitempty"`
 	VersionClient   string        `json:"versionclient,omitempty"`
 }
 
@@ -106,14 +107,15 @@ func BuildInventoryJSON(inv *inventory.Inventory) ([]byte, error) {
 		Processes:       c.Processes,
 		VersionClient:   c.VersionClient,
 	}
-	if c.AccountInfo != nil {
-		jc.AccountInfo = []xmlAccount{*c.AccountInfo}
-	}
 
+	// The entity tag is a root-level field in GLPI's native schema, not a
+	// content.accountinfo entry (that key is rejected: "keys ignored:
+	// accountinfo").
 	msg := jsonMessage{
 		DeviceID: inv.DeviceID,
 		Action:   "inventory",
 		ItemType: "Computer",
+		Tag:      inv.Tag,
 		Content:  jc,
 	}
 	return json.Marshal(msg)
@@ -124,20 +126,23 @@ func BuildInventoryJSON(inv *inventory.Inventory) ([]byte, error) {
 type contactMessage struct {
 	DeviceID       string   `json:"deviceid"`
 	Action         string   `json:"action"`
-	Name           string   `json:"name,omitempty"`
+	Name           string   `json:"name"`
 	Tag            string   `json:"tag,omitempty"`
+	Version        string   `json:"version"`
 	InstalledTasks []string `json:"installed-tasks"`
 	EnabledTasks   []string `json:"enabled-tasks"`
 }
 
-// BuildContactJSON serializes the CONTACT message. In v1 the agent only runs
-// the inventory task.
+// BuildContactJSON serializes the CONTACT message. GLPI 11 expects a "version"
+// field; without it the endpoint answers 400 "JSON not well formed!". In v1 the
+// agent only runs the inventory task.
 func BuildContactJSON(deviceID, name, tag string) ([]byte, error) {
 	msg := contactMessage{
 		DeviceID:       deviceID,
 		Action:         "contact",
 		Name:           name,
 		Tag:            tag,
+		Version:        version.Version,
 		InstalledTasks: []string{"inventory"},
 		EnabledTasks:   []string{"inventory"},
 	}

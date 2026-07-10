@@ -62,6 +62,43 @@ func TestBuildInventoryJSON(t *testing.T) {
 	}
 }
 
+// TestBuildContactJSON checks the native CONTACT payload GLPI 11 requires:
+// deviceid, action=contact, a non-empty name and version, and the single
+// inventory task. A missing version makes the endpoint answer 400 "JSON not
+// well formed!".
+func TestBuildContactJSON(t *testing.T) {
+	raw, err := BuildContactJSON("GO-GLPI-AGENT-TEST-001", "GLPI-Agent", "datacenter-1")
+	if err != nil {
+		t.Fatalf("BuildContactJSON: %v", err)
+	}
+
+	var msg struct {
+		DeviceID       string   `json:"deviceid"`
+		Action         string   `json:"action"`
+		Name           string   `json:"name"`
+		Tag            string   `json:"tag"`
+		Version        string   `json:"version"`
+		InstalledTasks []string `json:"installed-tasks"`
+		EnabledTasks   []string `json:"enabled-tasks"`
+	}
+	if err := json.Unmarshal(raw, &msg); err != nil {
+		t.Fatalf("unmarshal contact: %v", err)
+	}
+
+	if msg.DeviceID != "GO-GLPI-AGENT-TEST-001" || msg.Action != "contact" || msg.Name != "GLPI-Agent" {
+		t.Errorf("envelope = %+v, want deviceid=GO-GLPI-AGENT-TEST-001 action=contact name=GLPI-Agent", msg)
+	}
+	if msg.Version == "" {
+		t.Error("version must not be empty (GLPI 11 rejects a CONTACT without it)")
+	}
+	if len(msg.InstalledTasks) != 1 || msg.InstalledTasks[0] != "inventory" {
+		t.Errorf("installed-tasks = %#v, want [inventory]", msg.InstalledTasks)
+	}
+	if len(msg.EnabledTasks) != 1 || msg.EnabledTasks[0] != "inventory" {
+		t.Errorf("enabled-tasks = %#v, want [inventory]", msg.EnabledTasks)
+	}
+}
+
 // TestBuildInventoryJSONDropsNamelessTimezone verifies a timezone with only an
 // offset (no name) is dropped, since GLPI's schema requires timezone.name.
 func TestBuildInventoryJSONDropsNamelessTimezone(t *testing.T) {
