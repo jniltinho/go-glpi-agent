@@ -1,7 +1,8 @@
 name: release
 
-# Publish a GitHub release with binaries, .deb/.rpm packages and a tarball
-# whenever a v* tag is pushed. The version comes from the tag.
+# Publish a GitHub release with binaries, packages and installers whenever a
+# v* tag is pushed. The version comes from the tag.
+# Assets: Go (linux/windows/freebsd/macOS) + Dotnet Windows MSI/portable.
 on:
   push:
     tags: ['v*']
@@ -77,6 +78,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Replace a failed prior attempt for this tag if present
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release delete "$GITHUB_REF_NAME" --yes || true
+          fi
           gh release create "$GITHUB_REF_NAME" \
             --title "$GITHUB_REF_NAME" \
             --notes-file notes.md \
@@ -122,4 +127,74 @@ jobs:
             dist/go-glpi-agent_${VERSION}_${{ matrix.arch }}.pkg \
             dist/go-glpi-agent_${VERSION}_${{ matrix.arch }}.dmg \
             dist/checksums_macos_${{ matrix.arch }}.txt \
+            --clobber
+
+  # Builds the independent Dotnet Windows agent (self-contained win-x64 + MSI)
+  # and uploads it to the same release. WiX MSI packaging requires Windows.
+  release-dotnet:
+    needs: release
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: dotnet-glpi-agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Resolve version from tag
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: dotnet-glpi-agent/global.json
+
+      - name: Restore / build / test
+        run: |
+          dotnet restore DotnetGlpiAgent.sln
+          dotnet build DotnetGlpiAgent.sln -c Release --no-restore -p:Version=$env:VERSION -p:VersionPrefix=$env:VERSION
+          dotnet test DotnetGlpiAgent.sln -c Release --no-build --no-restore
+
+      - name: Publish self-contained win-x64
+        run: >
+          dotnet publish src/DotnetGlpiAgent.App/DotnetGlpiAgent.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -o artifacts/publish/win-x64
+          -p:Version=$env:VERSION
+          -p:VersionPrefix=$env:VERSION
+
+      - name: Build MSI
+        run: >
+          dotnet build packaging/wix/DotnetGlpiAgent.Package.wixproj
+          -c Release
+          -p:ProductVersion=$env:VERSION
+          -p:SkipPublishAgent=true
+          -p:VersionPrefix=$env:VERSION
+
+      - name: Assemble package layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="artifacts/gh-release"
+          mkdir -p "$out"
+          cp -f artifacts/msi/dotnet-glpi-agent-*-win-x64.msi "$out/" || true
+          cp -f artifacts/msi/*.UNSIGNED.txt "$out/" 2>/dev/null || true
+          if [ -d artifacts/publish/win-x64 ]; then
+            (cd artifacts/publish/win-x64 && zip -qr "../../gh-release/dotnet-glpi-agent_${VERSION}_win-x64-portable.zip" .)
+          fi
+          (cd "$out" && sha256sum * > checksums-dotnet.txt)
+          ls -la "$out"
+
+      - name: Upload Dotnet packages to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Wait briefly if the primary release is still propagating
+          for i in 1 2 3 4 5; do
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 && break
+            sleep 5
+          done
+          gh release upload "$GITHUB_REF_NAME" \
+            artifacts/gh-release/* \
             --clobber

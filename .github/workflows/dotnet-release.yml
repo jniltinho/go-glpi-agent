@@ -1,0 +1,77 @@
+name: Dotnet GLPI Agent Release (manual)
+
+# Optional standalone Windows package rebuild (does not replace the tag-based
+# monorepo release in release.yml). Use when you only need MSI artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Product version (e.g. 0.5.0)
+        required: true
+        type: string
+      sign:
+        description: Attempt Authenticode signing (requires secrets)
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  package:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: dotnet-glpi-agent
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: dotnet-glpi-agent/global.json
+
+      - name: Build and test
+        run: |
+          dotnet restore DotnetGlpiAgent.sln
+          dotnet build DotnetGlpiAgent.sln -c Release --no-restore -p:Version=${{ inputs.version }} -p:VersionPrefix=${{ inputs.version }}
+          dotnet test DotnetGlpiAgent.sln -c Release --no-build --no-restore
+
+      - name: Publish
+        run: >
+          dotnet publish src/DotnetGlpiAgent.App/DotnetGlpiAgent.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -o artifacts/publish/win-x64
+          -p:Version=${{ inputs.version }}
+          -p:VersionPrefix=${{ inputs.version }}
+
+      - name: Build MSI
+        env:
+          SIGN: ${{ inputs.sign }}
+          SIGNTOOL_PATH: ${{ secrets.DOTNET_SIGNTOOL_PATH }}
+          SIGN_CERT_THUMBPRINT: ${{ secrets.DOTNET_SIGN_CERT_THUMBPRINT }}
+          TIMESTAMP_URL: ${{ secrets.DOTNET_TIMESTAMP_URL }}
+        run: |
+          $props = @(
+            "-p:ProductVersion=${{ inputs.version }}",
+            "-p:SkipPublishAgent=true",
+            "-p:VersionPrefix=${{ inputs.version }}"
+          )
+          if ($env:SIGN -eq 'true' -and $env:SIGNTOOL_PATH -and $env:SIGN_CERT_THUMBPRINT) {
+            $props += "-p:SignToolPath=$env:SIGNTOOL_PATH"
+            $props += "-p:SigningCertificateThumbprint=$env:SIGN_CERT_THUMBPRINT"
+            if ($env:TIMESTAMP_URL) { $props += "-p:TimestampUrl=$env:TIMESTAMP_URL" }
+          } else {
+            Write-Host "Producing UNSIGNED development package."
+          }
+          dotnet build packaging/wix/DotnetGlpiAgent.Package.wixproj -c Release @props
+
+      - name: Bundle release artifacts
+        shell: bash
+        run: VERSION=${{ inputs.version }} bash packaging/scripts/New-ReleaseArtifacts.sh
+
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-glpi-agent-${{ inputs.version }}
+          path: dotnet-glpi-agent/artifacts/release/${{ inputs.version }}/**
