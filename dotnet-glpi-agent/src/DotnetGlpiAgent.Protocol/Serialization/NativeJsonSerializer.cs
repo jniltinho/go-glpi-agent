@@ -62,11 +62,9 @@ public static class NativeJsonSerializer
         [property: JsonPropertyName("enabled-tasks"), JsonPropertyOrder(5)] IReadOnlyList<string> EnabledTasks);
 }
 
+// Expiration is either a duration string (e.g. "24" hours) or an absolute timestamp.
 public sealed record ContactResponse(
     [property: JsonPropertyName("status")] string? Status,
-    /// <summary>
-    /// GLPI returns either a duration string (e.g. "24" hours) or an absolute timestamp.
-    /// </summary>
     [property: JsonPropertyName("expiration")] JsonElement Expiration,
     [property: JsonPropertyName("tasks")] JsonElement Tasks,
     [property: JsonPropertyName("disabled")] JsonElement Disabled)

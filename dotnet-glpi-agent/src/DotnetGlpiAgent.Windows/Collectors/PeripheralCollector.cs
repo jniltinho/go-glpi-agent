@@ -75,10 +75,11 @@ public sealed class PeripheralCollector : WindowsCollectorBase
             diagnostics,
             cancellationToken).ConfigureAwait(false);
 
-        VideoAdapterInfo[] videos = video.Select(MapVideo)
+        // Official agent skips RDP/remote display adapters.
+        VideoAdapterInfo[] videos = video
+            .Select(MapVideo)
             .Where(static item => item is not null)
             .Select(static item => item!)
-            // Official agent skips RDP/remote display adapters.
             .Where(static item => item.Id.IndexOf("REMOTEDISPLAY", StringComparison.OrdinalIgnoreCase) < 0)
             .DistinctBy(static item => item.Name ?? item.Id, StringComparer.OrdinalIgnoreCase)
             .OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase)
