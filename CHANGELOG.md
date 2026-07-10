@@ -7,6 +7,10 @@ each release's notes are this file's section for that version (published by CI).
 
 ## [Unreleased]
 
+—
+
+## [0.6.0] — 2026-07-10
+
 **Windows packaging overhaul (Go + .NET agents).** Both Windows packages now ship
 a single binary with `agent.cfg` in the same folder as the executable, and both
 run as a real Windows Service.
