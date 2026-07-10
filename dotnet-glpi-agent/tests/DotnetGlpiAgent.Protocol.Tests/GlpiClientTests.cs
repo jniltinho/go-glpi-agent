@@ -13,8 +13,8 @@ public sealed class GlpiClientTests
     [Fact]
     public async Task SubmitAsync_NativeSuccess_SendsIdentityAndCorrelationHeaders()
     {
+        // Real GLPI 10/11 shape: expiration is hours string; tasks is an object map.
         var handler = new ScriptedHandler(
-            // Real GLPI 10/11 shape: expiration is hours string; tasks is an object map.
             JsonResponse("{\"status\":\"ok\",\"expiration\":\"24\",\"tasks\":{\"inventory\":{\"server\":\"glpi\",\"version\":\"10.0.26\"}}}"),
             JsonResponse("{\"status\":\"ok\"}"));
         using var http = new HttpClient(handler);

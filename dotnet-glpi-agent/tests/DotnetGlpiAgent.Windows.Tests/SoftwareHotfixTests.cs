@@ -107,11 +107,11 @@ public sealed class SoftwareHotfixTests
     [InlineData("Update", "Update")]
     public void HotfixMap_ClassifiesUpdates(string description, string expected)
     {
+        // Win32_QuickFixEngineering reports InstalledOn as en-US M/d/yyyy.
         WmiRow row = Row(
             ("HotFixID", "KB5000001"),
             ("Description", description),
             ("InstalledBy", @"NT AUTHORITY\SYSTEM"),
-            // Win32_QuickFixEngineering reports InstalledOn as en-US M/d/yyyy.
             ("InstalledOn", "7/1/2026"));
 
         HotfixInfo result = HotfixCollector.Map(row)!;
