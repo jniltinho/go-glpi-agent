@@ -9,6 +9,36 @@ each release's notes are this file's section for that version (published by CI).
 
 —
 
+## [0.5.0] — 2026-07-10
+
+**Dotnet GLPI Agent (Windows).** Independent .NET 10 Windows inventory agent with
+MSI packaging, Windows Service, native GLPI JSON protocol, and E2E validation on
+Windows Server 2022 against GLPI 10 and 11.
+
+### ✨ New Features
+- feat(dotnet): new `dotnet-glpi-agent/` subproject — self-contained `win-x64`
+  agent (`dotnet-glpi-agent.exe`) with typed inventory model, modular collectors
+  (OS/BIOS/CPU/memory/storage/network/software/AppX/hotfixes/printers/monitors/
+  video/firewall/antivirus/…), native CONTACT/inventory JSON + legacy XML fallback.
+- feat(dotnet): Windows Service hosting (`DotnetGlpiAgent`) via Generic Host +
+  WiX 4.0.6 per-machine MSI (Program Files + ProgramData, silent properties
+  `SERVER`/`TAG`/`INSTALLDIR`/`STARTSERVICE`/`RUNNOW`/`PURGE`, unsigned-dev marker).
+- feat(dotnet): Docker GLPI 10/11 lab + Vagrant Windows Server 2022 acceptance
+  (schema validation, dual-stack submit, MSI lifecycle, 3-agent comparison).
+
+### 🔧 Improvements
+- fix(dotnet): schema-safe datetime (`yyyy-MM-dd HH:mm:ss`); strip illegal XML
+  control characters; GLPI CONTACT `expiration` hours; no `content.accountinfo`
+  (GLPI 11); TLS custom-CA hostname validation; orchestrator isolation; session
+  WMI regex; MSI repair preserves `server`/`tag`; firewall registry fallback;
+  per-source WMI degradation; memory synthetic fallback.
+- ci: `dotnet.yml` (Linux tests + Windows publish/MSI); monorepo `release.yml`
+  builds Go packages **and** Dotnet MSI/portable zip on `v*` tags.
+
+### 📚 Documentation
+- docs: `dotnet-glpi-agent/README.md`, MSI/service/operations/parity reports,
+  OpenSpec change `add-dotnet10-windows-agent` (122 tasks).
+
 ## [0.4.0] — 2026-06-30
 
 **macOS inventory support (Apple Silicon) + a Windows `.msi`.** A single codebase now

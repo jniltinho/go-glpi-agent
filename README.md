@@ -82,10 +82,18 @@ Validated against a real GLPI 10 across all four. The full collector matrix, per
 install details, CLI/config reference, build instructions and architecture live in
 **[docs/REFERENCE.md](docs/REFERENCE.md)**.
 
+## Sister project: Dotnet GLPI Agent
+
+An independent **.NET 10** Windows-first agent lives under
+[`dotnet-glpi-agent/`](dotnet-glpi-agent/) (MSI + Windows Service + Vagrant lab).
+It does not replace this Go agent; see that README and OpenSpec change
+`add-dotnet10-windows-agent`.
+
 ## Docs
 
 - 📘 **[Full reference](docs/REFERENCE.md)** — collectors, install per OS, CLI, config, build, internals
 - 📝 [Changelog](CHANGELOG.md) · 🤝 [Contributing](CONTRIBUTING.md) · 🧪 [Test infrastructure](test/README.md)
+- 🪟 [Dotnet Windows agent](dotnet-glpi-agent/README.md)
 
 ## License
 

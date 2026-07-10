@@ -7,8 +7,8 @@
 - Manufacturer: **JNiltinho**
 - Windows Service name: `DotnetGlpiAgent`
 - Windows Service display name: **Dotnet GLPI Agent**
-- Package family upgrade code: to be generated once and retained by the MSI
-  project
+- Package family upgrade code: `{474BE2D1-1A58-47E6-B9FE-700411A9E1B3}`
+  (stable; authored in `packaging/wix/Package.wxs`)
 
 ## Support matrix
 

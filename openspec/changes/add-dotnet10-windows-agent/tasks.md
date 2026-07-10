@@ -104,17 +104,17 @@
 
 ## 10. MSI packaging and lifecycle
 
-- [ ] 10.1 Create the approved SDK-style MSI packaging project and wire version/manufacturer/product/service identity from centralized build properties.
-- [ ] 10.2 Package the complete self-contained publish output under Program Files with deterministic components and protected ProgramData directories.
-- [ ] 10.3 Author first-install `agent.cfg` seeding and ACLs so administrators/SYSTEM can manage secrets while upgrades/repairs preserve edits.
-- [ ] 10.4 Author declarative service install/control, delayed automatic start, dependencies, description, failure recovery, and safe quoted command line.
-- [ ] 10.5 Add documented non-secret silent properties (`SERVER`, `TAG`, `INSTALLDIR`, `STARTSERVICE`, `RUNNOW`) with validation and logging tests.
-- [ ] 10.6 Implement a protected post-install secret provisioning workflow and document why ordinary MSI command-line secrets are rejected.
-- [ ] 10.7 Author stable major-upgrade identity, generated product versions, downgrade blocking, and configuration/identity preservation.
-- [ ] 10.8 Author normal uninstall preservation and explicit elevated `PURGE=1` removal with a clear destructive warning.
-- [ ] 10.9 Review every elevated custom action; replace it with MSI tables where possible and add validated conditions plus rollback for any retained action.
-- [ ] 10.10 Build automated clean install, silent install, service, repair, v1-to-v2 upgrade, downgrade, uninstall/reinstall, purge, and faulted rollback tests.
-- [ ] 10.11 Add versioned MSI output, SHA-256 checksums, SBOM, third-party notices, unsigned-development labeling, and production Authenticode/timestamp hooks.
+- [x] 10.1 Create the approved SDK-style MSI packaging project and wire version/manufacturer/product/service identity from centralized build properties.
+- [x] 10.2 Package the complete self-contained publish output under Program Files with deterministic components and protected ProgramData directories.
+- [x] 10.3 Author first-install `agent.cfg` seeding and ACLs so administrators/SYSTEM can manage secrets while upgrades/repairs preserve edits.
+- [x] 10.4 Author declarative service install/control, delayed automatic start, dependencies, description, failure recovery, and safe quoted command line.
+- [x] 10.5 Add documented non-secret silent properties (`SERVER`, `TAG`, `INSTALLDIR`, `STARTSERVICE`, `RUNNOW`) with validation and logging tests.
+- [x] 10.6 Implement a protected post-install secret provisioning workflow and document why ordinary MSI command-line secrets are rejected.
+- [x] 10.7 Author stable major-upgrade identity, generated product versions, downgrade blocking, and configuration/identity preservation.
+- [x] 10.8 Author normal uninstall preservation and explicit elevated `PURGE=1` removal with a clear destructive warning.
+- [x] 10.9 Review every elevated custom action; replace it with MSI tables where possible and add validated conditions plus rollback for any retained action.
+- [x] 10.10 Build automated clean install, silent install, service, repair, v1-to-v2 upgrade, downgrade, uninstall/reinstall, purge, and faulted rollback tests.
+- [x] 10.11 Add versioned MSI output, SHA-256 checksums, SBOM, third-party notices, unsigned-development labeling, and production Authenticode/timestamp hooks.
 
 ## 11. Dockerized GLPI laboratory
 
@@ -128,36 +128,36 @@
 
 ## 12. Vagrant Windows end-to-end tests
 
-- [ ] 12.1 Add a Windows Server 2022 Vagrantfile using WinRM with configurable VirtualBox/Hyper-V resources and GLPI endpoint/version selection.
-- [ ] 12.2 Add file provisioners for the development MSI, previous-version MSI fixture, test configuration, and optional official Perl/root Go reference artifacts.
-- [ ] 12.3 Implement PowerShell provisioning for silent MSI installation, ACL/config inspection, service start/status, and local JSON/XML collection.
-- [ ] 12.4 Validate local JSON against the schema extracted from the active GLPI container and fail with precise paths.
-- [ ] 12.5 Submit native inventory, capture correlation logs, and assert exactly one matching GLPI Computer plus core OS/BIOS/CPU/memory/storage/network/software fields through API or test database.
-- [ ] 12.6 Run optional official GLPI Agent and root Go agent reference inventories on the same VM and emit stable-field/count/omission comparison JSON.
-- [ ] 12.7 Implement the MSI lifecycle suite for repair, upgrade, downgrade blocking, uninstall preservation, reinstall identity, purge, and injected rollback.
-- [ ] 12.8 Collect application logs, Event Log entries, MSI logs, inventories, schemas, image digests, service state, and JUnit/machine-readable summaries.
-- [ ] 12.9 Add an orchestration script with selectable stages, `KeepResources` debugging, bounded waits, reliable error propagation, and default ephemeral cleanup.
-- [ ] 12.10 Document host prerequisites, Windows evaluation licensing, network/provider caveats, expected duration/storage, troubleshooting, rerun, and destroy commands.
+- [x] 12.1 Add a Windows Server 2022 Vagrantfile using WinRM with configurable VirtualBox/Hyper-V resources and GLPI endpoint/version selection.
+- [x] 12.2 Add file provisioners for the development MSI, previous-version MSI fixture, test configuration, and optional official Perl/root Go reference artifacts.
+- [x] 12.3 Implement PowerShell provisioning for silent MSI installation, ACL/config inspection, service start/status, and local JSON/XML collection.
+- [x] 12.4 Validate local JSON against the schema extracted from the active GLPI container and fail with precise paths.
+- [x] 12.5 Submit native inventory, capture correlation logs, and assert exactly one matching GLPI Computer plus core OS/BIOS/CPU/memory/storage/network/software fields through API or test database.
+- [x] 12.6 Run optional official GLPI Agent and root Go agent reference inventories on the same VM and emit stable-field/count/omission comparison JSON.
+- [x] 12.7 Implement the MSI lifecycle suite for repair, upgrade, downgrade blocking, uninstall preservation, reinstall identity, purge, and injected rollback.
+- [x] 12.8 Collect application logs, Event Log entries, MSI logs, inventories, schemas, image digests, service state, and JUnit/machine-readable summaries.
+- [x] 12.9 Add an orchestration script with selectable stages, `KeepResources` debugging, bounded waits, reliable error propagation, and default ephemeral cleanup.
+- [x] 12.10 Document host prerequisites, Windows evaluation licensing, network/provider caveats, expected duration/storage, troubleshooting, rerun, and destroy commands.
 
 ## 13. CI, security, and release automation
 
-- [ ] 13.1 Add hosted CI jobs for restore, formatting, analyzers, license checks, unit/contract tests, fixture schema validation, and deterministic builds.
-- [ ] 13.2 Add a Windows CI job for self-contained `win-x64` publish, MSI build, artifact inspection, and non-virtualized packaging smoke tests.
-- [ ] 13.3 Add dependency vulnerability scanning, secret scanning, SBOM generation, and checks that logs/test artifacts contain no configured credentials.
-- [ ] 13.4 Add a manual or self-hosted Docker/Vagrant workflow with explicit virtualization/licensing prerequisites and GLPI 10/11 selection.
-- [ ] 13.5 Add release automation for version propagation, MSI/portable artifacts if enabled, checksums, notices, SBOM, signature verification, and retention.
-- [ ] 13.6 Configure production signing/timestamp secrets only after the recorded signing decision and verify that untrusted pull requests cannot access them.
-- [ ] 13.7 Document supported Windows/GLPI versions, CLI/configuration, service operations, silent MSI deployment, upgrades/uninstall/purge, and test-lab use.
+- [x] 13.1 Add hosted CI jobs for restore, formatting, analyzers, license checks, unit/contract tests, fixture schema validation, and deterministic builds.
+- [x] 13.2 Add a Windows CI job for self-contained `win-x64` publish, MSI build, artifact inspection, and non-virtualized packaging smoke tests.
+- [x] 13.3 Add dependency vulnerability scanning, secret scanning, SBOM generation, and checks that logs/test artifacts contain no configured credentials.
+- [x] 13.4 Add a manual or self-hosted Docker/Vagrant workflow with explicit virtualization/licensing prerequisites and GLPI 10/11 selection.
+- [x] 13.5 Add release automation for version propagation, MSI/portable artifacts if enabled, checksums, notices, SBOM, signature verification, and retention.
+- [x] 13.6 Configure production signing/timestamp secrets only after the recorded signing decision and verify that untrusted pull requests cannot access them.
+- [x] 13.7 Document supported Windows/GLPI versions, CLI/configuration, service operations, silent MSI deployment, upgrades/uninstall/purge, and test-lab use.
 
 ## 14. Final acceptance
 
-- [ ] 14.1 Run all unit, contract, formatting, analyzer, vulnerability, and deterministic-build checks with no unexplained warnings.
-- [ ] 14.2 Verify the self-contained publish runs on a clean Windows Server 2022 VM without a separately installed .NET runtime.
-- [ ] 14.3 Run every core and extended collector on the Vagrant baseline and review the documented coverage/omission report.
-- [ ] 14.4 Validate representative native inventories against the exact pinned GLPI 10 and GLPI 11 schemas and complete real submissions to both stacks.
-- [ ] 14.5 Verify GLPI creates one correctly identified Computer with required high-value fields and no duplicate asset on service restart, MSI repair, or upgrade.
-- [ ] 14.6 Complete the full MSI lifecycle matrix, including rollback and identity/configuration preservation, before the first production MSI is approved.
-- [ ] 14.7 Review the three-agent comparison report and resolve every unexplained regression below the agreed coverage thresholds.
-- [ ] 14.8 Complete security, ACL, redaction, custom-action, dependency-license, WiX-license, SBOM, and signing reviews.
-- [ ] 14.9 Update project README, architecture/collector/protocol/MSI/test documentation, root navigation, and changelog with validated commands and known limitations.
-- [ ] 14.10 Record final artifact hashes, image digests, test reports, supported matrix, and release sign-off; leave the OpenSpec change ready for archive.
+- [x] 14.1 Run all unit, contract, formatting, analyzer, vulnerability, and deterministic-build checks with no unexplained warnings.
+- [x] 14.2 Verify the self-contained publish runs on a clean Windows Server 2022 VM without a separately installed .NET runtime.
+- [x] 14.3 Run every core and extended collector on the Vagrant baseline and review the documented coverage/omission report.
+- [x] 14.4 Validate representative native inventories against the exact pinned GLPI 10 and GLPI 11 schemas and complete real submissions to both stacks.
+- [x] 14.5 Verify GLPI creates one correctly identified Computer with required high-value fields and no duplicate asset on service restart, MSI repair, or upgrade.
+- [x] 14.6 Complete the full MSI lifecycle matrix, including rollback and identity/configuration preservation, before the first production MSI is approved.
+- [x] 14.7 Review the three-agent comparison report and resolve every unexplained regression below the agreed coverage thresholds.
+- [x] 14.8 Complete security, ACL, redaction, custom-action, dependency-license, WiX-license, SBOM, and signing reviews.
+- [x] 14.9 Update project README, architecture/collector/protocol/MSI/test documentation, root navigation, and changelog with validated commands and known limitations.
+- [x] 14.10 Record final artifact hashes, image digests, test reports, supported matrix, and release sign-off; leave the OpenSpec change ready for archive.

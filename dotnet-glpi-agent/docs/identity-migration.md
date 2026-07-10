@@ -6,9 +6,10 @@ creation time. Writes use a same-directory temporary file and atomic replace.
 Corrupt state is preserved with a `.corrupt-*` suffix before a replacement is
 created, so an identity change is visible in diagnostics.
 
-An administrator can explicitly migrate identity from the root Go agent by
-passing the path to its `FusionInventory-Agent.json` state as the migration
-input on the first run. A standalone migration file uses the same minimal JSON:
+An administrator migrates identity from the root Go agent by copying its
+`FusionInventory-Agent.json` state file into the .NET agent's state directory
+before the first run; the agent adopts it automatically when no `identity.json`
+exists yet. A standalone migration file uses the same minimal JSON:
 
 ```json
 {
