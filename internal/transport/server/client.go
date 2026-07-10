@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -107,6 +108,14 @@ func (t *Target) Send(ctx context.Context, inv *inventory.Inventory) error {
 
 	native, wantInventory, err := t.contact(ctx, inv)
 	if err != nil {
+		// A native GLPI server that rejects our CONTACT answers with a JSON
+		// error body (e.g. 400 "JSON not well formed!"). That is not a legacy
+		// server, so surface the real error instead of masking it behind a
+		// legacy XML attempt that would fail the same way.
+		var se *serverError
+		if errors.As(err, &se) && se.isNativeJSONError() {
+			return fmt.Errorf("native CONTACT rejected: %w", err)
+		}
 		t.log.Debug("contact failed (%v); falling back to legacy XML/PROLOG", err)
 		return t.sendLegacy(ctx, inv)
 	}
@@ -166,13 +175,12 @@ func (t *Target) postXML(ctx context.Context, xmlBody []byte) ([]byte, error) {
 	return t.post(ctx, xmlBody, "application/x-compress-zlib", version.UserAgent(), true)
 }
 
-// postJSON posts a JSON body using the native protocol, honoring the
-// no-compression setting. The default is zlib (application/x-compress-zlib).
+// postJSON posts a JSON body using the native protocol. It always sends plain
+// application/json: GLPI 11's /front/inventory.php does not inflate a
+// zlib-compressed native body and answers 400 "JSON not well formed!" for it,
+// so compression is reserved for the legacy XML flow (postXML).
 func (t *Target) postJSON(ctx context.Context, jsonBody []byte) ([]byte, error) {
-	if t.cfg.NoCompression {
-		return t.post(ctx, jsonBody, "application/json", version.GLPIUserAgent(), false)
-	}
-	return t.post(ctx, jsonBody, "application/x-compress-zlib", version.GLPIUserAgent(), true)
+	return t.post(ctx, jsonBody, "application/json", version.GLPIUserAgent(), false)
 }
 
 // post is the low-level HTTP POST. When compress is true the body is wrapped in
@@ -217,9 +225,30 @@ func (t *Target) post(ctx context.Context, body []byte, contentType, userAgent s
 		if len(snippet) > 512 {
 			snippet = snippet[:512]
 		}
-		return nil, fmt.Errorf("POST %s: status %d: %s", t.url, resp.StatusCode, snippet)
+		return nil, &serverError{url: t.url, status: resp.StatusCode, body: snippet}
 	}
 	return decompress(data), nil
+}
+
+// serverError is returned by post when the server answered with a non-200
+// status. It carries the (decompressed) body so callers can tell a native GLPI
+// JSON error from a legacy/absent endpoint before deciding to fall back.
+type serverError struct {
+	url    string
+	status int
+	body   []byte
+}
+
+func (e *serverError) Error() string {
+	return fmt.Sprintf("POST %s: status %d: %s", e.url, e.status, e.body)
+}
+
+// isNativeJSONError reports whether the error body looks like a GLPI native
+// JSON reply (i.e. the server understood the native protocol and rejected the
+// request), as opposed to an HTML error page from a non-native endpoint.
+func (e *serverError) isNativeJSONError() bool {
+	b := bytes.TrimSpace(e.body)
+	return len(b) > 0 && b[0] == '{'
 }
 
 // decompress tries to inflate a zlib body; if it is not zlib, the data is
