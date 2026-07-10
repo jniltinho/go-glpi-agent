@@ -24,6 +24,7 @@ public static class InventoryNormalizer
     [
         "yyyyMMdd",
         "yyyy-MM-dd",
+        "M/d/yyyy",
         "yyyy-MM-dd HH:mm:ss",
         "yyyy-MM-ddTHH:mm:ssK",
         "yyyy-MM-ddTHH:mm:ss.FFFFFFFK",

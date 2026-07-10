@@ -64,7 +64,10 @@ public static class NativeJsonSerializer
 
 public sealed record ContactResponse(
     [property: JsonPropertyName("status")] string? Status,
-    [property: JsonPropertyName("expiration")] DateTimeOffset? Expiration,
+    /// <summary>
+    /// GLPI returns either a duration string (e.g. "24" hours) or an absolute timestamp.
+    /// </summary>
+    [property: JsonPropertyName("expiration")] JsonElement Expiration,
     [property: JsonPropertyName("tasks")] JsonElement Tasks,
     [property: JsonPropertyName("disabled")] JsonElement Disabled)
 {
@@ -75,6 +78,7 @@ public sealed record ContactResponse(
             return true;
         }
 
+        // Native answers use either ["inventory"] or {"inventory":{...}}.
         return Tasks.ToString().Contains("inventory", StringComparison.OrdinalIgnoreCase);
     }
 }

@@ -56,12 +56,18 @@ public sealed class WindowsPathSecurityPolicy
 
 public sealed class WindowsFileAccessControlInspector : IFileAccessControlInspector
 {
-    private const FileSystemRights WriteRights = FileSystemRights.Write
-        | FileSystemRights.Modify
-        | FileSystemRights.FullControl
-        | FileSystemRights.CreateFiles
-        | FileSystemRights.CreateDirectories
-        | FileSystemRights.Delete;
+    // Only bits that grant mutation. Do NOT include CreateFiles/ReadData aliases or
+    // composite Modify/FullControl masks — CreateFiles == ListDirectory (0x1) on files,
+    // so ReadAndExecute would false-positive as "writable".
+    private const FileSystemRights WriteSpecificRights =
+        FileSystemRights.WriteData
+        | FileSystemRights.AppendData
+        | FileSystemRights.WriteAttributes
+        | FileSystemRights.WriteExtendedAttributes
+        | FileSystemRights.Delete
+        | FileSystemRights.DeleteSubdirectoriesAndFiles
+        | FileSystemRights.ChangePermissions
+        | FileSystemRights.TakeOwnership;
 
     private static readonly HashSet<string> UnprivilegedSids =
     [
@@ -78,7 +84,7 @@ public sealed class WindowsFileAccessControlInspector : IFileAccessControlInspec
         AuthorizationRuleCollection rules = security.GetAccessRules(true, true, typeof(SecurityIdentifier));
         return rules.OfType<FileSystemAccessRule>().Any(static rule =>
             rule.AccessControlType == AccessControlType.Allow
-            && (rule.FileSystemRights & WriteRights) != 0
+            && (rule.FileSystemRights & WriteSpecificRights) != 0
             && rule.IdentityReference is SecurityIdentifier sid
             && UnprivilegedSids.Contains(sid.Value));
     }

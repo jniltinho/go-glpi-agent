@@ -248,6 +248,6 @@ public sealed partial class SoftwareCollector : WindowsCollectorBase
         return path.TrimEnd('\\', '/').Split('\\', '/').LastOrDefault() ?? string.Empty;
     }
 
-    [GeneratedRegex("^S-1-5-(?:21|32)-[0-9-]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex("^S-1-(?:5-(?:21|32)|12-1)-[0-9-]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex UserSidRegex();
 }

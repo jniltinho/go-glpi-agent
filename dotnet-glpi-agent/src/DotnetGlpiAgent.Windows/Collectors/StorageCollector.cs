@@ -46,17 +46,32 @@ public sealed class StorageCollector : WindowsCollectorBase
         CollectorContext context,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<WmiRow> disks = await QueryAsync(
+        var diagnostics = new List<SourceDiagnostic>();
+        IReadOnlyList<WmiRow> disks = await QueryClassAsync(
             "Win32_DiskDrive",
             DiskProperties,
+            diagnostics,
             cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> scsi = await QueryAsync(
+        IReadOnlyList<WmiRow> scsi = await QueryClassAsync(
             "Win32_SCSIController",
             ControllerProperties,
+            diagnostics,
             cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> ide = await QueryAsync(
+        IReadOnlyList<WmiRow> ide = await QueryClassAsync(
             "Win32_IDEController",
             ControllerProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        // Additional controller classes used by the official agent for broader coverage.
+        IReadOnlyList<WmiRow> usb = await QueryClassAsync(
+            "Win32_USBController",
+            ControllerProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> floppy = await QueryClassAsync(
+            "Win32_FloppyController",
+            ControllerProperties,
+            diagnostics,
             cancellationToken).ConfigureAwait(false);
 
         return new InventoryContribution
@@ -67,9 +82,12 @@ public sealed class StorageCollector : WindowsCollectorBase
                 .ToArray(),
             Controllers = scsi.Select(static row => MapController(row, "SCSI/Storage"))
                 .Concat(ide.Select(static row => MapController(row, "IDE/ATA")))
+                .Concat(usb.Select(static row => MapController(row, "USB")))
+                .Concat(floppy.Select(static row => MapController(row, "Floppy")))
                 .DistinctBy(static controller => controller.Id, StringComparer.OrdinalIgnoreCase)
                 .OrderBy(static controller => controller.Id, StringComparer.OrdinalIgnoreCase)
                 .ToArray(),
+            Diagnostics = diagnostics,
         };
     }
 
@@ -112,14 +130,23 @@ public sealed class StorageCollector : WindowsCollectorBase
             InventoryNormalizer.CleanString(row.GetString("Status")));
     }
 
-    private ValueTask<IReadOnlyList<WmiRow>> QueryAsync(
+    private async ValueTask<IReadOnlyList<WmiRow>> QueryClassAsync(
         string className,
         IReadOnlyList<string> properties,
+        List<SourceDiagnostic> diagnostics,
         CancellationToken cancellationToken)
     {
-        return _wmi.QueryAsync(
+        (IReadOnlyList<WmiRow> rows, SourceDiagnostic? diagnostic) = await WmiQueryHelpers.TryQueryAsync(
+            _wmi,
             new WmiQuery(@"\\.\root\cimv2", className, properties, Timeout: Timeout),
-            cancellationToken);
+            $"{Name}:{className}",
+            cancellationToken).ConfigureAwait(false);
+        if (diagnostic is not null)
+        {
+            diagnostics.Add(diagnostic);
+        }
+
+        return rows;
     }
 
     private static string ClassifyMedia(

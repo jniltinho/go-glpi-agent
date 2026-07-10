@@ -2,6 +2,8 @@ using DotnetGlpiAgent.Core.Collection;
 using DotnetGlpiAgent.Core.Inventory;
 using DotnetGlpiAgent.Core.Normalization;
 using DotnetGlpiAgent.Windows.Management;
+using DotnetGlpiAgent.Windows.Registry;
+using Microsoft.Win32;
 
 namespace DotnetGlpiAgent.Windows.Collectors;
 
@@ -15,12 +17,24 @@ public sealed class FirewallCollector : WindowsCollectorBase
         "Name",
     ];
 
-    private readonly IWmiQueryAdapter _wmi;
+    private static readonly (string Profile, string RegistryKey)[] RegistryProfiles =
+    [
+        ("Domain", "DomainProfile"),
+        ("Private", "StandardProfile"),
+        ("Public", "PublicProfile"),
+    ];
 
-    public FirewallCollector(IWmiQueryAdapter wmi, IWindowsPlatform? platform = null)
+    private readonly IWmiQueryAdapter _wmi;
+    private readonly IRegistryQueryAdapter? _registry;
+
+    public FirewallCollector(
+        IWmiQueryAdapter wmi,
+        IRegistryQueryAdapter? registry = null,
+        IWindowsPlatform? platform = null)
         : base(platform)
     {
         _wmi = wmi;
+        _registry = registry;
     }
 
     public override string Name => "windows-firewall";
@@ -31,34 +45,50 @@ public sealed class FirewallCollector : WindowsCollectorBase
         CollectorContext context,
         CancellationToken cancellationToken)
     {
-        try
+        var diagnostics = new List<SourceDiagnostic>();
+        (IReadOnlyList<WmiRow> rows, SourceDiagnostic? wmiDiagnostic) = await WmiQueryHelpers.TryQueryAsync(
+            _wmi,
+            new WmiQuery(
+                @"\\.\root\StandardCimv2",
+                "MSFT_NetFirewallProfile",
+                Properties,
+                Timeout: Timeout),
+            $"{Name}:MSFT_NetFirewallProfile",
+            cancellationToken).ConfigureAwait(false);
+        if (wmiDiagnostic is not null)
         {
-            IReadOnlyList<WmiRow> rows = await _wmi.QueryAsync(
-                new WmiQuery(
-                    @"\\.\root\StandardCimv2",
-                    "MSFT_NetFirewallProfile",
-                    Properties,
-                    Timeout: Timeout),
-                cancellationToken).ConfigureAwait(false);
-            FirewallProfileInfo[] profiles = Map(rows);
-            return new InventoryContribution
-            {
-                Source = Name,
-                FirewallProfiles = profiles,
-                Diagnostics = profiles.Length == 0
-                    ? [new SourceDiagnostic(Name, CollectionState.Unavailable, "firewall-profiles-not-detected", "Windows did not expose firewall profiles.")]
-                    : [],
-            };
+            diagnostics.Add(wmiDiagnostic);
         }
-        catch (CollectorFailureException exception)
-            when (exception.State is CollectionState.Unavailable or CollectionState.AccessDenied)
+
+        FirewallProfileInfo[] profiles = Map(rows);
+        if (profiles.Length == 0 && _registry is not null)
         {
-            return new InventoryContribution
+            profiles = await ReadRegistryProfilesAsync(cancellationToken).ConfigureAwait(false);
+            if (profiles.Length > 0)
             {
-                Source = Name,
-                Diagnostics = [new SourceDiagnostic(Name, exception.State, exception.DiagnosticCode, exception.Message)],
-            };
+                diagnostics.Add(new SourceDiagnostic(
+                    Name,
+                    CollectionState.Success,
+                    "firewall-registry-fallback",
+                    "Firewall profiles were read from the SharedAccess registry policy."));
+            }
         }
+
+        if (profiles.Length == 0)
+        {
+            diagnostics.Add(new SourceDiagnostic(
+                Name,
+                CollectionState.Unavailable,
+                "firewall-profiles-not-detected",
+                "Windows did not expose firewall profiles."));
+        }
+
+        return new InventoryContribution
+        {
+            Source = Name,
+            FirewallProfiles = profiles,
+            Diagnostics = diagnostics,
+        };
     }
 
     public static FirewallProfileInfo[] Map(IEnumerable<WmiRow> rows)
@@ -68,6 +98,43 @@ public sealed class FirewallCollector : WindowsCollectorBase
             .Where(static item => item is not null)
             .Select(static item => item!)
             .DistinctBy(static item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private async ValueTask<FirewallProfileInfo[]> ReadRegistryProfilesAsync(CancellationToken cancellationToken)
+    {
+        if (_registry is null)
+        {
+            return [];
+        }
+
+        const string root = @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy";
+        var profiles = new List<FirewallProfileInfo>(RegistryProfiles.Length);
+        foreach ((string profile, string key) in RegistryProfiles)
+        {
+            RegistryKeySnapshot? snapshot = await _registry.ReadKeyAsync(
+                RegistryHive.LocalMachine,
+                RegistryView.Registry64,
+                $"{root}\\{key}",
+                ["EnableFirewall"],
+                cancellationToken).ConfigureAwait(false);
+            if (snapshot is null)
+            {
+                continue;
+            }
+
+            bool enabled = snapshot.GetBoolean("EnableFirewall") == true
+                || snapshot.GetUInt64("EnableFirewall") is > 0;
+            profiles.Add(new FirewallProfileInfo(
+                profile.ToLowerInvariant(),
+                profile,
+                enabled,
+                null,
+                null));
+        }
+
+        return profiles
             .OrderBy(static item => item.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }

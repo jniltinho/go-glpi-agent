@@ -19,6 +19,7 @@ public sealed class PeripheralCollector : WindowsCollectorBase
         "Name",
         "PNPDeviceID",
         "Status",
+        "VideoProcessor",
     ];
 
     private readonly IWmiQueryAdapter _wmi;
@@ -37,19 +38,58 @@ public sealed class PeripheralCollector : WindowsCollectorBase
         CollectorContext context,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<WmiRow> video = await QueryAsync("Win32_VideoController", VideoProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> sound = await QueryAsync("Win32_SoundDevice", DeviceProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> keyboards = await QueryAsync("Win32_Keyboard", DeviceProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> pointing = await QueryAsync("Win32_PointingDevice", DeviceProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> serial = await QueryAsync("Win32_SerialPort", DeviceProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> parallel = await QueryAsync("Win32_ParallelPort", DeviceProperties, cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> modems = await QueryAsync("Win32_POTSModem", DeviceProperties, cancellationToken).ConfigureAwait(false);
+        var diagnostics = new List<SourceDiagnostic>();
+        IReadOnlyList<WmiRow> video = await QueryClassAsync(
+            "Win32_VideoController",
+            VideoProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> sound = await QueryClassAsync(
+            "Win32_SoundDevice",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> keyboards = await QueryClassAsync(
+            "Win32_Keyboard",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> pointing = await QueryClassAsync(
+            "Win32_PointingDevice",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> serial = await QueryClassAsync(
+            "Win32_SerialPort",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> parallel = await QueryClassAsync(
+            "Win32_ParallelPort",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<WmiRow> modems = await QueryClassAsync(
+            "Win32_POTSModem",
+            DeviceProperties,
+            diagnostics,
+            cancellationToken).ConfigureAwait(false);
+
+        VideoAdapterInfo[] videos = video.Select(MapVideo)
+            .Where(static item => item is not null)
+            .Select(static item => item!)
+            // Official agent skips RDP/remote display adapters.
+            .Where(static item => item.Id.IndexOf("REMOTEDISPLAY", StringComparison.OrdinalIgnoreCase) < 0)
+            .DistinctBy(static item => item.Name ?? item.Id, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
         return new InventoryContribution
         {
             Source = Name,
-            VideoAdapters = video.Select(MapVideo).Where(static item => item is not null).Select(static item => item!).OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase).ToArray(),
-            SoundDevices = sound.Select(MapSound).Where(static item => item is not null).Select(static item => item!).OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase).ToArray(),
+            VideoAdapters = videos,
+            SoundDevices = sound.Select(MapSound).Where(static item => item is not null).Select(static item => item!)
+                .OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase).ToArray(),
             InputDevices = keyboards.Select(static row => MapInput(row, "Keyboard"))
                 .Concat(pointing.Select(static row => MapInput(row, "Pointing Device")))
                 .Where(static item => item is not null).Select(static item => item!)
@@ -61,6 +101,7 @@ public sealed class PeripheralCollector : WindowsCollectorBase
                 .Where(static item => item is not null).Select(static item => item!)
                 .DistinctBy(static item => item.Id, StringComparer.OrdinalIgnoreCase)
                 .OrderBy(static item => item.Id, StringComparer.OrdinalIgnoreCase).ToArray(),
+            Diagnostics = diagnostics,
         };
     }
 
@@ -72,12 +113,20 @@ public sealed class PeripheralCollector : WindowsCollectorBase
             return null;
         }
 
+        string? name = InventoryNormalizer.CleanString(row.GetString("Name"));
+        if (name is null)
+        {
+            return null;
+        }
+
         uint? width = row.GetUInt32("CurrentHorizontalResolution");
         uint? height = row.GetUInt32("CurrentVerticalResolution");
+        string? manufacturer = InventoryNormalizer.CleanIdentity(row.GetString("AdapterCompatibility"))
+            ?? InventoryNormalizer.CleanString(row.GetString("VideoProcessor"));
         return new VideoAdapterInfo(
             id,
-            InventoryNormalizer.CleanString(row.GetString("Name")),
-            InventoryNormalizer.CleanIdentity(row.GetString("AdapterCompatibility")),
+            name,
+            manufacturer,
             InventoryNormalizer.CleanString(row.GetString("DriverVersion")),
             row.GetUInt64("AdapterRAM"),
             width is not null && height is not null ? $"{width}x{height}" : null,
@@ -121,14 +170,23 @@ public sealed class PeripheralCollector : WindowsCollectorBase
                 InventoryNormalizer.CleanString(row.GetString("Status")));
     }
 
-    private ValueTask<IReadOnlyList<WmiRow>> QueryAsync(
+    private async ValueTask<IReadOnlyList<WmiRow>> QueryClassAsync(
         string className,
         IReadOnlyList<string> properties,
+        List<SourceDiagnostic> diagnostics,
         CancellationToken cancellationToken)
     {
-        return _wmi.QueryAsync(
+        (IReadOnlyList<WmiRow> rows, SourceDiagnostic? diagnostic) = await WmiQueryHelpers.TryQueryAsync(
+            _wmi,
             new WmiQuery(@"\\.\root\cimv2", className, properties, Timeout: Timeout),
-            cancellationToken);
+            $"{Name}:{className}",
+            cancellationToken).ConfigureAwait(false);
+        if (diagnostic is not null)
+        {
+            diagnostics.Add(diagnostic);
+        }
+
+        return rows;
     }
 
     private static string? Identity(WmiRow row)

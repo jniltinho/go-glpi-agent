@@ -84,7 +84,7 @@ public sealed class RegistryQueryAdapter : IRegistryQueryAdapter
             using RegistryKey? key = baseKey.OpenSubKey(path, false);
             return key is null ? null : Capture(path, key, valueNames, cancellationToken);
         }
-        catch (UnauthorizedAccessException exception)
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException)
         {
             throw new CollectorFailureException(CollectionState.AccessDenied, "registry-access-denied", exception.Message);
         }
@@ -120,7 +120,7 @@ public sealed class RegistryQueryAdapter : IRegistryQueryAdapter
 
             return snapshots;
         }
-        catch (UnauthorizedAccessException exception)
+        catch (Exception exception) when (exception is UnauthorizedAccessException or System.Security.SecurityException)
         {
             throw new CollectorFailureException(CollectionState.AccessDenied, "registry-access-denied", exception.Message);
         }

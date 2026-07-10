@@ -141,12 +141,17 @@ public sealed partial class RegistryHiveLoader : IRegistryHiveLoader
                 return;
             }
 
-            int error = NativeMethods.RegUnLoadKey(HKeyUsers, mountName);
             _disposed = true;
             GC.SuppressFinalize(this);
+            int error = NativeMethods.RegUnLoadKey(HKeyUsers, mountName);
             if (error != 0)
             {
-                throw new Win32Exception(error, "Failed to unload the offline registry hive.");
+                // Best-effort retry after letting lingering key handles finalize.
+                // Never throw from Dispose: a stuck hive must degrade the profile
+                // scan, not destroy the whole software category during unwind.
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                _ = NativeMethods.RegUnLoadKey(HKeyUsers, mountName);
             }
         }
     }

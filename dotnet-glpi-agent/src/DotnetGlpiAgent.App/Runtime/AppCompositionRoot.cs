@@ -64,7 +64,7 @@ public static class AppCompositionRoot
             new PeripheralCollector(wmi),
             new BatteryCollector(wmi),
             new AntivirusCollector(wmi),
-            new FirewallCollector(wmi),
+            new FirewallCollector(wmi, registry),
         ];
 
         return new AppRuntime(
@@ -111,11 +111,15 @@ public sealed class AppRuntime : IAppRuntime
         Directory.CreateDirectory(stateDirectory);
         _permissions.HardenDirectory(stateDirectory);
         DateTimeOffset now = DateTimeOffset.UtcNow;
+        // First run only: adopt the Go agent's identity when its state file was
+        // copied into the state directory, so GLPI keeps a single asset.
+        string migrationFile = Path.Combine(stateDirectory, "FusionInventory-Agent.json");
         IdentityLoadResult identity = await _identityStore.LoadOrCreateAsync(
             stateDirectory,
             Environment.MachineName,
             now,
-            cancellationToken: cancellationToken).ConfigureAwait(false);
+            File.Exists(migrationFile) ? migrationFile : null,
+            cancellationToken).ConfigureAwait(false);
         string identityFile = Path.Combine(stateDirectory, IdentityStore.StateFileName);
         if (File.Exists(identityFile))
         {

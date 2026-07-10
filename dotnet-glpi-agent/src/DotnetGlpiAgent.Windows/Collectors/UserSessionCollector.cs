@@ -289,7 +289,8 @@ public sealed partial class UserSessionCollector : WindowsCollectorBase
 
     private sealed record AccountReference(string? Domain, string Name);
 
-    [GeneratedRegex("Win32_(?:UserAccount|Group)\\.Domain=\\\"(?<domain>(?:\\\\.|[^\"])*)\\\",Name=\\\"(?<name>(?:\\\\.|[^\"])*)\\\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
+    // Win32_LoggedOnUser.Antecedent references the Win32_Account base class on real systems.
+    [GeneratedRegex("Win32_(?:Account|UserAccount|SystemAccount|Group)\\.Domain=\\\"(?<domain>(?:\\\\.|[^\"])*)\\\",Name=\\\"(?<name>(?:\\\\.|[^\"])*)\\\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex AccountReferenceRegex();
 
     [GeneratedRegex("Win32_LogonSession\\.LogonId=\\\"(?<id>[^\"]+)\\\"", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]

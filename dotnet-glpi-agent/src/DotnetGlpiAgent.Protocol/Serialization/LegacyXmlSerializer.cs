@@ -67,7 +67,7 @@ public static class LegacyXmlSerializer
     {
         if (value is string text)
         {
-            writer.WriteElementString(XmlName(name), text);
+            writer.WriteElementString(XmlName(name), SanitizeXmlText(text));
             return;
         }
 
@@ -104,7 +104,7 @@ public static class LegacyXmlSerializer
         }
         else
         {
-            writer.WriteString(FormatScalar(value));
+            writer.WriteString(SanitizeXmlText(FormatScalar(value)));
         }
 
         writer.WriteEndElement();
@@ -120,5 +120,59 @@ public static class LegacyXmlSerializer
         };
     }
 
-    private static string XmlName(string name) => name.ToUpperInvariant();
+    /// <summary>
+    /// Maps native JSON content keys to OCS/FusionInventory XML section names used by
+    /// the official Perl agent and historical comparison tooling.
+    /// </summary>
+    private static string XmlName(string name)
+    {
+        string upper = name.ToUpperInvariant();
+        return upper switch
+        {
+            "FIREWALLS" => "FIREWALL",
+            "ANTIVIRUS" => "ANTIVIRUS",
+            _ => upper,
+        };
+    }
+
+    /// <summary>
+    /// Removes characters that are illegal in XML 1.0 text nodes (e.g. 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F).
+    /// Inventory sources occasionally emit control characters that would crash XmlWriter.
+    /// </summary>
+    public static string SanitizeXmlText(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        for (var i = 0; i < value.Length; i++)
+        {
+            if (IsLegalXmlChar(value[i]))
+            {
+                continue;
+            }
+
+            var builder = new StringBuilder(value.Length);
+            for (var j = 0; j < value.Length; j++)
+            {
+                if (IsLegalXmlChar(value[j]))
+                {
+                    builder.Append(value[j]);
+                }
+            }
+
+            return builder.ToString();
+        }
+
+        return value;
+    }
+
+    private static bool IsLegalXmlChar(char ch)
+    {
+        // XML 1.0: #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]
+        return ch is '\t' or '\n' or '\r'
+            or (>= '\u0020' and <= '\uD7FF')
+            or (>= '\uE000' and <= '\uFFFD');
+    }
 }

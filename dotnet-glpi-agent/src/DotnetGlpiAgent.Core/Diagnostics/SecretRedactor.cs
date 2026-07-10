@@ -7,6 +7,7 @@ public sealed partial class SecretRedactor
     private static readonly HashSet<string> SecretPropertyNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "authorization",
+        "client-cert-password",
         "client-certificate-password",
         "client_secret",
         "client-secret",
@@ -35,7 +36,7 @@ public sealed partial class SecretRedactor
         }
 
         string redacted = AuthorizationRegex().Replace(value, "$1<redacted>");
-        redacted = SecretAssignmentRegex().Replace(redacted, "$1=<redacted>");
+        redacted = SecretAssignmentRegex().Replace(redacted, "$1$2<redacted>");
         redacted = UriUserInfoRegex().Replace(redacted, "$1<redacted>@");
 
         foreach (string secret in _secrets)
@@ -63,7 +64,7 @@ public sealed partial class SecretRedactor
     [GeneratedRegex("(?i)(authorization\\s*[:=]\\s*(?:basic|bearer)\\s+)[^\\s,;]+", RegexOptions.CultureInvariant, 100)]
     private static partial Regex AuthorizationRegex();
 
-    [GeneratedRegex("(?i)\\b(password|passwd|token|client[_-]?secret|proxy[_-]?password)\\s*=\\s*[^\\s,;]+", RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex("(?i)\\b(password|passwd|token|client[_-]?secret|proxy[_-]?password)([\"']?\\s*[=:]\\s*[\"']?)[^\\s,;\"']+", RegexOptions.CultureInvariant, 100)]
     private static partial Regex SecretAssignmentRegex();
 
     [GeneratedRegex("(https?://)[^/@\\s]+@", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]

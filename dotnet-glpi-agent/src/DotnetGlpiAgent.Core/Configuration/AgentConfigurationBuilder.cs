@@ -122,9 +122,10 @@ public sealed class AgentConfigurationBuilder
         AgentOptions options = CreateOptions(values);
         warnings.AddRange(AgentConfigurationValidator.Validate(options));
 
+        var redactor = new Diagnostics.SecretRedactor(SecretKeys.Select(key => values.GetValueOrDefault(key)));
         IReadOnlyDictionary<string, string> redacted = values.ToDictionary(
             static pair => pair.Key,
-            pair => SecretKeys.Contains(pair.Key) && pair.Value.Length > 0 ? "<redacted>" : pair.Value,
+            pair => SecretKeys.Contains(pair.Key) && pair.Value.Length > 0 ? "<redacted>" : redactor.Redact(pair.Value),
             StringComparer.OrdinalIgnoreCase);
 
         return new EffectiveAgentConfiguration(options, origins, warnings.Distinct(StringComparer.Ordinal).ToArray(), redacted);

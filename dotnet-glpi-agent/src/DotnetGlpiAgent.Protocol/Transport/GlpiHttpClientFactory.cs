@@ -87,12 +87,22 @@ public static class GlpiHttpClientFactory
 
         var customRoots = new X509Certificate2Collection();
         customRoots.ImportFromPemFile(options.CaCertificateFile);
-        handler.ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
-            errors == SslPolicyErrors.None || ValidateWithCustomRoots(certificate, customRoots);
+        handler.ServerCertificateCustomValidationCallback = (_, certificate, chain, errors) =>
+        {
+            // Only chain trust may be re-evaluated against the custom roots;
+            // hostname mismatch or a missing certificate must always fail.
+            if ((errors & ~SslPolicyErrors.RemoteCertificateChainErrors) != SslPolicyErrors.None)
+            {
+                return false;
+            }
+
+            return errors == SslPolicyErrors.None || ValidateWithCustomRoots(certificate, chain, customRoots);
+        };
     }
 
     private static bool ValidateWithCustomRoots(
         X509Certificate2? certificate,
+        X509Chain? handshakeChain,
         X509Certificate2Collection customRoots)
     {
         if (certificate is null || customRoots.Count == 0)
@@ -104,6 +114,14 @@ public static class GlpiHttpClientFactory
         chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
         chain.ChainPolicy.CustomTrustStore.AddRange(customRoots);
         chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+        if (handshakeChain is not null)
+        {
+            foreach (X509ChainElement element in handshakeChain.ChainElements)
+            {
+                chain.ChainPolicy.ExtraStore.Add(element.Certificate);
+            }
+        }
+
         return chain.Build(certificate);
     }
 }

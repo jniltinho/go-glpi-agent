@@ -116,6 +116,6 @@ public sealed partial class AppPackageDataAdapter : IAppPackageDataAdapter
         return path.TrimEnd('\\', '/').Split('\\', '/').LastOrDefault() ?? string.Empty;
     }
 
-    [GeneratedRegex("^S-1-5-21-[0-9-]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
+    [GeneratedRegex("^S-1-(?:5-21|12-1)-[0-9-]+$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, 100)]
     private static partial Regex UserSidRegex();
 }

@@ -64,6 +64,14 @@ public sealed class GlpiClient : IDisposable
                 exception);
         }
 
+        if (IsContactError(contactMessage))
+        {
+            throw new GlpiProtocolException(
+                GlpiFailureKind.Protocol,
+                "contact-status-error",
+                "The GLPI CONTACT response reported status=error.");
+        }
+
         if (!contactMessage.RequestsInventory() && _options.Lazy && !_options.Force)
         {
             return new GlpiSubmissionResult(GlpiProtocolKind.NativeJson, SubmissionState.Skipped, (int)contact.StatusCode);
@@ -361,7 +369,9 @@ public sealed class GlpiClient : IDisposable
 
         if (response.IsSuccessStatusCode && !LooksLikeJson(response.Body))
         {
-            return true;
+            // A malformed success (proxy HTML page, empty body) must not downgrade;
+            // only an actual legacy XML answer identifies a legacy endpoint.
+            return Encoding.UTF8.GetString(response.Body).Contains("<REPLY", StringComparison.OrdinalIgnoreCase);
         }
 
         string body = Encoding.UTF8.GetString(response.Body);
@@ -400,13 +410,17 @@ public sealed class GlpiClient : IDisposable
     private static GlpiProtocolException ClassifyTransportException(HttpRequestException exception)
     {
         bool tls = exception.HttpRequestError is HttpRequestError.SecureConnectionError
-            or HttpRequestError.NameResolutionError && exception.InnerException is AuthenticationException
             || exception.InnerException is AuthenticationException;
         return new GlpiProtocolException(
             tls ? GlpiFailureKind.Tls : GlpiFailureKind.Transport,
             tls ? "tls-failed" : "transport-failed",
             tls ? "TLS validation or negotiation with GLPI failed." : "The GLPI server could not be reached.",
             exception);
+    }
+
+    private static bool IsContactError(ContactResponse contact)
+    {
+        return contact.Status?.Equals("error", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private static void ValidateNativeAnswer(byte[] body)
@@ -455,23 +469,59 @@ public sealed class GlpiClient : IDisposable
             return false;
         }
 
-        using JsonDocument document = JsonDocument.Parse(body);
-        JsonElement root = document.RootElement;
-        if (root.ValueKind != JsonValueKind.Object
-            || !root.TryGetProperty("status", out JsonElement status)
-            || !string.Equals(status.GetString(), "pending", StringComparison.OrdinalIgnoreCase))
+        JsonDocument document;
+        try
+        {
+            document = JsonDocument.Parse(body);
+        }
+        catch (JsonException)
         {
             return false;
         }
 
-        if (root.TryGetProperty("expiration", out JsonElement value)
-            && value.ValueKind == JsonValueKind.String
-            && DateTimeOffset.TryParse(value.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset parsed))
+        using (document)
         {
-            expiration = parsed;
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object
+                || !root.TryGetProperty("status", out JsonElement status)
+                || status.ValueKind != JsonValueKind.String
+                || !string.Equals(status.GetString(), "pending", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (root.TryGetProperty("expiration", out JsonElement value))
+            {
+                expiration = ParseExpiration(value);
+            }
+
+            return true;
+        }
+    }
+
+    // GLPI sends expiration as a delay in hours ("24" or 24), not a timestamp.
+    private static DateTimeOffset? ParseExpiration(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetDouble(out double hours))
+        {
+            return DateTimeOffset.UtcNow.AddHours(hours);
         }
 
-        return true;
+        if (value.ValueKind == JsonValueKind.String)
+        {
+            string text = value.GetString() ?? string.Empty;
+            if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out double hoursFromText))
+            {
+                return DateTimeOffset.UtcNow.AddHours(hoursFromText);
+            }
+
+            if (DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out DateTimeOffset parsed))
+            {
+                return parsed;
+            }
+        }
+
+        return null;
     }
 
     private static bool LooksLikeJson(byte[] body)

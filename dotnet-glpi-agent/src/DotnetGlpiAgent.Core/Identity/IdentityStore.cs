@@ -46,7 +46,14 @@ public sealed class IdentityStore
         IdentityState? imported = null;
         if (!string.IsNullOrWhiteSpace(migrationFile))
         {
-            imported = await _importer.ImportAsync(migrationFile, now, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                imported = await _importer.ImportAsync(migrationFile, now, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception exception) when (exception is IdentityStateException or IOException or UnauthorizedAccessException)
+            {
+                warnings.Add($"Identity migration from '{Path.GetFileName(migrationFile)}' failed: {exception.Message}");
+            }
         }
 
         Guid agentId = imported?.AgentId is { } importedAgentId && importedAgentId != Guid.Empty

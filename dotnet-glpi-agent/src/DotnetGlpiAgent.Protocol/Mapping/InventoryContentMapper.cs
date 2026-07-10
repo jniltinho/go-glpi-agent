@@ -20,7 +20,8 @@ public static class InventoryContentMapper
         Add(content, "bios", MapBios(snapshot));
         Add(content, "operatingsystem", MapOperatingSystem(snapshot.OperatingSystem));
         AddList(content, "cpus", snapshot.Cpus.Select(MapCpu));
-        AddList(content, "memories", snapshot.MemoryModules.Where(static memory => !memory.IsEmptySlot).Select(MapMemory));
+        // Include empty slots for Perl/OCS parity (NUMSLOTS / empty DIMM rows).
+        AddList(content, "memories", snapshot.MemoryModules.Select(MapMemory));
         AddList(content, "drives", snapshot.Volumes.Select(MapVolume));
         AddList(content, "storages", snapshot.StorageDevices.Select(MapStorage));
         AddList(content, "networks", snapshot.NetworkAdapters.SelectMany(MapNetwork));
@@ -41,10 +42,8 @@ public static class InventoryContentMapper
         AddList(content, "modems", snapshot.Ports.Where(static port => string.Equals(port.Type, "Modem", StringComparison.OrdinalIgnoreCase)).Select(MapModem));
         AddList(content, "antivirus", snapshot.AntivirusProducts.Select(MapAntivirus));
         AddList(content, "firewalls", snapshot.FirewallProfiles.Select(MapFirewall));
-        if (!string.IsNullOrWhiteSpace(snapshot.Account.Tag))
-        {
-            AddList(content, "accountinfo", [Record(("keyname", "TAG"), ("keyvalue", snapshot.Account.Tag))]);
-        }
+        // TAG is emitted on the native JSON envelope (top-level "tag"), not as
+        // content.accountinfo. GLPI 11 rejects unknown content keys with HTTP 500.
 
         return new ProtocolContent(content);
     }
@@ -125,14 +124,14 @@ public static class InventoryContentMapper
     private static SortedDictionary<string, object?> MapMemory(MemoryModuleInfo memory)
     {
         return Record(
-            ("capacity", ToMebibytes(memory.CapacityBytes)),
+            ("capacity", memory.IsEmptySlot ? null : ToMebibytes(memory.CapacityBytes)),
             ("caption", memory.DeviceLocator),
-            ("description", memory.BankLabel),
+            ("description", memory.IsEmptySlot ? "Empty slot" : memory.BankLabel),
             ("manufacturer", memory.Manufacturer),
             ("model", memory.PartNumber),
             ("serialnumber", memory.SerialNumber),
             ("speed", memory.SpeedMhz is null ? null : $"{memory.SpeedMhz} MT/s"),
-            ("type", memory.MemoryType));
+            ("type", memory.IsEmptySlot ? "Empty" : memory.MemoryType));
     }
 
     private static SortedDictionary<string, object?> MapVolume(VolumeInfo volume)
@@ -436,7 +435,12 @@ public static class InventoryContentMapper
 
     private static string? FormatDate(DateTimeOffset? value) => value?.ToUniversalTime().ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-    private static string? FormatDateTime(DateTimeOffset? value) => value?.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
+    /// <summary>
+    /// GLPI inventory.schema.json datetime examples use "yyyy-MM-dd HH:mm:ss" (not ISO-8601 with T/Z).
+    /// MySQL last_boot rejects ISO forms such as 2026-07-10T11:03:34Z.
+    /// </summary>
+    private static string? FormatDateTime(DateTimeOffset? value) =>
+        value?.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
     private static string? DriveLetter(string? value)
     {

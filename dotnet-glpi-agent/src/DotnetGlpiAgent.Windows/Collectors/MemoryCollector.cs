@@ -36,15 +36,72 @@ public sealed class MemoryCollector : WindowsCollectorBase
         CollectorContext context,
         CancellationToken cancellationToken)
     {
-        IReadOnlyList<WmiRow> rows = await _wmi.QueryAsync(
+        var diagnostics = new List<SourceDiagnostic>();
+        (IReadOnlyList<WmiRow> rows, SourceDiagnostic? modulesDiagnostic) = await WmiQueryHelpers.TryQueryAsync(
+            _wmi,
             new WmiQuery(@"\\.\root\cimv2", "Win32_PhysicalMemory", ModuleProperties, Timeout: Timeout),
+            $"{Name}:Win32_PhysicalMemory",
             cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<WmiRow> arrays = await _wmi.QueryAsync(
+        if (modulesDiagnostic is not null)
+        {
+            diagnostics.Add(modulesDiagnostic);
+        }
+
+        (IReadOnlyList<WmiRow> arrays, SourceDiagnostic? arrayDiagnostic) = await WmiQueryHelpers.TryQueryAsync(
+            _wmi,
             new WmiQuery(@"\\.\root\cimv2", "Win32_PhysicalMemoryArray", ["MemoryDevices"], Timeout: Timeout),
+            $"{Name}:Win32_PhysicalMemoryArray",
             cancellationToken).ConfigureAwait(false);
+        if (arrayDiagnostic is not null)
+        {
+            diagnostics.Add(arrayDiagnostic);
+        }
+
         uint totalSlots = arrays.Aggregate(0U, static (sum, row) => checked(sum + row.GetUInt32("MemoryDevices").GetValueOrDefault()));
         MemoryModuleInfo[] modules = Map(rows, totalSlots);
-        return new InventoryContribution { Source = Name, MemoryModules = modules };
+
+        // VirtualBox/Server Core may expose no Win32_PhysicalMemory rows even when
+        // total RAM is known; emit a single synthetic populated module so MEMORIES
+        // is not empty (matches observed official-agent fallback behavior).
+        if (modules.All(static module => module.IsEmptySlot))
+        {
+            (IReadOnlyList<WmiRow> systems, SourceDiagnostic? systemDiagnostic) = await WmiQueryHelpers.TryQueryAsync(
+                _wmi,
+                new WmiQuery(@"\\.\root\cimv2", "Win32_ComputerSystem", ["TotalPhysicalMemory"], Timeout: Timeout),
+                $"{Name}:Win32_ComputerSystem",
+                cancellationToken).ConfigureAwait(false);
+            if (systemDiagnostic is not null)
+            {
+                diagnostics.Add(systemDiagnostic);
+            }
+
+            ulong? total = systems.Select(static row => row.GetUInt64("TotalPhysicalMemory")).FirstOrDefault(static value => value is > 0);
+            if (total is > 0)
+            {
+                modules =
+                [
+                    new MemoryModuleInfo(
+                        "system-total",
+                        null,
+                        "System Memory",
+                        total,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        false),
+                    .. modules,
+                ];
+            }
+        }
+
+        return new InventoryContribution
+        {
+            Source = Name,
+            MemoryModules = modules,
+            Diagnostics = diagnostics,
+        };
     }
 
     public static MemoryModuleInfo[] Map(IEnumerable<WmiRow> rows, uint totalSlots)

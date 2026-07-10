@@ -77,6 +77,16 @@ public sealed class InventoryCollectorOrchestrator
             {
                 return Result(collector, CollectionState.Cancelled, started, null, "cancelled", "Collection was cancelled during the support check.");
             }
+            catch (Exception exception)
+            {
+                return Result(
+                    collector,
+                    CollectionState.Failed,
+                    started,
+                    null,
+                    "support-check-failed",
+                    exception.GetType().Name);
+            }
 
             if (support.State != CollectorSupportState.Supported)
             {
