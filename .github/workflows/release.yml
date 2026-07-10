@@ -177,18 +177,32 @@ jobs:
           -p:VersionPrefix=${{ env.VERSION }}
 
       - name: Assemble package layout
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          out="artifacts/gh-release"
-          mkdir -p "$out"
-          cp -f artifacts/msi/dotnet-glpi-agent-*-win-x64.msi "$out/" || true
-          cp -f artifacts/msi/*.UNSIGNED.txt "$out/" 2>/dev/null || true
-          if [ -d artifacts/publish/win-x64 ]; then
-            (cd artifacts/publish/win-x64 && zip -qr "../../gh-release/dotnet-glpi-agent_${VERSION}_win-x64-portable.zip" .)
-          fi
-          (cd "$out" && sha256sum * > checksums-dotnet.txt)
-          ls -la "$out"
+          $ErrorActionPreference = 'Stop'
+          $out = 'artifacts/gh-release'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+
+          $msi = Get-ChildItem -Path 'artifacts/msi' -Filter 'dotnet-glpi-agent-*-win-x64.msi' -File -ErrorAction SilentlyContinue
+          if (-not $msi) { throw 'MSI not found under artifacts/msi' }
+          $msi | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $out -Force }
+          Get-ChildItem -Path 'artifacts/msi' -Filter '*.UNSIGNED.txt' -File -ErrorAction SilentlyContinue |
+            ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $out -Force }
+
+          $publish = 'artifacts/publish/win-x64'
+          if (Test-Path $publish) {
+            $zip = Join-Path $out "dotnet-glpi-agent_${env:VERSION}_win-x64-portable.zip"
+            if (Test-Path $zip) { Remove-Item -LiteralPath $zip -Force }
+            # Compress-Archive is available on windows-latest; zip(1) is not.
+            Compress-Archive -Path (Join-Path $publish '*') -DestinationPath $zip -Force
+          }
+
+          $sums = Join-Path $out 'checksums-dotnet.txt'
+          Get-ChildItem -Path $out -File | Where-Object { $_.Name -ne 'checksums-dotnet.txt' } | Sort-Object Name | ForEach-Object {
+            $hash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            '{0}  {1}' -f $hash, $_.Name
+          } | Set-Content -LiteralPath $sums -Encoding ascii
+          Get-ChildItem -Path $out | Format-Table Name, Length
 
       - name: Upload Dotnet packages to the release
         env:
