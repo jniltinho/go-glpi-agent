@@ -14,9 +14,11 @@ public sealed class ProtocolSerializationTests
         InventorySnapshot snapshot = CreateSnapshot();
         byte[] actual = NativeJsonSerializer.SerializeInventory(snapshot);
         byte[] repeated = NativeJsonSerializer.SerializeInventory(snapshot);
-        byte[] expected = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "native-inventory.json"));
+        // Normalize CRLF from git autocrlf on Windows before comparing to the LF serializer output.
+        byte[] expected = NormalizeUtf8Newlines(
+            File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Fixtures", "native-inventory.json")));
 
-        Assert.Equal(expected.AsSpan().TrimEnd((byte)'\n').ToArray(), actual);
+        Assert.Equal(expected, actual);
         Assert.Equal(actual, repeated);
 
         using JsonDocument document = JsonDocument.Parse(actual);
@@ -87,6 +89,12 @@ public sealed class ProtocolSerializationTests
         ContactResponse result = NativeJsonSerializer.ParseContactResponse(Encoding.UTF8.GetBytes(response));
 
         Assert.Equal(expected, result.RequestsInventory());
+    }
+
+    private static byte[] NormalizeUtf8Newlines(byte[] payload)
+    {
+        string text = Encoding.UTF8.GetString(payload).Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').TrimEnd('\n');
+        return Encoding.UTF8.GetBytes(text);
     }
 
     private static InventorySnapshot CreateSnapshot()

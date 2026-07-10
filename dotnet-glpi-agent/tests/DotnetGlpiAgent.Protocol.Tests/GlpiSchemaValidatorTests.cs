@@ -39,7 +39,24 @@ public sealed class GlpiSchemaValidatorTests
         string? schemaPath = Environment.GetEnvironmentVariable("GLPI_INVENTORY_SCHEMA");
         if (string.IsNullOrWhiteSpace(schemaPath) || !File.Exists(schemaPath))
         {
-            schemaPath = Path.Combine(FindProjectRoot(), "test", "glpi", "artifacts", glpiVersion, "inventory.schema.json");
+            // Prefer test output Fixtures (always present in CI) over lab artifacts/.
+            schemaPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Fixtures",
+                "schemas",
+                glpiVersion,
+                "inventory.schema.json");
+        }
+
+        if (!File.Exists(schemaPath))
+        {
+            schemaPath = Path.Combine(
+                FindProjectRoot(),
+                "test",
+                "glpi",
+                "artifacts",
+                glpiVersion,
+                "inventory.schema.json");
         }
 
         Assert.True(File.Exists(schemaPath), $"Missing pinned GLPI schema: {schemaPath}");
