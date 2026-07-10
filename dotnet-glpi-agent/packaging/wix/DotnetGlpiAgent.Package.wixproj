@@ -3,17 +3,26 @@
     <OutputType>Package</OutputType>
     <Platform>x64</Platform>
     <InstallerPlatform>x64</InstallerPlatform>
-    <ProductVersion Condition="'$(ProductVersion)' == ''">$(Version)</ProductVersion>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">$(VersionPrefix)</ProductVersion>
+    <ProductVersion Condition="'$(ProductVersion)' == ''">0.1.0</ProductVersion>
     <PublishDir>$(MSBuildThisFileDirectory)..\..\artifacts\publish\win-x64</PublishDir>
     <OutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\msi\</OutputPath>
+    <IntermediateOutputPath>$(MSBuildThisFileDirectory)obj\$(Configuration)\</IntermediateOutputPath>
     <OutputName>dotnet-glpi-agent-$(ProductVersion)-win-x64</OutputName>
     <DefineConstants>ProductVersion=$(ProductVersion);PublishDir=$(PublishDir)</DefineConstants>
     <SuppressValidation>false</SuppressValidation>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Avoid Directory.Build.props DebugType=embedded which WiX rejects as pdbType. -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <TimestampUrl Condition="'$(TimestampUrl)' == ''">http://timestamp.digicert.com</TimestampUrl>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="WixToolset.Util.wixext" />
+    <Compile Include="Package.wxs" />
+    <Compile Include="HarvestedFiles.wxs" Condition="Exists('$(MSBuildThisFileDirectory)HarvestedFiles.wxs')" />
   </ItemGroup>
 
   <Target Name="PublishAgent" BeforeTargets="BeforeBuild" Condition="'$(SkipPublishAgent)' != 'true'">
@@ -23,7 +32,29 @@
       Properties="Configuration=$(Configuration);RuntimeIdentifier=win-x64;SelfContained=true;PublishDir=$(PublishDir)\" />
   </Target>
 
-  <Target Name="SignMsi" AfterTargets="Build" Condition="'$(SignToolPath)' != '' and '$(SigningCertificateThumbprint)' != ''">
+  <Target Name="HarvestPublishFiles" BeforeTargets="BeforeBuild" DependsOnTargets="PublishAgent" Condition="'$(SkipHarvest)' != 'true'">
+    <PropertyGroup>
+      <_HarvestScript>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\scripts\Generate-HarvestedFiles.ps1'))</_HarvestScript>
+      <_HarvestOut>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)HarvestedFiles.wxs'))</_HarvestOut>
+      <_PublishDirTrimmed>$([System.IO.Path]::GetFullPath('$(PublishDir)').TrimEnd('\'))</_PublishDirTrimmed>
+    </PropertyGroup>
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(_HarvestScript)&quot; -PublishDir &quot;$(_PublishDirTrimmed)&quot; -OutputPath &quot;$(_HarvestOut)&quot;" />
+    <ItemGroup>
+      <Compile Remove="HarvestedFiles.wxs" />
+      <Compile Include="$(_HarvestOut)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="WriteUnsignedMarker" AfterTargets="Build">
+    <PropertyGroup>
+      <_UnsignedMarker>$(OutputPath)$(OutputName).UNSIGNED.txt</_UnsignedMarker>
+      <_UnsignedText>Development package $(OutputName).msi is unsigned. Production releases must Authenticode-sign the MSI and executable with trusted timestamping (SignToolPath + SigningCertificateThumbprint).</_UnsignedText>
+    </PropertyGroup>
+    <WriteLinesToFile File="$(_UnsignedMarker)" Lines="$(_UnsignedText)" Overwrite="true" />
+  </Target>
+
+  <Target Name="SignMsi" AfterTargets="WriteUnsignedMarker" Condition="'$(SignToolPath)' != '' and '$(SigningCertificateThumbprint)' != ''">
     <Exec Command="&quot;$(SignToolPath)&quot; sign /sha1 &quot;$(SigningCertificateThumbprint)&quot; /fd SHA256 /tr &quot;$(TimestampUrl)&quot; /td SHA256 &quot;$(TargetPath)&quot;" />
+    <Delete Files="$(OutputPath)$(OutputName).UNSIGNED.txt" />
   </Target>
 </Project>

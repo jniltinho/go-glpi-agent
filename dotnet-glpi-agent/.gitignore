@@ -11,3 +11,7 @@ TestResults/
 test/results/
 test/glpi/.env
 test/vagrant-windows/.vagrant/
+packaging/wix/HarvestedFiles.wxs
+test/vagrant-windows/results/
+test/vagrant-windows/artifacts/
+*.zip

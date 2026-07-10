@@ -1,3 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSI authoring for Dotnet GLPI Agent (WiX Toolset SDK 4.0.6).
+
+  Elevated actions retained after review:
+  - ServiceInstall / ServiceControl / util:ServiceConfig (declarative SCM lifecycle).
+  - util:RemoveFolderEx for optional PURGE=1 removal of retained ProgramData.
+  - RunAgentAfterInstall custom action (commit, elevated, FileRef-bounded): optional
+    first-install inventory when RUNNOW=1.
+
+  Mutable configuration and identity live under ProgramData and are Permanent /
+  NeverOverwrite so major upgrades and normal uninstalls preserve them.
+
+  Published payload files are listed in HarvestedFiles.wxs (generated at build time).
+-->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
      xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
   <Package
@@ -8,15 +23,42 @@
       Language="1033"
       Scope="perMachine"
       InstallerVersion="500">
-    <SummaryInformation Description="Dotnet GLPI Agent for Windows" Manufacturer="JNiltinho" />
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Dotnet GLPI Agent is already installed." />
+    <SummaryInformation
+        Description="Dotnet GLPI Agent for Windows (development builds are unsigned)"
+        Manufacturer="JNiltinho" />
+    <MajorUpgrade
+        DowngradeErrorMessage="A newer version of Dotnet GLPI Agent is already installed. Remove the newer version before installing this package."
+        Schedule="afterInstallInitialize" />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Property Id="SERVER" Secure="yes" />
     <Property Id="TAG" Secure="yes" />
+    <!-- Remember-property pattern: repair and upgrade sessions do not carry the
+         original command-line SERVER/TAG, so restore them from the registry to
+         keep IniFile rewrites from clearing the configured values. -->
+    <Property Id="SAVEDSERVER" Secure="yes">
+      <RegistrySearch
+          Id="FindPersistedServer"
+          Root="HKLM"
+          Key="Software\JNiltinho\DotnetGlpiAgent"
+          Name="ServerValue"
+          Type="raw" />
+    </Property>
+    <Property Id="SAVEDTAG" Secure="yes">
+      <RegistrySearch
+          Id="FindPersistedTag"
+          Root="HKLM"
+          Key="Software\JNiltinho\DotnetGlpiAgent"
+          Name="TagValue"
+          Type="raw" />
+    </Property>
+    <SetProperty Id="SERVER" Value="[SAVEDSERVER]" After="AppSearch" Condition="NOT SERVER AND SAVEDSERVER" />
+    <SetProperty Id="TAG" Value="[SAVEDTAG]" After="AppSearch" Condition="NOT TAG AND SAVEDTAG" />
     <Property Id="STARTSERVICE" Value="1" Secure="yes" />
     <Property Id="RUNNOW" Value="0" Secure="yes" />
     <Property Id="PURGE" Value="0" Secure="yes" />
+    <Property Id="INSTALLDIR" Secure="yes" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="This development MSI is unsigned. Production releases must be Authenticode-signed." Secure="yes" />
     <Property Id="PURGEDATADIR" Secure="yes">
       <RegistrySearch
           Id="FindRetainedDataDirectory"
@@ -26,10 +68,13 @@
           Type="raw" />
     </Property>
 
-    <Launch Condition="VersionNT64">Dotnet GLPI Agent requires a 64-bit version of Windows.</Launch>
-    <Launch Condition="SERVER = &quot;&quot; OR SERVER &gt;&lt; &quot;http://&quot; OR SERVER &gt;&lt; &quot;https://&quot;">
-      SERVER must be an HTTP or HTTPS URL.
-    </Launch>
+    <Launch Condition="VersionNT64" Message="Dotnet GLPI Agent requires a 64-bit version of Windows." />
+    <Launch Condition="SERVER = &quot;&quot; OR SERVER &gt;&lt; &quot;http://&quot; OR SERVER &gt;&lt; &quot;https://&quot;" Message="SERVER must be empty or an HTTP or HTTPS URL." />
+    <Launch Condition="PURGE = &quot;0&quot; OR PURGE = &quot;1&quot;" Message="PURGE accepts only 0 (preserve ProgramData) or 1 (destructive removal)." />
+    <Launch Condition="STARTSERVICE = &quot;0&quot; OR STARTSERVICE = &quot;1&quot;" Message="STARTSERVICE accepts only 0 or 1." />
+    <Launch Condition="RUNNOW = &quot;0&quot; OR RUNNOW = &quot;1&quot;" Message="RUNNOW accepts only 0 or 1." />
+
+    <SetDirectory Id="INSTALLFOLDER" Value="[INSTALLDIR]" Condition="INSTALLDIR" />
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLFOLDER" Name="DotnetGlpiAgent">
@@ -47,7 +92,6 @@
               Arguments="service --config &quot;[CommonAppDataFolder]DotnetGlpiAgent\agent.cfg&quot;">
             <ServiceDependency Id="Tcpip" />
             <ServiceDependency Id="Dnscache" />
-            <ServiceConfig DelayedAutoStart="yes" OnInstall="yes" OnReinstall="yes" PreShutdownDelay="30000" />
             <util:ServiceConfig
                 FirstFailureActionType="restart"
                 SecondFailureActionType="restart"
@@ -61,6 +105,25 @@
               Stop="both"
               Remove="uninstall"
               Wait="yes" />
+          <!-- Delayed automatic start (SCM DelayedAutostart). -->
+          <RegistryValue
+              Root="HKLM"
+              Key="SYSTEM\CurrentControlSet\Services\DotnetGlpiAgent"
+              Name="DelayedAutostart"
+              Type="integer"
+              Value="1" />
+          <RegistryValue
+              Root="HKLM"
+              Key="Software\JNiltinho\DotnetGlpiAgent"
+              Name="InstallDirectory"
+              Type="string"
+              Value="[INSTALLFOLDER]" />
+          <RegistryValue
+              Root="HKLM"
+              Key="Software\JNiltinho\DotnetGlpiAgent"
+              Name="ProductVersion"
+              Type="string"
+              Value="$(var.ProductVersion)" />
         </Component>
 
         <Component Id="StartAgentService" Guid="{69D57557-3EE4-4F14-AD81-4C8421C78C60}" Bitness="always64" Condition="STARTSERVICE = 1">
@@ -106,24 +169,26 @@
         <Component Id="ServerConfiguration" Guid="{D2CDE32A-D64E-4924-8CFE-FACDC2C979AD}" Bitness="always64" Permanent="yes" Condition="SERVER &lt;&gt; &quot;&quot;">
           <IniFile
               Id="WriteServerConfiguration"
-              Action="createLine"
+              Action="addLine"
               Directory="DATADIR"
               Name="agent.cfg"
               Section="agent"
               Key="server"
               Value="[SERVER]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerValue" Type="string" Value="[SERVER]" />
           <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="ServerConfigured" Type="integer" Value="1" KeyPath="yes" />
         </Component>
 
         <Component Id="TagConfiguration" Guid="{361898F0-DFC6-475F-B719-EDB2F727A10E}" Bitness="always64" Permanent="yes" Condition="TAG &lt;&gt; &quot;&quot;">
           <IniFile
               Id="WriteTagConfiguration"
-              Action="createLine"
+              Action="addLine"
               Directory="DATADIR"
               Name="agent.cfg"
               Section="agent"
               Key="tag"
               Value="[TAG]" />
+          <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagValue" Type="string" Value="[TAG]" />
           <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="TagConfigured" Type="integer" Value="1" KeyPath="yes" />
         </Component>
 
@@ -147,19 +212,22 @@
           </Component>
         </Directory>
 
+        <Directory Id="INVENTORYDIR" Name="inventories">
+          <Component Id="ProtectedInventoryDirectory" Guid="{A3F1C8E2-5B74-4D19-9E2A-1C8D6F4B0A71}" Bitness="always64" Permanent="yes">
+            <CreateFolder>
+              <util:PermissionEx User="SYSTEM" GenericAll="yes" />
+              <util:PermissionEx User="Administrators" GenericAll="yes" />
+            </CreateFolder>
+            <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="InventoryDirectory" Type="string" Value="[INVENTORYDIR]" KeyPath="yes" />
+          </Component>
+        </Directory>
+
         <Component Id="PurgeRetainedData" Guid="{786FF209-A1F9-49E8-A30F-F6083848D5CB}" Bitness="always64">
           <util:RemoveFolderEx Id="RemoveRetainedData" Property="PURGEDATADIR" On="uninstall" Condition="PURGE = 1" />
           <RegistryValue Root="HKLM" Key="Software\JNiltinho\DotnetGlpiAgent" Name="PurgeSupport" Type="integer" Value="1" KeyPath="yes" />
         </Component>
       </Directory>
     </StandardDirectory>
-
-    <ComponentGroup Id="PublishedAgentFiles" Directory="INSTALLFOLDER">
-      <Files Include="$(var.PublishDir)\**">
-        <Exclude Files="$(var.PublishDir)\dotnet-glpi-agent.exe" />
-        <Exclude Files="$(var.PublishDir)\*.pdb" />
-      </Files>
-    </ComponentGroup>
 
     <Feature Id="Complete" Title="Dotnet GLPI Agent" Level="1">
       <ComponentGroupRef Id="PublishedAgentFiles" />
@@ -172,6 +240,7 @@
       <ComponentRef Id="TagConfiguration" />
       <ComponentRef Id="ProtectedStateDirectory" />
       <ComponentRef Id="ProtectedLogDirectory" />
+      <ComponentRef Id="ProtectedInventoryDirectory" />
       <ComponentRef Id="PurgeRetainedData" />
     </Feature>
 
