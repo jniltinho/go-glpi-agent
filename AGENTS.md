@@ -82,6 +82,27 @@ Specs and tasks live in `openspec/changes/`. Use the OpenSpec skills
 (`openspec-apply-change`, `openspec-propose`, etc.) to drive implementation; keep
 `tasks.md` checkboxes up to date as work lands.
 
+## Dotnet Windows agent (`dotnet-glpi-agent/`)
+
+Independent .NET 10 inventory agent (Windows Service + WiX MSI). Inventory-only
+scope vs the full Perl GLPI agent — see OpenSpec change
+`add-dotnet10-windows-agent` and `dotnet-glpi-agent/docs/`.
+
+**End of every Dotnet task (feature, fix, lab, release):** before closing work,
+
+1. Re-read the parity docs so nothing already written is forgotten:
+   - `dotnet-glpi-agent/docs/parity-with-perl.md` (living backlog + Top 10)
+   - `dotnet-glpi-agent/docs/claude-validation-report.md`
+   - `dotnet-glpi-agent/docs/collector-coverage.md`
+   - `dotnet-glpi-agent/docs/product-decisions.md`
+   - `dotnet-glpi-agent/docs/operations.md`
+2. Ask Claude (CLI) what still needs to improve for **inventory** parity with
+   Perl `base/glpi-agent/.../Task/Inventory/Win32/*` (not deploy/ESX/etc.).
+3. Fold any new gaps into `parity-with-perl.md` (Top 10 / module table) in the
+   same change set when they are durable findings.
+
+Prefer implementing Top-10 items over inventing new scope.
+
 ## Build, test, run
 
 ```sh
